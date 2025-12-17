@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Únete a Somar Express - Aplicación de Riders</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 700px;
+            width: 100%;
+            margin: 0 auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #ff6b35;
+            font-size: 32px;
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+
+        .header .tagline {
+            color: #1a1a1a;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .header h2 {
+            color: #1a1a1a;
+            font-size: 20px;
+            margin-top: 15px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .form-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 12px;
+            border-left: 4px solid #ff6b35;
+        }
+
+        .form-section h3 {
+            color: #1a1a1a;
+            font-size: 16px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #1a1a1a;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .required {
+            color: #e74c3c;
+        }
+
+        input[type="text"],
+        input[type="tel"],
+        input[type="number"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+
+        input[type="text"]:focus,
+        input[type="tel"]:focus,
+        input[type="number"]:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: #ff6b35;
+        }
+
+        select {
+            cursor: pointer;
+            background-color: white;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .radio-option input[type="radio"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: #ff6b35;
+        }
+
+        .radio-option label {
+            margin-bottom: 0;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .checkbox-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+
+        .checkbox-option:hover {
+            background: #fff5f0;
+        }
+
+        .checkbox-option input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: #ff6b35;
+        }
+
+        .checkbox-option label {
+            margin-bottom: 0;
+            cursor: pointer;
+            font-weight: 500;
+            flex: 1;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 20px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(255, 107, 53, 0.4);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .success-message {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        .success-icon {
+            font-size: 70px;
+            color: #2ecc71;
+            margin-bottom: 20px;
+        }
+
+        .success-message h2 {
+            color: #2ecc71;
+            margin-bottom: 15px;
+            font-size: 24px;
+        }
+
+        .success-message p {
+            color: #666;
+            line-height: 1.8;
+            font-size: 15px;
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 30px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #ff6b35;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #f0f0f0;
+        }
+
+        .footer p {
+            color: #999;
+            font-size: 12px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 25px;
+            }
+
+            .radio-group {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🛵 Somar Express</h1>
+            <div class="tagline">100% Orgullo Cholomeño 🇭🇳</div>
+            <h2>Únete a Nuestro Equipo de Riders</h2>
+            <p>Completa el siguiente formulario para aplicar como rider delivery</p>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <form id="applicationForm">
+            <!-- Información Personal -->
+            <div class="form-section">
+                <h3>👤 Información Personal</h3>
+                
+                <div class="form-group">
+                    <label>Nombre Completo <span class="required">*</span></label>
+                    <input type="text" id="nombreCompleto" required placeholder="Ej: Juan Carlos López Martínez">
+                </div>
+
+                <div class="form-group">
+                    <label>Número de Identidad <span class="required">*</span></label>
+                    <input type="text" id="numeroIdentidad" required placeholder="Ej: 0801-1990-12345" maxlength="15">
+                </div>
+
+                <div class="form-group">
+                    <label>Edad <span class="required">*</span></label>
+                    <input type="number" id="edad" required placeholder="Ej: 25" min="18" max="70">
+                </div>
+
+                <div class="form-group">
+                    <label>Número de Celular <span class="required">*</span></label>
+                    <input type="tel" id="celular" required placeholder="Ej: 9876-5432" maxlength="9">
+                </div>
+
+                <div class="form-group">
+                    <label>Colonia o Residencial donde Vive <span class="required">*</span></label>
+                    <input type="text" id="direccion" required placeholder="Ej: Colonia Moderna, Choloma">
+                </div>
+            </div>
+
+            <!-- Requisitos del Trabajo -->
+            <div class="form-section">
+                <h3>🏍️ Requisitos del Trabajo</h3>
+                
+                <div class="form-group">
+                    <label>¿Cuenta con moto propia? <span class="required">*</span></label>
+                    <div class="radio-group">
+                        <div class="radio-option">
+                            <input type="radio" id="motoSi" name="motoPropia" value="Sí" required>
+                            <label for="motoSi">Sí</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" id="motoNo" name="motoPropia" value="No">
+                            <label for="motoNo">No</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>¿Cuenta con mochila de delivery? <span class="required">*</span></label>
+                    <div class="radio-group">
+                        <div class="radio-option">
+                            <input type="radio" id="mochilaSi" name="mochilaDelivery" value="Sí" required>
+                            <label for="mochilaSi">Sí</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" id="mochilaNo" name="mochilaDelivery" value="No">
+                            <label for="mochilaNo">No</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>¿Tiene licencia de conducir? <span class="required">*</span></label>
+                    <div class="radio-group">
+                        <div class="radio-option">
+                            <input type="radio" id="licenciaSi" name="licencia" value="Sí" required>
+                            <label for="licenciaSi">Sí</label>
+                        </div>
+                        <div class="radio-option">
+                            <input type="radio" id="licenciaNo" name="licencia" value="No">
+                            <label for="licenciaNo">No</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Disponibilidad -->
+            <div class="form-section">
+                <h3>⏰ Disponibilidad de Tiempo</h3>
+                <p style="color: #666; font-size: 13px; margin-bottom: 15px;">Selecciona todas las opciones que apliquen para ti</p>
+                
+                <div class="checkbox-group">
+                    <div class="checkbox-option">
+                        <input type="checkbox" id="dispMedioTiempo" name="disponibilidad" value="Medio Tiempo">
+                        <label for="dispMedioTiempo">Medio Tiempo</label>
+                    </div>
+                    <div class="checkbox-option">
+                        <input type="checkbox" id="dispManana" name="disponibilidad" value="Por la Mañana">
+                        <label for="dispManana">Por la Mañana (6:00 AM - 12:00 PM)</label>
+                    </div>
+                    <div class="checkbox-option">
+                        <input type="checkbox" id="dispTarde" name="disponibilidad" value="Por la Tarde">
+                        <label for="dispTarde">Por la Tarde (12:00 PM - 6:00 PM)</label>
+                    </div>
+                    <div class="checkbox-option">
+                        <input type="checkbox" id="dispNoche" name="disponibilidad" value="Por la Noche">
+                        <label for="dispNoche">Por la Noche (6:00 PM - 10:00 PM)</label>
+                    </div>
+                    <div class="checkbox-option">
+                        <input type="checkbox" id="dispFinSemana" name="disponibilidad" value="Fines de Semana">
+                        <label for="dispFinSemana">Fines de Semana</label>
+                    </div>
+                    <div class="checkbox-option">
+                        <input type="checkbox" id="dispTiempoCompleto" name="disponibilidad" value="Tiempo Completo">
+                        <label for="dispTiempoCompleto">Tiempo Completo (Lunes a Domingo)</label>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="submit-btn">Enviar Aplicación 🚀</button>
+        </form>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 20px; color: #666; font-weight: 500;">Enviando tu aplicación...</p>
+        </div>
+
+        <div class="success-message" id="successMessage">
+            <div class="success-icon">✓</div>
+            <h2>¡Aplicación Recibida!</h2>
+            <p>Gracias por tu interés en unirte a <strong>Somar Express</strong>.<br><br>
+            Hemos recibido tu aplicación y nuestro equipo la revisará pronto.<br>
+            Te contactaremos al número que proporcionaste.<br><br>
+            <strong>¡Bienvenido al equipo! 🛵</strong></p>
+        </div>
+
+        <div class="footer">
+            <p>© 2024 Somar Express - Choloma, Honduras</p>
+        </div>
+    </div>
+
+    <script>
+        // Formatear número de identidad mientras se escribe
+        document.getElementById('numeroIdentidad').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/[^\d]/g, '');
+            if (value.length >= 4) {
+                value = value.substring(0, 4) + '-' + value.substring(4);
+            }
+            if (value.length >= 9) {
+                value = value.substring(0, 9) + '-' + value.substring(9);
+            }
+            e.target.value = value.substring(0, 15);
+        });
+
+        // Formatear número de celular mientras se escribe
+        document.getElementById('celular').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/[^\d]/g, '');
+            if (value.length >= 4) {
+                value = value.substring(0, 4) + '-' + value.substring(4);
+            }
+            e.target.value = value.substring(0, 9);
+        });
+
+        // Manejo del formulario
+        document.getElementById('applicationForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.classList.remove('show');
+            
+            // Validar que al menos una disponibilidad esté seleccionada
+            const disponibilidadCheckboxes = document.querySelectorAll('input[name="disponibilidad"]:checked');
+            if (disponibilidadCheckboxes.length === 0) {
+                errorMessage.textContent = '⚠️ Por favor selecciona al menos una opción de disponibilidad';
+                errorMessage.classList.add('show');
+                return;
+            }
+            
+            // Recopilar disponibilidades seleccionadas
+            const disponibilidades = Array.from(disponibilidadCheckboxes).map(cb => cb.value).join(', ');
+            
+            // Recopilar todos los datos del formulario
+            const formData = {
+                nombreCompleto: document.getElementById('nombreCompleto').value,
+                numeroIdentidad: document.getElementById('numeroIdentidad').value,
+                edad: document.getElementById('edad').value,
+                celular: document.getElementById('celular').value,
+                direccion: document.getElementById('direccion').value,
+                motoPropia: document.querySelector('input[name="motoPropia"]:checked').value,
+                mochilaDelivery: document.querySelector('input[name="mochilaDelivery"]:checked').value,
+                licencia: document.querySelector('input[name="licencia"]:checked').value,
+                disponibilidad: disponibilidades,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Mostrar loading
+            document.getElementById('applicationForm').style.display = 'none';
+            document.getElementById('loading').classList.add('show');
+            
+            try {
+                // IMPORTANTE: Reemplaza esta URL con tu URL de Google Apps Script
+                const response = await fetch('https://script.google.com/macros/s/AKfycbxfdMb0p4OImAXoWiWgLbAbgXo4mVxQ0zy6H9xG5uk_Hnm8hWIWxzH84zmSTd01sBpvtA/exec', {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                // Simular espera (porque no-cors no devuelve respuesta)
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Mostrar mensaje de éxito
+                document.getElementById('loading').classList.remove('show');
+                document.getElementById('successMessage').classList.add('show');
+                
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('loading').classList.remove('show');
+                errorMessage.textContent = '❌ Hubo un error al enviar tu aplicación. Por favor intenta de nuevo.';
+                errorMessage.classList.add('show');
+                document.getElementById('applicationForm').style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
