@@ -187,6 +187,95 @@
             flex: 1;
         }
 
+        .file-upload-container {
+            margin-top: 10px;
+        }
+
+        .file-upload-box {
+            border: 2px dashed #e0e0e0;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            background: white;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .file-upload-box:hover {
+            border-color: #ff6b35;
+            background: #fff5f0;
+        }
+
+        .file-upload-box.dragover {
+            border-color: #ff6b35;
+            background: #fff5f0;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            color: #ff6b35;
+            margin-bottom: 10px;
+        }
+
+        .upload-text {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        .upload-hint {
+            color: #999;
+            font-size: 12px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .image-preview {
+            margin-top: 15px;
+            display: none;
+        }
+
+        .image-preview.show {
+            display: block;
+        }
+
+        .preview-container {
+            position: relative;
+            display: inline-block;
+            max-width: 100%;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .remove-image {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .remove-image:hover {
+            background: #c0392b;
+        }
+
         .submit-btn {
             width: 100%;
             padding: 15px;
@@ -348,6 +437,25 @@
                     <label>Colonia o Residencial donde Vive <span class="required">*</span></label>
                     <input type="text" id="direccion" required placeholder="Ej: Colonia Moderna, Choloma">
                 </div>
+
+                <div class="form-group">
+                    <label>Foto de tu Cédula <span class="required">*</span></label>
+                    <div class="file-upload-container">
+                        <div class="file-upload-box" id="uploadBox">
+                            <div class="upload-icon">📷</div>
+                            <div class="upload-text">Haz clic o arrastra tu cédula aquí</div>
+                            <div class="upload-hint">JPG, JPEG o PNG - Máximo 5MB</div>
+                        </div>
+                        <input type="file" id="cedulaImagen" accept="image/jpeg,image/jpg,image/png" required>
+                        
+                        <div class="image-preview" id="imagePreview">
+                            <div class="preview-container">
+                                <img id="previewImg" class="preview-image" alt="Preview">
+                                <button type="button" class="remove-image" id="removeImage">×</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Requisitos del Trabajo -->
@@ -453,7 +561,9 @@
     </div>
 
     <script>
-        // Formatear número de identidad mientras se escribe
+        let selectedImageBase64 = null;
+
+        // Formatear número de identidad
         document.getElementById('numeroIdentidad').addEventListener('input', function(e) {
             let value = e.target.value.replace(/[^\d]/g, '');
             if (value.length >= 4) {
@@ -465,13 +575,85 @@
             e.target.value = value.substring(0, 15);
         });
 
-        // Formatear número de celular mientras se escribe
+        // Formatear número de celular
         document.getElementById('celular').addEventListener('input', function(e) {
             let value = e.target.value.replace(/[^\d]/g, '');
             if (value.length >= 4) {
                 value = value.substring(0, 4) + '-' + value.substring(4);
             }
             e.target.value = value.substring(0, 9);
+        });
+
+        // Manejo del upload de imagen
+        const uploadBox = document.getElementById('uploadBox');
+        const fileInput = document.getElementById('cedulaImagen');
+        const imagePreview = document.getElementById('imagePreview');
+        const previewImg = document.getElementById('previewImg');
+        const removeImageBtn = document.getElementById('removeImage');
+
+        uploadBox.addEventListener('click', () => fileInput.click());
+
+        // Drag and drop
+        uploadBox.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadBox.classList.add('dragover');
+        });
+
+        uploadBox.addEventListener('dragleave', () => {
+            uploadBox.classList.remove('dragover');
+        });
+
+        uploadBox.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadBox.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.classList.remove('show');
+
+            // Validar tipo de archivo
+            const validTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+            if (!validTypes.includes(file.type)) {
+                errorMessage.textContent = '⚠️ Por favor sube una imagen en formato JPG o PNG';
+                errorMessage.classList.add('show');
+                return;
+            }
+
+            // Validar tamaño (5MB máximo)
+            if (file.size > 5 * 1024 * 1024) {
+                errorMessage.textContent = '⚠️ La imagen no debe superar los 5MB';
+                errorMessage.classList.add('show');
+                return;
+            }
+
+            // Leer y convertir a base64
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                selectedImageBase64 = e.target.result;
+                previewImg.src = selectedImageBase64;
+                uploadBox.style.display = 'none';
+                imagePreview.classList.add('show');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        removeImageBtn.addEventListener('click', () => {
+            selectedImageBase64 = null;
+            fileInput.value = '';
+            uploadBox.style.display = 'block';
+            imagePreview.classList.remove('show');
+            previewImg.src = '';
         });
 
         // Manejo del formulario
@@ -481,18 +663,23 @@
             const errorMessage = document.getElementById('errorMessage');
             errorMessage.classList.remove('show');
             
-            // Validar que al menos una disponibilidad esté seleccionada
+            // Validar disponibilidad
             const disponibilidadCheckboxes = document.querySelectorAll('input[name="disponibilidad"]:checked');
             if (disponibilidadCheckboxes.length === 0) {
                 errorMessage.textContent = '⚠️ Por favor selecciona al menos una opción de disponibilidad';
                 errorMessage.classList.add('show');
                 return;
             }
+
+            // Validar imagen de cédula
+            if (!selectedImageBase64) {
+                errorMessage.textContent = '⚠️ Por favor sube una foto de tu cédula';
+                errorMessage.classList.add('show');
+                return;
+            }
             
-            // Recopilar disponibilidades seleccionadas
             const disponibilidades = Array.from(disponibilidadCheckboxes).map(cb => cb.value).join(', ');
             
-            // Recopilar todos los datos del formulario
             const formData = {
                 nombreCompleto: document.getElementById('nombreCompleto').value,
                 numeroIdentidad: document.getElementById('numeroIdentidad').value,
@@ -503,15 +690,15 @@
                 mochilaDelivery: document.querySelector('input[name="mochilaDelivery"]:checked').value,
                 licencia: document.querySelector('input[name="licencia"]:checked').value,
                 disponibilidad: disponibilidades,
+                cedulaImagen: selectedImageBase64,
                 timestamp: new Date().toISOString()
             };
             
-            // Mostrar loading
             document.getElementById('applicationForm').style.display = 'none';
             document.getElementById('loading').classList.add('show');
             
             try {
-                // IMPORTANTE: Reemplaza esta URL con tu URL de Google Apps Script
+                // IMPORTANTE: Reemplaza con tu URL de Google Apps Script
                 const response = await fetch('https://script.google.com/macros/s/AKfycbxwrqUiGvQEYO3Iice5DW4UaoJFq2Zhn6ZT7gRGGtFGyFBFdMcpVgUj50nWytA9b1uTcw/exec', {
                     method: 'POST',
                     mode: 'no-cors',
@@ -521,10 +708,8 @@
                     body: JSON.stringify(formData)
                 });
                 
-                // Simular espera (porque no-cors no devuelve respuesta)
                 await new Promise(resolve => setTimeout(resolve, 2000));
                 
-                // Mostrar mensaje de éxito
                 document.getElementById('loading').classList.remove('show');
                 document.getElementById('successMessage').classList.add('show');
                 
