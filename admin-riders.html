@@ -179,7 +179,7 @@
 
         .card-info {
             display: grid;
-            gap: 10px;
+            gap: 12px;
             margin-bottom: 15px;
         }
 
@@ -198,12 +198,101 @@
 
         .info-row .label {
             color: #666;
-            min-width: 80px;
+            min-width: 70px;
+            font-weight: 500;
         }
 
         .info-row .value {
             color: #1a1a1a;
             font-weight: 500;
+        }
+
+        .score-section {
+            background: linear-gradient(135deg, #fff5f0 0%, #ffe8dc 100%);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .score-label {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .score-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px;
+            font-size: 28px;
+            font-weight: bold;
+            border: 4px solid;
+            position: relative;
+        }
+
+        .score-circle.high {
+            background: #d4edda;
+            color: #155724;
+            border-color: #28a745;
+        }
+
+        .score-circle.medium {
+            background: #fff3cd;
+            color: #856404;
+            border-color: #ffc107;
+        }
+
+        .score-circle.low {
+            background: #f8d7da;
+            color: #721c24;
+            border-color: #dc3545;
+        }
+
+        .score-text {
+            font-size: 11px;
+            color: #666;
+        }
+
+        .location-box {
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+
+        .location-city {
+            font-weight: 600;
+            color: #1565c0;
+            margin-bottom: 4px;
+        }
+
+        .location-address {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .availability-section {
+            background: #f9f9f9;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 12px;
+        }
+
+        .availability-section h4 {
+            font-size: 12px;
+            color: #ff6b35;
+            margin-bottom: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .badge {
@@ -520,7 +609,7 @@
         let searchTerm = '';
 
         // URL de tu Apps Script
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz2bq-R1ey5d9kfnR4W5COBI4q82utzLoSY94qNB4JlOmyPXaBt6QtCxwLzZ7hVd9V2HQ/exec';
+        const APPS_SCRIPT_URL = 'TU_URL_DE_APPS_SCRIPT_AQUI';
 
         async function loadApplications() {
             try {
@@ -557,7 +646,12 @@
 
             document.getElementById('emptyState').style.display = 'none';
             
-            grid.innerHTML = filtered.map(app => `
+            grid.innerHTML = filtered.map(app => {
+                const score = calculateScore(app);
+                const scoreClass = getScoreClass(score);
+                const scoreText = getScoreText(score);
+                
+                return `
                 <div class="application-card">
                     <div class="card-header">
                         <div>
@@ -567,36 +661,31 @@
                         <span class="status-badge ${app.estado.toLowerCase()}">${app.estado}</span>
                     </div>
 
+                    <div class="score-section">
+                        <div class="score-label">Precalificación</div>
+                        <div class="score-circle ${scoreClass}">
+                            ${score}
+                        </div>
+                        <div class="score-text">${scoreText}</div>
+                    </div>
+
+                    <div class="location-box">
+                        <div class="location-city">📍 ${app.ciudad}</div>
+                        <div class="location-address">${app.direccion}</div>
+                    </div>
+
                     <div class="card-info">
                         <div class="info-row">
                             <span class="icon">📅</span>
                             <span class="label">Edad:</span>
                             <span class="value">${app.edad} años</span>
                         </div>
-                        <div class="info-row">
-                            <span class="icon">📍</span>
-                            <span class="label">Ciudad:</span>
-                            <span class="badge city">${app.ciudad}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="icon">📱</span>
-                            <span class="label">Celular:</span>
-                            <span class="value">${app.celular}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="icon">✉️</span>
-                            <span class="label">Correo:</span>
-                            <span class="value" style="font-size: 11px;">${app.correo}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="icon">🏍️</span>
-                            <span class="label">Moto:</span>
-                            <span class="badge ${app.motoPropia === 'Sí' ? 'yes' : 'no'}">${app.motoPropia}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="icon">🪪</span>
-                            <span class="label">Licencia:</span>
-                            <span class="badge ${app.licencia === 'Sí' ? 'yes' : 'no'}">${app.licencia}</span>
+                    </div>
+
+                    <div class="availability-section">
+                        <h4>⏰ Disponibilidad</h4>
+                        <div class="availability-tags">
+                            ${app.disponibilidad.split(', ').map(d => `<span class="availability-tag">${d}</span>`).join('')}
                         </div>
                     </div>
 
@@ -609,13 +698,6 @@
                         </div>
                     </div>
 
-                    <div>
-                        <h4 style="font-size: 12px; color: #666; margin-bottom: 5px;">⏰ Disponibilidad</h4>
-                        <div class="availability-tags">
-                            ${app.disponibilidad.split(', ').map(d => `<span class="availability-tag">${d}</span>`).join('')}
-                        </div>
-                    </div>
-
                     <div class="card-actions">
                         <button class="action-btn view" onclick="viewDetails(${app.row})">Ver Detalles</button>
                         ${app.estado === 'Pendiente' ? `
@@ -624,9 +706,52 @@
                         ` : ''}
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
+        function calculateScore(app) {
+            let score = 0;
+            
+            // Edad menor a 30 años: +10 puntos
+            if (app.edad < 30) {
+                score += 10;
+            }
+            
+            // Tiene licencia: +10 puntos
+            if (app.licencia === 'Sí') {
+                score += 10;
+            }
+            
+            // Tiene moto propia: +25 puntos
+            if (app.motoPropia === 'Sí') {
+                score += 25;
+            }
+            
+            // Tiene mochila: +30 puntos
+            if (app.mochilaDelivery === 'Sí') {
+                score += 30;
+            }
+            
+            // Tiempo completo: +25 puntos
+            if (app.disponibilidad.includes('Tiempo Completo')) {
+                score += 25;
+            }
+            
+            return score;
+        }
+
+        function getScoreClass(score) {
+            if (score >= 75) return 'high';
+            if (score >= 50) return 'medium';
+            return 'low';
+        }
+
+        function getScoreText(score) {
+            if (score >= 80) return 'Excelente candidato';
+            if (score >= 50) return 'Buen candidato';
+            return 'Revisar requisitos';
+        }
         function getPhotoThumb(url) {
             if (!url || url.includes('Error') || url === 'No proporcionada') {
                 return '';
@@ -730,29 +855,91 @@
             const app = allApplications.find(a => a.row === row);
             if (!app) return;
 
+            const score = calculateScore(app);
+            const scoreClass = getScoreClass(score);
+            const scoreText = getScoreText(score);
+
             document.getElementById('modalContent').innerHTML = `
                 <h2>${app.nombreCompleto}</h2>
                 <p style="color: #999; margin-bottom: 20px;">${app.numeroIdentidad}</p>
                 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                <div class="score-section" style="max-width: 200px; margin: 0 auto 30px;">
+                    <div class="score-label">Precalificación</div>
+                    <div class="score-circle ${scoreClass}">
+                        ${score}
+                    </div>
+                    <div class="score-text">${scoreText}</div>
+                </div>
+
+                <h3 style="margin-bottom: 15px; color: #ff6b35;">📋 Información Personal</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;">
                     <div><strong>Edad:</strong> ${app.edad} años</div>
                     <div><strong>Ciudad:</strong> ${app.ciudad}</div>
                     <div><strong>Celular:</strong> ${app.celular}</div>
                     <div><strong>Correo:</strong> ${app.correo}</div>
-                    <div><strong>Moto Propia:</strong> ${app.motoPropia}</div>
-                    <div><strong>Mochila:</strong> ${app.mochilaDelivery}</div>
-                    <div><strong>Licencia:</strong> ${app.licencia}</div>
                     <div><strong>Estado:</strong> ${app.estado}</div>
                 </div>
 
-                <div><strong>Dirección:</strong> ${app.direccion}</div>
-                <div style="margin-top: 10px;"><strong>Disponibilidad:</strong> ${app.disponibilidad}</div>
+                <div style="margin-bottom: 25px;">
+                    <strong>Dirección:</strong> ${app.direccion}
+                </div>
 
-                <h3 style="margin-top: 25px; margin-bottom: 15px;">Documentos</h3>
+                <h3 style="margin-bottom: 15px; color: #ff6b35;">🏍️ Requisitos</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px;">
+                    <div>
+                        <strong>Moto Propia:</strong> 
+                        <span class="badge ${app.motoPropia === 'Sí' ? 'yes' : 'no'}">${app.motoPropia}</span>
+                    </div>
+                    <div>
+                        <strong>Mochila:</strong> 
+                        <span class="badge ${app.mochilaDelivery === 'Sí' ? 'yes' : 'no'}">${app.mochilaDelivery}</span>
+                    </div>
+                    <div>
+                        <strong>Licencia:</strong> 
+                        <span class="badge ${app.licencia === 'Sí' ? 'yes' : 'no'}">${app.licencia}</span>
+                    </div>
+                </div>
+
+                <h3 style="margin-bottom: 15px; color: #ff6b35;">⏰ Disponibilidad</h3>
+                <div class="availability-tags" style="margin-bottom: 25px;">
+                    ${app.disponibilidad.split(', ').map(d => `<span class="availability-tag">${d}</span>`).join('')}
+                </div>
+
+                <h3 style="margin-bottom: 15px; color: #ff6b35;">📸 Documentos</h3>
                 <div class="modal-photos">
                     ${renderModalPhoto(app.fotoCedula, 'Cédula', '📄')}
                     ${renderModalPhoto(app.fotoMoto, 'Moto', '🏍️')}
                     ${renderModalPhoto(app.fotoLicencia, 'Licencia', '🪪')}
+                </div>
+
+                <h3 style="margin-top: 25px; margin-bottom: 10px; color: #ff6b35;">💯 Desglose de Precalificación</h3>
+                <div style="background: #f9f9f9; padding: 15px; border-radius: 10px;">
+                    <div style="display: grid; gap: 10px; font-size: 13px;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Edad menor a 30 años:</span>
+                            <strong style="color: ${app.edad < 30 ? '#28a745' : '#dc3545'}">${app.edad < 30 ? '+10' : '0'} pts</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Tiene licencia:</span>
+                            <strong style="color: ${app.licencia === 'Sí' ? '#28a745' : '#dc3545'}">${app.licencia === 'Sí' ? '+10' : '0'} pts</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Tiene moto propia:</span>
+                            <strong style="color: ${app.motoPropia === 'Sí' ? '#28a745' : '#dc3545'}">${app.motoPropia === 'Sí' ? '+25' : '0'} pts</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Tiene mochila:</span>
+                            <strong style="color: ${app.mochilaDelivery === 'Sí' ? '#28a745' : '#dc3545'}">${app.mochilaDelivery === 'Sí' ? '+30' : '0'} pts</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span>Disponibilidad tiempo completo:</span>
+                            <strong style="color: ${app.disponibilidad.includes('Tiempo Completo') ? '#28a745' : '#dc3545'}">${app.disponibilidad.includes('Tiempo Completo') ? '+25' : '0'} pts</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding-top: 10px; border-top: 2px solid #ddd; margin-top: 10px;">
+                            <span style="font-weight: 600;">TOTAL:</span>
+                            <strong style="font-size: 18px; color: #ff6b35;">${score} pts</strong>
+                        </div>
+                    </div>
                 </div>
             `;
 
