@@ -603,18 +603,9 @@
                     <div class="photos-section">
                         <h4>📸 Documentos</h4>
                         <div class="photos-grid">
-                            <div class="photo-item" onclick="openPhoto('${app.fotoCedula}')">
-                                <img src="${getPhotoThumb(app.fotoCedula)}" alt="Cédula" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23ddd%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22%3E📄%3C/text%3E%3C/svg%3E'">
-                                <div class="photo-label">Cédula</div>
-                            </div>
-                            <div class="photo-item" onclick="openPhoto('${app.fotoMoto}')">
-                                <img src="${getPhotoThumb(app.fotoMoto)}" alt="Moto" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23ddd%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22%3E🏍️%3C/text%3E%3C/svg%3E'">
-                                <div class="photo-label">Moto</div>
-                            </div>
-                            <div class="photo-item" onclick="openPhoto('${app.fotoLicencia}')">
-                                <img src="${getPhotoThumb(app.fotoLicencia)}" alt="Licencia" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23ddd%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22%3E🪪%3C/text%3E%3C/svg%3E'">
-                                <div class="photo-label">Licencia</div>
-                            </div>
+                            ${renderPhotoItem(app.fotoCedula, 'Cédula', '📄')}
+                            ${renderPhotoItem(app.fotoMoto, 'Moto', '🏍️')}
+                            ${renderPhotoItem(app.fotoLicencia, 'Licencia', '🪪')}
                         </div>
                     </div>
 
@@ -640,14 +631,72 @@
             if (!url || url.includes('Error') || url === 'No proporcionada') {
                 return '';
             }
-            // Convertir URL de Google Drive a thumbnail
+            
+            // Si es Cloudinary, usar transformación para thumbnail
+            if (url.includes('cloudinary.com')) {
+                return url.replace('/upload/', '/upload/w_400,h_400,c_fill/');
+            }
+            
+            // Si es Google Drive, convertir a thumbnail
             if (url.includes('drive.google.com')) {
                 const fileId = url.match(/\/d\/(.+?)\//)?.[1] || url.match(/id=(.+?)(&|$)/)?.[1];
                 if (fileId) {
                     return `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`;
                 }
             }
+            
+            // Para cualquier otra URL, retornarla tal cual
             return url;
+        }
+
+        function renderPhotoItem(url, label, emoji) {
+            const thumbUrl = getPhotoThumb(url);
+            const placeholderSvg = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23ddd' width='100' height='100'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23999' font-size='40'%3E${emoji}%3C/text%3E%3C/svg%3E`;
+            
+            if (!thumbUrl) {
+                return `
+                    <div class="photo-item" style="cursor: default;">
+                        <img src="${placeholderSvg}" alt="${label}">
+                        <div class="photo-label">${label}</div>
+                    </div>
+                `;
+            }
+            
+            return `
+                <div class="photo-item" onclick="openPhoto('${url}')">
+                    <img src="${thumbUrl}" alt="${label}" 
+                         onerror="this.onerror=null; this.src='${placeholderSvg}';"
+                         loading="lazy">
+                    <div class="photo-label">${label}</div>
+                </div>
+            `;
+        }
+
+        function renderModalPhoto(url, label, emoji) {
+            const thumbUrl = getPhotoThumb(url);
+            const fullUrl = url.includes('cloudinary.com') ? url.replace('/upload/', '/upload/w_800,h_800,c_fill/') : url;
+            const placeholderSvg = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Crect fill='%23ddd' width='300' height='300'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23999' font-size='80'%3E${emoji}%3C/text%3E%3C/svg%3E`;
+            
+            if (!thumbUrl) {
+                return `
+                    <div class="modal-photo">
+                        <h4>${label}</h4>
+                        <img src="${placeholderSvg}" alt="${label}">
+                        <p style="color: #999; font-size: 12px; margin-top: 10px;">No disponible</p>
+                    </div>
+                `;
+            }
+            
+            return `
+                <div class="modal-photo">
+                    <h4>${label}</h4>
+                    <img src="${fullUrl}" alt="${label}" 
+                         onclick="openPhoto('${url}')" 
+                         style="cursor: pointer;"
+                         onerror="this.onerror=null; this.src='${placeholderSvg}';"
+                         loading="lazy">
+                </div>
+            `;
         }
 
         function openPhoto(url) {
@@ -701,18 +750,9 @@
 
                 <h3 style="margin-top: 25px; margin-bottom: 15px;">Documentos</h3>
                 <div class="modal-photos">
-                    <div class="modal-photo">
-                        <h4>Cédula</h4>
-                        <img src="${getPhotoThumb(app.fotoCedula)}" alt="Cédula" onclick="openPhoto('${app.fotoCedula}')" style="cursor: pointer;">
-                    </div>
-                    <div class="modal-photo">
-                        <h4>Moto</h4>
-                        <img src="${getPhotoThumb(app.fotoMoto)}" alt="Moto" onclick="openPhoto('${app.fotoMoto}')" style="cursor: pointer;">
-                    </div>
-                    <div class="modal-photo">
-                        <h4>Licencia</h4>
-                        <img src="${getPhotoThumb(app.fotoLicencia)}" alt="Licencia" onclick="openPhoto('${app.fotoLicencia}')" style="cursor: pointer;">
-                    </div>
+                    ${renderModalPhoto(app.fotoCedula, 'Cédula', '📄')}
+                    ${renderModalPhoto(app.fotoMoto, 'Moto', '🏍️')}
+                    ${renderModalPhoto(app.fotoLicencia, 'Licencia', '🪪')}
                 </div>
             `;
 
