@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Admin - Somar Express Riders</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .stat-card .number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #ff6b35;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .label {
+            color: #666;
+            font-size: 13px;
+        }
+
+        .filters {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .filters h3 {
+            margin-bottom: 15px;
+            color: #1a1a1a;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            border-color: #ff6b35;
+        }
+
+        .filter-btn.active {
+            background: #ff6b35;
+            color: white;
+            border-color: #ff6b35;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: #ff6b35;
+        }
+
+        .applications-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .application-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .application-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f5f5f5;
+        }
+
+        .card-header h3 {
+            color: #1a1a1a;
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+
+        .card-header .id {
+            color: #999;
+            font-size: 12px;
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .status-badge.pendiente {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-badge.aprobado {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-badge.rechazado {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .card-info {
+            display: grid;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .info-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .info-row .icon {
+            color: #ff6b35;
+            font-size: 16px;
+            width: 20px;
+        }
+
+        .info-row .label {
+            color: #666;
+            min-width: 80px;
+        }
+
+        .info-row .value {
+            color: #1a1a1a;
+            font-weight: 500;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge.yes {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge.no {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .badge.city {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .photos-section {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 10px;
+        }
+
+        .photos-section h4 {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .photos-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .photo-item {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .photo-item:hover {
+            transform: scale(1.05);
+        }
+
+        .photo-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .photo-label {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 4px;
+            font-size: 10px;
+            text-align: center;
+        }
+
+        .availability-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 5px;
+        }
+
+        .availability-tag {
+            background: #fff5f0;
+            color: #ff6b35;
+            padding: 4px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #f5f5f5;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .action-btn.approve {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .action-btn.approve:hover {
+            background: #c3e6cb;
+        }
+
+        .action-btn.reject {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .action-btn.reject:hover {
+            background: #f5c6cb;
+        }
+
+        .action-btn.view {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .action-btn.view:hover {
+            background: #bbdefb;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #ff6b35;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            max-width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 30px;
+            position: relative;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .modal-photos {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .modal-photo {
+            text-align: center;
+        }
+
+        .modal-photo img {
+            width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin-bottom: 10px;
+        }
+
+        .modal-photo h4 {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state .icon {
+            font-size: 64px;
+            margin-bottom: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .applications-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .photos-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🛵 Panel de Aplicaciones - Somar Express</h1>
+        <p>Gestiona las aplicaciones de riders</p>
+    </div>
+
+    <div class="stats-container" id="stats">
+        <div class="stat-card">
+            <div class="number" id="totalApps">0</div>
+            <div class="label">Total Aplicaciones</div>
+        </div>
+        <div class="stat-card">
+            <div class="number" id="pendientes">0</div>
+            <div class="label">Pendientes</div>
+        </div>
+        <div class="stat-card">
+            <div class="number" id="aprobados">0</div>
+            <div class="label">Aprobados</div>
+        </div>
+        <div class="stat-card">
+            <div class="number" id="rechazados">0</div>
+            <div class="label">Rechazados</div>
+        </div>
+    </div>
+
+    <div class="filters">
+        <input type="text" class="search-box" id="searchBox" placeholder="🔍 Buscar por nombre, identidad o ciudad...">
+        
+        <h3 style="margin-top: 15px;">Filtrar por:</h3>
+        <div class="filter-group">
+            <button class="filter-btn active" data-filter="all">Todos</button>
+            <button class="filter-btn" data-filter="Pendiente">Pendientes</button>
+            <button class="filter-btn" data-filter="Aprobado">Aprobados</button>
+            <button class="filter-btn" data-filter="Rechazado">Rechazados</button>
+            <button class="filter-btn" data-filter="Choloma">Choloma</button>
+            <button class="filter-btn" data-filter="San Pedro Sula">San Pedro Sula</button>
+            <button class="filter-btn" data-filter="conMoto">Con Moto</button>
+            <button class="filter-btn" data-filter="conLicencia">Con Licencia</button>
+        </div>
+    </div>
+
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p style="margin-top: 15px; color: #666;">Cargando aplicaciones...</p>
+    </div>
+
+    <div class="applications-grid" id="applicationsGrid"></div>
+
+    <div class="empty-state" id="emptyState" style="display: none;">
+        <div class="icon">📭</div>
+        <h3>No se encontraron aplicaciones</h3>
+        <p>Intenta con otro filtro o búsqueda</p>
+    </div>
+
+    <!-- Modal para ver detalles -->
+    <div class="modal" id="detailModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+    <script>
+        let allApplications = [];
+        let currentFilter = 'all';
+        let searchTerm = '';
+
+        // URL de tu Apps Script
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz2bq-R1ey5d9kfnR4W5COBI4q82utzLoSY94qNB4JlOmyPXaBt6QtCxwLzZ7hVd9V2HQ/exec';
+
+        async function loadApplications() {
+            try {
+                const response = await fetch(`${APPS_SCRIPT_URL}?action=getApplications`);
+                const data = await response.json();
+                
+                allApplications = data.applications || [];
+                updateStats();
+                renderApplications();
+                
+                document.getElementById('loading').style.display = 'none';
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('loading').innerHTML = '<p style="color: #c33;">Error al cargar aplicaciones</p>';
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('totalApps').textContent = allApplications.length;
+            document.getElementById('pendientes').textContent = allApplications.filter(a => a.estado === 'Pendiente').length;
+            document.getElementById('aprobados').textContent = allApplications.filter(a => a.estado === 'Aprobado').length;
+            document.getElementById('rechazados').textContent = allApplications.filter(a => a.estado === 'Rechazado').length;
+        }
+
+        function renderApplications() {
+            const grid = document.getElementById('applicationsGrid');
+            const filtered = filterApplications();
+            
+            if (filtered.length === 0) {
+                grid.innerHTML = '';
+                document.getElementById('emptyState').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('emptyState').style.display = 'none';
+            
+            grid.innerHTML = filtered.map(app => `
+                <div class="application-card">
+                    <div class="card-header">
+                        <div>
+                            <h3>${app.nombreCompleto}</h3>
+                            <div class="id">${app.numeroIdentidad}</div>
+                        </div>
+                        <span class="status-badge ${app.estado.toLowerCase()}">${app.estado}</span>
+                    </div>
+
+                    <div class="card-info">
+                        <div class="info-row">
+                            <span class="icon">📅</span>
+                            <span class="label">Edad:</span>
+                            <span class="value">${app.edad} años</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="icon">📍</span>
+                            <span class="label">Ciudad:</span>
+                            <span class="badge city">${app.ciudad}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="icon">📱</span>
+                            <span class="label">Celular:</span>
+                            <span class="value">${app.celular}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="icon">✉️</span>
+                            <span class="label">Correo:</span>
+                            <span class="value" style="font-size: 11px;">${app.correo}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="icon">🏍️</span>
+                            <span class="label">Moto:</span>
+                            <span class="badge ${app.motoPropia === 'Sí' ? 'yes' : 'no'}">${app.motoPropia}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="icon">🪪</span>
+                            <span class="label">Licencia:</span>
+                            <span class="badge ${app.licencia === 'Sí' ? 'yes' : 'no'}">${app.licencia}</span>
+                        </div>
+                    </div>
+
+                    <div class="photos-section">
+                        <h4>📸 Documentos</h4>
+                        <div class="photos-grid">
+                            <div class="photo-item" onclick="openPhoto('${app.fotoCedula}')">
+                                <img src="${getPhotoThumb(app.fotoCedula)}" alt="Cédula" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23ddd%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22%3E📄%3C/text%3E%3C/svg%3E'">
+                                <div class="photo-label">Cédula</div>
+                            </div>
+                            <div class="photo-item" onclick="openPhoto('${app.fotoMoto}')">
+                                <img src="${getPhotoThumb(app.fotoMoto)}" alt="Moto" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23ddd%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22%3E🏍️%3C/text%3E%3C/svg%3E'">
+                                <div class="photo-label">Moto</div>
+                            </div>
+                            <div class="photo-item" onclick="openPhoto('${app.fotoLicencia}')">
+                                <img src="${getPhotoThumb(app.fotoLicencia)}" alt="Licencia" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23ddd%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 text-anchor=%22middle%22 dy=%22.3em%22 fill=%22%23999%22%3E🪪%3C/text%3E%3C/svg%3E'">
+                                <div class="photo-label">Licencia</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 style="font-size: 12px; color: #666; margin-bottom: 5px;">⏰ Disponibilidad</h4>
+                        <div class="availability-tags">
+                            ${app.disponibilidad.split(', ').map(d => `<span class="availability-tag">${d}</span>`).join('')}
+                        </div>
+                    </div>
+
+                    <div class="card-actions">
+                        <button class="action-btn view" onclick="viewDetails(${app.row})">Ver Detalles</button>
+                        ${app.estado === 'Pendiente' ? `
+                            <button class="action-btn approve" onclick="changeStatus(${app.row}, 'Aprobado')">Aprobar</button>
+                            <button class="action-btn reject" onclick="changeStatus(${app.row}, 'Rechazado')">Rechazar</button>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getPhotoThumb(url) {
+            if (!url || url.includes('Error') || url === 'No proporcionada') {
+                return '';
+            }
+            // Convertir URL de Google Drive a thumbnail
+            if (url.includes('drive.google.com')) {
+                const fileId = url.match(/\/d\/(.+?)\//)?.[1] || url.match(/id=(.+?)(&|$)/)?.[1];
+                if (fileId) {
+                    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`;
+                }
+            }
+            return url;
+        }
+
+        function openPhoto(url) {
+            if (url && !url.includes('Error') && url !== 'No proporcionada') {
+                window.open(url, '_blank');
+            }
+        }
+
+        function filterApplications() {
+            return allApplications.filter(app => {
+                // Filtro de estado/ciudad/moto/licencia
+                if (currentFilter !== 'all') {
+                    if (currentFilter === 'conMoto' && app.motoPropia !== 'Sí') return false;
+                    if (currentFilter === 'conLicencia' && app.licencia !== 'Sí') return false;
+                    if (!['conMoto', 'conLicencia'].includes(currentFilter) && app.estado !== currentFilter && app.ciudad !== currentFilter) return false;
+                }
+                
+                // Filtro de búsqueda
+                if (searchTerm) {
+                    const search = searchTerm.toLowerCase();
+                    return app.nombreCompleto.toLowerCase().includes(search) ||
+                           app.numeroIdentidad.includes(search) ||
+                           app.ciudad.toLowerCase().includes(search);
+                }
+                
+                return true;
+            });
+        }
+
+        function viewDetails(row) {
+            const app = allApplications.find(a => a.row === row);
+            if (!app) return;
+
+            document.getElementById('modalContent').innerHTML = `
+                <h2>${app.nombreCompleto}</h2>
+                <p style="color: #999; margin-bottom: 20px;">${app.numeroIdentidad}</p>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                    <div><strong>Edad:</strong> ${app.edad} años</div>
+                    <div><strong>Ciudad:</strong> ${app.ciudad}</div>
+                    <div><strong>Celular:</strong> ${app.celular}</div>
+                    <div><strong>Correo:</strong> ${app.correo}</div>
+                    <div><strong>Moto Propia:</strong> ${app.motoPropia}</div>
+                    <div><strong>Mochila:</strong> ${app.mochilaDelivery}</div>
+                    <div><strong>Licencia:</strong> ${app.licencia}</div>
+                    <div><strong>Estado:</strong> ${app.estado}</div>
+                </div>
+
+                <div><strong>Dirección:</strong> ${app.direccion}</div>
+                <div style="margin-top: 10px;"><strong>Disponibilidad:</strong> ${app.disponibilidad}</div>
+
+                <h3 style="margin-top: 25px; margin-bottom: 15px;">Documentos</h3>
+                <div class="modal-photos">
+                    <div class="modal-photo">
+                        <h4>Cédula</h4>
+                        <img src="${getPhotoThumb(app.fotoCedula)}" alt="Cédula" onclick="openPhoto('${app.fotoCedula}')" style="cursor: pointer;">
+                    </div>
+                    <div class="modal-photo">
+                        <h4>Moto</h4>
+                        <img src="${getPhotoThumb(app.fotoMoto)}" alt="Moto" onclick="openPhoto('${app.fotoMoto}')" style="cursor: pointer;">
+                    </div>
+                    <div class="modal-photo">
+                        <h4>Licencia</h4>
+                        <img src="${getPhotoThumb(app.fotoLicencia)}" alt="Licencia" onclick="openPhoto('${app.fotoLicencia}')" style="cursor: pointer;">
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('detailModal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('detailModal').classList.remove('show');
+        }
+
+        async function changeStatus(row, newStatus) {
+            if (!confirm(`¿Cambiar estado a "${newStatus}"?`)) return;
+
+            try {
+                const response = await fetch(`${APPS_SCRIPT_URL}?action=changeStatus&row=${row}&status=${newStatus}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('Estado actualizado correctamente');
+                    loadApplications();
+                } else {
+                    alert('Error al actualizar: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error al actualizar estado');
+            }
+        }
+
+        // Event listeners
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentFilter = this.dataset.filter;
+                renderApplications();
+            });
+        });
+
+        document.getElementById('searchBox').addEventListener('input', function() {
+            searchTerm = this.value;
+            renderApplications();
+        });
+
+        // Cargar al iniciar
+        loadApplications();
+    </script>
+</body>
+</html>
