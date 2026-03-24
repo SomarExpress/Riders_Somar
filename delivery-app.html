@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#FF8C00">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Somar Delivery">
+<link rel="manifest" href="./manifest-delivery.json">
+<link rel="apple-touch-icon" href="https://res.cloudinary.com/drkaxsziu/image/upload/v1767871213/Somar_Express_2048_x_2048_px_18_x_18_in__20250623_221102_0000_o0bv7a.png">
+<title>Somar Express — Delivery</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  :root{
+    --brand:#FF8C00; --bg:#0F0F0F; --s1:#1A1A1A; --s2:#232323; --s3:#2C2C2C;
+    --brd:#333; --txt:#F0F0F0; --muted:#888;
+    --green:#22C55E; --red:#EF4444; --yellow:#F59E0B; --blue:#3B82F6;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:-apple-system,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden}
+  button{cursor:pointer;font-family:inherit;border:none}
+  a{text-decoration:none;color:inherit}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+  @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  @keyframes ping{0%{transform:scale(1);opacity:1}75%,100%{transform:scale(1.8);opacity:0}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="installBanner" style="display:none;background:#1A1A1A;border-bottom:1px solid #333;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10;position:sticky;top:0;z-index:998"><div style="display:flex;align-items:center;gap:8"><img src="https://res.cloudinary.com/drkaxsziu/image/upload/v1767871213/Somar_Express_2048_x_2048_px_18_x_18_in__20250623_221102_0000_o0bv7a.png" style="width:32px;height:32px;border-radius:8px"><div><div style="font-size:12px;font-weight:700">Instalar Somar Delivery</div><div style="font-size:10px;color:#888">Agregar a pantalla de inicio</div></div></div><button id="installBtn" style="background:#FF8C00;border:none;border-radius:10px;padding:8px 14px;color:#fff;font-size:12px;font-weight:700">Instalar</button></div>
+<script type="text/babel">
+// ─── CONFIG ────────────────────────────────────────────────
+const SUPA_URL  = 'https://jjrmzouigcmeztkybrvp.supabase.co';
+const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqcm16b3VpZ2NtZXp0a3licnZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MzExNDgsImV4cCI6MjA4ODUwNzE0OH0.tNUHxGWMWh7Q6v4mH3y5gOxpczpEJHwNqwH2TehL61I';
+const EDGE_URL  = `${SUPA_URL}/functions/v1`;
+const sb = supabase.createClient(SUPA_URL, SUPA_ANON);
+
+// ─── PWA ────────────────────────────────────────────────────
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredPrompt = e; const b=document.getElementById('installBanner'); if(b) b.style.display='flex'; });
+window.addEventListener('appinstalled', () => { const b=document.getElementById('installBanner'); if(b) b.style.display='none'; });
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('installBtn');
+  if(btn) btn.addEventListener('click', async () => { if(deferredPrompt){ deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt=null; const b=document.getElementById('installBanner'); if(b) b.style.display='none'; }});
+  // Register SW
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('./delivery-sw.js').catch(e=>console.warn('[SW]',e));
+  // Request notification permission
+  if('Notification' in window && Notification.permission==='default') Notification.requestPermission();
+});
+
+const notifLocal = (titulo, cuerpo) => {
+  if(Notification.permission!=='granted') return;
+  new Notification(titulo, { body:cuerpo, icon:'https://res.cloudinary.com/drkaxsziu/image/upload/v1767871213/Somar_Express_2048_x_2048_px_18_x_18_in__20250623_221102_0000_o0bv7a.png', badge:'https://res.cloudinary.com/drkaxsziu/image/upload/v1767871213/Somar_Express_2048_x_2048_px_18_x_18_in__20250623_221102_0000_o0bv7a.png', vibrate:[200,100,200] });
+};
+
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ─── DATOS ────────────────────────────────────────────────
+// ─── WALLET ──────────────────────────────────────────────── // saldo actual en billetera (prepago)
+const MIN_SALDO  = 100;    // mínimo para trabajar
+
+// Movimientos de la billetera (solo recargas y liquidaciones de Somar al delivery)
+
+
+const PE_DEMO = {id:'p3',no:'CHO-250317-003',com:"Wendy's",tipo:'DELIVERY',pago:'EFECTIVO',ciudad:'CHOLOMA',km:1.8,gan:42,desc:"1x Combo Dave's Single + 1x Frosty",mc:185};
+
+const ESIG = {
+  ACEPTADO:           {lbl:'📍 Llegué al Establecimiento', sig:'EN_ESTABLECIMIENTO', color:'#F59E0B'},
+  EN_ESTABLECIMIENTO: {lbl:'🛵 Pedido en Camino',          sig:'PEDIDO_EN_CAMINO',   color:'#FF8C00', liq:true},
+  PEDIDO_EN_CAMINO:   {lbl:'📦 Llegué al Punto de Entrega',sig:'ENTREGANDO',         color:'#3B82F6'},
+  ENTREGANDO:         {lbl:'✅ Finalizar Entrega',          sig:'FINALIZADO',         color:'#22C55E'},
+};
+const ELBL = {ACEPTADO:'Aceptado',EN_ESTABLECIMIENTO:'En Establecimiento',PEDIDO_EN_CAMINO:'En Camino',ENTREGANDO:'Entregando'};
+const ECHIP = {ACEPTADO:'#3B82F6',EN_ESTABLECIMIENTO:'#F59E0B',PEDIDO_EN_CAMINO:'#FF8C00',ENTREGANDO:'#22C55E'};
+
+const fmtL = v => `L. ${parseFloat(v||0).toFixed(2)}`;
+
+// ─── BOTTOM SHEET (confirmación accesible con pulgar) ──────
+function BottomSheet({data, onClose}){
+  if(!data) return null;
+  return(
+    <div style={{position:'fixed',inset:0,zIndex:200,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={onClose}>
+      <div style={{background:'rgba(0,0,0,.6)',position:'absolute',inset:0,animation:'fadeIn .2s'}}/>
+      <div onClick={e=>e.stopPropagation()} style={{background:'#1A1A1A',borderRadius:'24px 24px 0 0',padding:'20px 16px 36px',animation:'slideUp .25s ease',position:'relative',zIndex:1}}>
+        {/* Handle bar */}
+        <div style={{width:40,height:4,background:'#444',borderRadius:4,margin:'0 auto 20px'}}/>
+        <div style={{fontSize:16,fontWeight:700,textAlign:'center',lineHeight:1.5,marginBottom:24,padding:'0 8px'}}>{data.msg}</div>
+        <div style={{display:'flex',gap:12}}>
+          {/* Cancel — right side, smaller (hard to tap accidentally) */}
+          <button onClick={onClose} style={{flex:'0 0 100px',padding:'18px 0',borderRadius:16,background:'#2C2C2C',color:'#888',fontSize:15,fontWeight:700}}>
+            No
+          </button>
+          {/* Confirm — left/center, LARGE (thumb zone) */}
+          <button onClick={()=>{data.onSi();onClose();}} style={{flex:1,padding:'18px 0',borderRadius:16,background:data.color||'#FF8C00',color:'#fff',fontSize:17,fontWeight:800}}>
+            {data.confirmLbl||'Sí, confirmar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── TOAST ─────────────────────────────────────────────────
+function Toast({msg}){
+  if(!msg)return null;
+  return(
+    <div style={{position:'fixed',bottom:100,left:16,right:16,background:'#232323',border:'1px solid #444',borderRadius:14,padding:'14px 18px',fontSize:14,fontWeight:700,zIndex:150,boxShadow:'0 8px 32px rgba(0,0,0,.6)',animation:'slideUp .2s ease'}}>
+      {msg}
+    </div>
+  );
+}
+
+// ─── PEDIDO ENTRANTE ───────────────────────────────────────
+// ACEPTAR: zona grande izquierda | RECHAZAR: franja pequeña derecha
+function PedidoEntrante({pedido, onAceptar, onRechazar}){
+  const [seg, setSeg] = useState(30);
+  const tmr = useRef(null);
+  const CIRC = 150.8;
+
+  useEffect(()=>{
+    setSeg(30);
+    tmr.current = setInterval(()=>{
+      setSeg(s=>{ if(s<=1){clearInterval(tmr.current);onRechazar();return 0;} return s-1; });
+    },1000);
+    return ()=>clearInterval(tmr.current);
+  },[pedido]);
+
+  if(!pedido) return null;
+  const pct = seg/30;
+  const offset = CIRC - pct * CIRC;
+
+  return(
+    <div style={{position:'fixed',inset:0,zIndex:180,display:'flex',flexDirection:'column'}}>
+      {/* Info arriba */}
+      <div style={{background:'linear-gradient(180deg,rgba(0,0,0,.95),rgba(0,0,0,.7))',flex:1,display:'flex',flexDirection:'column',justifyContent:'center',padding:'24px 20px',gap:16}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+          <div>
+            <div style={{fontSize:11,color:'rgba(255,255,255,.6)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:6}}>🔔 Nuevo Pedido</div>
+            <div style={{fontSize:26,fontWeight:900,lineHeight:1.1}}>{pedido.com}</div>
+            <div style={{fontSize:14,color:'rgba(255,255,255,.7)',marginTop:4}}>{pedido.tipo==='DELIVERY'?'📦 Delivery':'🛒 Compra'}</div>
+          </div>
+          {/* Countdown */}
+          <div style={{position:'relative',width:64,height:64,flexShrink:0}}>
+            <svg width="64" height="64" viewBox="0 0 64 64" style={{transform:'rotate(-90deg)'}}>
+              <circle fill="none" stroke="#333" strokeWidth="5" cx="32" cy="32" r="27"/>
+              <circle fill="none" stroke={pct>0.3?'#FF8C00':'#EF4444'} strokeWidth="5" strokeLinecap="round"
+                strokeDasharray={CIRC} strokeDashoffset={offset}
+                cx="32" cy="32" r="27" style={{transition:'stroke-dashoffset .95s linear, stroke .3s'}}/>
+            </svg>
+            <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,color:pct>0.3?'#FF8C00':'#EF4444'}}>{seg}</div>
+          </div>
+        </div>
+        {/* Info rápida */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+          {[
+            ['📍 Destino', pedido.ciudad],
+            ['📏 Distancia', `${pedido.km.toFixed(1)} km`],
+            ['💳 Pago', pedido.pago==='EFECTIVO'?'Efectivo':'Transferencia'],
+            ['💰 Tu ganancia', fmtL(pedido.gan)],
+          ].map(([l,v])=>(
+            <div key={l} style={{background:'rgba(255,255,255,.08)',borderRadius:12,padding:'10px 12px'}}>
+              <div style={{fontSize:10,color:'rgba(255,255,255,.5)',fontWeight:600,marginBottom:3}}>{l}</div>
+              <div style={{fontSize:14,fontWeight:700}}>{v}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* BOTONES — zona inferior, optimizados para pulgar izquierdo */}
+      <div style={{display:'flex',height:100,background:'#0F0F0F'}}>
+        {/* ACEPTAR — grande, izquierda, verde */}
+        <button onClick={onAceptar} style={{flex:3,background:'#22C55E',color:'#fff',fontSize:20,fontWeight:900,display:'flex',alignItems:'center',justifyContent:'center',gap:10,borderRight:'2px solid #0F0F0F'}}>
+          <span style={{fontSize:28}}>✓</span> ACEPTAR
+        </button>
+        {/* RECHAZAR — pequeño, derecha, gris oscuro */}
+        <button onClick={onRechazar} style={{flex:1,background:'#1A1A1A',color:'#EF4444',fontSize:13,fontWeight:700,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:4}}>
+          <span style={{fontSize:22}}>✕</span>
+          Rechazar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── TIMER HELPERS ──────────────────────────────────────────
+function fmtDur(ms){
+  if(ms<0)ms=0;
+  const m=Math.floor(ms/60000), s=Math.floor((ms%60000)/1000);
+  return m>0?`${m}m ${s}s`:`${s}s`;
+}
+
+const ESTADO_ORDER = ['ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO','FINALIZADO'];
+const ESTADO_LABEL_CORTO = {
+  ACEPTADO:'Aceptado', EN_ESTABLECIMIENTO:'En Estab.', 
+  PEDIDO_EN_CAMINO:'En Camino', ENTREGANDO:'Entregando', FINALIZADO:'Finalizado'
+};
+
+function TimerPedido({p, ahora}){
+  const tiempos = p.tiempos || {};
+  const tsInicio = p.tsInicio || ahora;
+  const totalMs = ahora - tsInicio;
+
+  // Calcular duración de cada estado completado
+  const estados = ESTADO_ORDER.filter(e => tiempos[e]);
+  const duraciones = estados.map((est, i) => {
+    const inicio = tiempos[est];
+    const siguiente = estados[i+1] ? tiempos[estados[i+1]] : (p.est===est ? ahora : null);
+    return { est, dur: siguiente ? siguiente - inicio : ahora - inicio, activo: p.est===est };
+  });
+
+  return(
+    <div style={{padding:'10px 14px',borderTop:'1px solid #222',background:'rgba(255,255,255,.02)'}}>
+      {/* Tiempo total */}
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+        <span style={{fontSize:11,color:'#888',fontWeight:600,textTransform:'uppercase',letterSpacing:'.05em'}}>⏱ Tiempo Total</span>
+        <span style={{fontSize:15,fontWeight:900,fontFamily:'monospace',color:'#FF8C00'}}>{fmtDur(totalMs)}</span>
+      </div>
+      {/* Por estado */}
+      <div style={{display:'flex',flexDirection:'column',gap:5}}>
+        {duraciones.map(({est,dur,activo})=>(
+          <div key={est} style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <div style={{display:'flex',alignItems:'center',gap:6}}>
+              {activo && <div style={{width:6,height:6,borderRadius:'50%',background:'#FF8C00',animation:'pulse 1.5s infinite'}}/>}
+              {!activo && <div style={{width:6,height:6,borderRadius:'50%',background:'#444'}}/>}
+              <span style={{fontSize:11,color:activo?'#F0F0F0':'#666',fontWeight:activo?700:400}}>{ESTADO_LABEL_CORTO[est]}</span>
+            </div>
+            <span style={{fontSize:11,fontFamily:'monospace',color:activo?'#FF8C00':'#555',fontWeight:activo?800:400}}>{fmtDur(dur)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── CHIP DE ESTADO ────────────────────────────────────────
+function Chip({est}){
+  const CMAP = {ACEPTADO:'#3B82F6',EN_ESTABLECIMIENTO:'#F59E0B',PEDIDO_EN_CAMINO:'#FF8C00',ENTREGANDO:'#22C55E',FINALIZADO:'#22C55E',CANCELADO:'#EF4444',PENDIENTE:'#F59E0B',APROBADO:'#22C55E',RECHAZADO:'#EF4444'};
+  const c = CMAP[est]||'#888';
+  return <span style={{fontSize:10,fontWeight:700,textTransform:'uppercase',padding:'3px 9px',borderRadius:20,background:`${c}22`,color:c,border:`1px solid ${c}44`}}>{ELBL[est]||est}</span>;
+}
+
+// ─── CARD RESUMEN (lista de asignados) ────────────────────
+function CardResumen({p, onTap}){
+  const eb = ESIG[p.est];
+  const ec = ECHIP[p.est]||'#888';
+  return(
+    <button onClick={()=>onTap(p)} style={{width:'calc(100% - 24px)',margin:'10px 12px',background:'#1A1A1A',border:`1px solid #333`,borderLeft:`4px solid ${ec}`,borderRadius:16,padding:0,textAlign:'left',overflow:'hidden',display:'block'}}>
+      <div style={{padding:'13px 14px'}}>
+        {/* Top row */}
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
+          <div>
+            <div style={{fontSize:12,fontWeight:700,fontFamily:'monospace',letterSpacing:'.04em',color:'#aaa'}}>{p.no}</div>
+            <div style={{fontSize:15,fontWeight:800,color:'#FF8C00',marginTop:3}}>{p.com}</div>
+          </div>
+          <div style={{textAlign:'right'}}>
+            <div style={{fontSize:18,fontWeight:900,color:'#22C55E'}}>{fmtL(p.gan)}</div>
+            <Chip est={p.est}/>
+          </div>
+        </div>
+        {/* Bottom row — info rápida */}
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div style={{display:'flex',gap:8}}>
+            <span style={{fontSize:12,color:'#888'}}>📍 {p.ciudad}</span>
+            <span style={{fontSize:12,color:'#888'}}>·</span>
+            <span style={{fontSize:12,color:'#888'}}>📏 {p.km.toFixed(1)} km</span>
+          </div>
+          <div style={{display:'flex',alignItems:'center',gap:4,color:'#555',fontSize:13,fontWeight:600}}>
+            {eb && <span style={{fontSize:11,color:eb.color}}>{ELBL[p.est]}</span>}
+            <span style={{fontSize:20}}>›</span>
+          </div>
+        </div>
+        {/* Siguiente acción hint */}
+        {eb && (
+          <div style={{marginTop:8,background:`${eb.color}15`,borderRadius:8,padding:'6px 10px',display:'inline-flex',alignItems:'center',gap:6}}>
+            <span style={{fontSize:11,fontWeight:700,color:eb.color}}>Siguiente: {eb.lbl}</span>
+          </div>
+        )}
+      </div>
+    </button>
+  );
+}
+
+// ─── VISTA DETALLE DEL PEDIDO ─────────────────────────────
+// El botón de acción principal es un FAB sticky en la esquina inferior izquierda
+function VistaPedido({p, pedidos, onAvanzar, onBack, onConfirm, toast, ahora}){
+  const [facMonto, setFacMonto] = useState('');
+  const [facFile, setFacFile] = useState(null);
+  const [facPrev, setFacPrev] = useState(null);
+
+  // El pedido puede cambiar de estado sin salir de la vista
+  const pedidoActual = pedidos.find(x=>x.id===p.id) || p;
+  const eb = ESIG[pedidoActual.est];
+  const ec = ECHIP[pedidoActual.est]||'#888';
+
+  const wo = pedidoActual.co ? `https://waze.com/ul?ll=${pedidoActual.co}&navigate=yes` : '';
+  const mo = `https://maps.google.com/?q=${pedidoActual.co||encodeURIComponent(pedidoActual.dr)}`;
+  const wd = pedidoActual.cd ? `https://waze.com/ul?ll=${pedidoActual.cd}&navigate=yes` : '';
+  const md = `https://maps.google.com/?q=${pedidoActual.cd||encodeURIComponent(pedidoActual.de)}`;
+  const cambio = pedidoActual.cp > 0 ? (pedidoActual.cp - pedidoActual.mc).toFixed(2) : null;
+
+  const handleFileSelect = e => {
+    const f = e.target.files[0]; if(!f) return;
+    const doSet = () => { setFacFile(f); const r=new FileReader(); r.onload=ev=>setFacPrev(ev.target.result); r.readAsDataURL(f); };
+    onConfirm({ msg:'¿Usar esta foto como factura?', confirmLbl:'Sí, usar esta foto', color:'#22C55E', onSi: doSet });
+  };
+
+  const handleAvanzar = () => {
+    if(eb?.liq){
+      if(!facMonto || parseFloat(facMonto)<=0) return toast('⚠️ Ingresa el monto pagado al establecimiento');
+      if(!facFile) return toast('⚠️ Sube la foto de la factura');
+    }
+    const labels = {ACEPTADO:'llegué al establecimiento',EN_ESTABLECIMIENTO:'salir en camino',PEDIDO_EN_CAMINO:'llegué donde el cliente',ENTREGANDO:'finalizar esta entrega'};
+    onConfirm({
+      msg: `¿Confirmar que ${labels[pedidoActual.est]}?`,
+      confirmLbl: eb.lbl,
+      color: eb.color,
+      onSi: () => onAvanzar(pedidoActual.id, pedidoActual.est),
+    });
+  };
+
+  const enRuta = pedidoActual.est === 'PEDIDO_EN_CAMINO' || pedidoActual.est === 'ENTREGANDO';
+  const enEstablecimiento = pedidoActual.est === 'ACEPTADO' || pedidoActual.est === 'EN_ESTABLECIMIENTO';
+
+  return(
+    <div style={{minHeight:'100vh',background:'#0F0F0F',display:'flex',flexDirection:'column'}}>
+      {/* Header pegajoso */}
+      <div style={{background:'#1A1A1A',borderBottom:'1px solid #333',padding:'10px 14px',display:'flex',alignItems:'center',gap:10,position:'sticky',top:34,zIndex:30}}>
+        <button onClick={onBack} style={{background:'#2C2C2C',borderRadius:12,width:44,height:44,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,color:'#F0F0F0',flexShrink:0}}>←</button>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:13,fontWeight:800,fontFamily:'monospace'}}>{pedidoActual.no}</div>
+          <div style={{fontSize:12,color:'#888',marginTop:1}}>{pedidoActual.com} · {pedidoActual.tipo==='DELIVERY'?'📦':'🛒'} {pedidoActual.pago==='EFECTIVO'?'💵':'📲'}</div>
+        </div>
+        <div style={{textAlign:'right',flexShrink:0}}>
+          <Chip est={pedidoActual.est}/>
+          <div style={{fontSize:16,fontWeight:900,color:'#22C55E',marginTop:3}}>{fmtL(pedidoActual.gan)}</div>
+        </div>
+      </div>
+
+      {/* MAPA RÁPIDO — STICKY bajo el header (zona frecuente en ruta) */}
+
+      {/* CONTENIDO SCROLLABLE */}
+      <div style={{flex:1,overflowY:'auto',paddingBottom:120}}>
+
+        {/* Botones de navegación — dentro del scroll, primeros elementos visibles */}
+        {enEstablecimiento && (
+          <div style={{background:'#161616',borderBottom:'1px solid #222',padding:'10px 12px'}}>
+            <div style={{fontSize:10,color:'#888',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:8}}>📍 IR AL ESTABLECIMIENTO</div>
+            <div style={{display:'flex',gap:8}}>
+              {wo && <a href={wo} target="_blank" style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'13px 0',borderRadius:12,background:'rgba(51,204,255,.08)',border:'1px solid rgba(51,204,255,.25)',color:'#33ccff',fontSize:14,fontWeight:700}}>🔵 Waze</a>}
+              <a href={mo} target="_blank" style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'13px 0',borderRadius:12,background:'rgba(66,133,244,.08)',border:'1px solid rgba(66,133,244,.25)',color:'#4285f4',fontSize:14,fontWeight:700}}>📍 Maps</a>
+            </div>
+          </div>
+        )}
+        {enRuta && (
+          <div style={{background:'#161616',borderBottom:'1px solid #222',padding:'10px 12px'}}>
+            <div style={{fontSize:10,color:'#888',fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',marginBottom:8}}>📍 IR DONDE EL CLIENTE</div>
+            <div style={{display:'flex',gap:8,marginBottom:8}}>
+              {wd && <a href={wd} target="_blank" style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'13px 0',borderRadius:12,background:'rgba(51,204,255,.08)',border:'1px solid rgba(51,204,255,.25)',color:'#33ccff',fontSize:14,fontWeight:700}}>🔵 Waze</a>}
+              <a href={md} target="_blank" style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'13px 0',borderRadius:12,background:'rgba(66,133,244,.08)',border:'1px solid rgba(66,133,244,.25)',color:'#4285f4',fontSize:14,fontWeight:700}}>📍 Maps</a>
+            </div>
+            <div style={{display:'flex',gap:8}}>
+              <a href={`tel:${pedidoActual.tel}`} style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'13px 0',borderRadius:12,background:'rgba(34,197,94,.08)',border:'1px solid rgba(34,197,94,.25)',color:'#22C55E',fontSize:14,fontWeight:700}}>📞 Llamar</a>
+              <a href={`https://wa.me/504${pedidoActual.tel}`} target="_blank" style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'13px 0',borderRadius:12,background:'rgba(37,211,102,.08)',border:'1px solid rgba(37,211,102,.25)',color:'#25d366',fontSize:14,fontWeight:700}}>💬 WhatsApp</a>
+            </div>
+          </div>
+        )}
+
+        {/* Sección GENERALES */}
+        <div style={{padding:'14px 14px 10px',borderBottom:'1px solid #222'}}>
+          <div style={{fontSize:10,fontWeight:700,color:ec,textTransform:'uppercase',letterSpacing:'.07em',marginBottom:10}}>📦 Generales</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+            <div style={{background:'#1A1A1A',borderRadius:12,padding:'10px 12px'}}>
+              <div style={{fontSize:10,color:'#888',fontWeight:600,marginBottom:3}}>Comercio</div>
+              <div style={{fontSize:14,fontWeight:800,color:'#FF8C00'}}>{pedidoActual.com}</div>
+            </div>
+            <div style={{background:'#1A1A1A',borderRadius:12,padding:'10px 12px'}}>
+              <div style={{fontSize:10,color:'#888',fontWeight:600,marginBottom:3}}>Ciudad</div>
+              <div style={{fontSize:14,fontWeight:700}}>{pedidoActual.ciudad}</div>
+            </div>
+            <div style={{background:'#1A1A1A',borderRadius:12,padding:'10px 12px'}}>
+              <div style={{fontSize:10,color:'#888',fontWeight:600,marginBottom:3}}>Distancia</div>
+              <div style={{fontSize:14,fontWeight:700}}>{pedidoActual.km.toFixed(1)} km</div>
+            </div>
+            <div style={{background:'#1A1A1A',borderRadius:12,padding:'10px 12px'}}>
+              <div style={{fontSize:10,color:'#888',fontWeight:600,marginBottom:3}}>Tipo pago</div>
+              <div style={{fontSize:14,fontWeight:700}}>{pedidoActual.pago==='EFECTIVO'?'💵 Efectivo':'📲 Transfer.'}</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sección RECOLECTA */}
+        {enEstablecimiento && (
+          <div style={{padding:'14px',borderBottom:'1px solid #222'}}>
+            <div style={{fontSize:10,fontWeight:700,color:'#F59E0B',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:10}}>🛒 Recolecta</div>
+            {pedidoActual.mc > 0 && (
+              <div style={{background:'rgba(255,140,0,.1)',border:'1px solid rgba(255,140,0,.25)',borderRadius:14,padding:'14px',textAlign:'center',marginBottom:10}}>
+                <div style={{fontSize:11,color:'#F59E0B',fontWeight:700,textTransform:'uppercase',marginBottom:4}}>Monto a pagar en establecimiento</div>
+                <div style={{fontSize:36,fontWeight:900,color:'#FF8C00'}}>L. {pedidoActual.mc}</div>
+              </div>
+            )}
+            {pedidoActual.enc && (
+              <div style={{display:'flex',justifyContent:'space-between',background:'#1A1A1A',borderRadius:12,padding:'10px 14px'}}>
+                <span style={{fontSize:13,color:'#888'}}>✅ N° de Orden</span>
+                <span style={{fontSize:16,fontWeight:900,color:'#FF8C00'}}>{pedidoActual.enc}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Sección DETALLES DEL PEDIDO */}
+        {pedidoActual.desc && (
+          <div style={{padding:'14px',borderBottom:'1px solid #222'}}>
+            <div style={{fontSize:10,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:8}}>📄 Detalles del Pedido</div>
+            <div style={{background:'#1A1A1A',borderRadius:12,padding:'12px 14px',fontSize:14,lineHeight:1.6}}>{pedidoActual.desc}</div>
+            {pedidoActual.cp>0 && enEstablecimiento && (
+              <div style={{display:'flex',justifyContent:'space-between',marginTop:8,background:'rgba(255,140,0,.08)',borderRadius:10,padding:'10px 14px'}}>
+                <span style={{fontSize:13,color:'#888'}}>Cliente pagará con</span>
+                <span style={{fontSize:15,fontWeight:800,color:'#FF8C00'}}>L. {pedidoActual.cp.toFixed(2)}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Sección LIQUIDAR FACTURA */}
+        {pedidoActual.est === 'EN_ESTABLECIMIENTO' && (
+          <div style={{padding:'14px',borderBottom:'1px solid #222'}}>
+            <div style={{fontSize:10,fontWeight:700,color:'#F59E0B',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:10}}>🧾 Liquidar Factura</div>
+            <div style={{marginBottom:12}}>
+              <label style={{fontSize:12,color:'#888',fontWeight:600,display:'block',marginBottom:6}}>Monto pagado en el establecimiento (L.)</label>
+              <input type="number" inputMode="decimal" placeholder="0.00" value={facMonto} onChange={e=>setFacMonto(e.target.value)}
+                style={{width:'100%',background:'#1A1A1A',border:'1.5px solid #444',borderRadius:12,padding:'15px 14px',color:'#F0F0F0',fontSize:18,fontWeight:700,outline:'none'}}/>
+            </div>
+            <div>
+              <label style={{fontSize:12,color:'#888',fontWeight:600,display:'block',marginBottom:6}}>Foto de la factura</label>
+              <div onClick={()=>document.getElementById('facInput').click()} style={{background:'#1A1A1A',border:`2px ${facPrev?'solid':'dashed'} ${facPrev?'#22C55E':'#444'}`,borderRadius:14,padding:facPrev?0:20,textAlign:'center',overflow:'hidden'}}>
+                {facPrev ? <img src={facPrev} style={{width:'100%',maxHeight:140,objectFit:'cover',display:'block'}}/> : (
+                  <><div style={{fontSize:32,marginBottom:6}}>📷</div>
+                  <div style={{fontSize:14,fontWeight:700}}>Tomar foto de la factura</div>
+                  <div style={{fontSize:12,color:'#888',marginTop:4}}>Toca aquí para abrir la cámara</div></>
+                )}
+              </div>
+              <input type="file" id="facInput" accept="image/*" capture="environment" style={{display:'none'}} onChange={handleFileSelect}/>
+            </div>
+          </div>
+        )}
+
+        {/* Sección ENTREGA */}
+        {enRuta && (
+          <div style={{padding:'14px',borderBottom:'1px solid #222'}}>
+            <div style={{fontSize:10,fontWeight:700,color:'#22C55E',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:10}}>📍 Punto de Entrega</div>
+            <div style={{fontSize:15,fontWeight:800,marginBottom:4}}>Daniel Barahona</div>
+            <div style={{fontSize:13,color:'#888',marginBottom:12}}>{pedidoActual.de}</div>
+            {pedidoActual.mc > 0 && (
+              <div style={{background:'rgba(34,197,94,.08)',border:'1px solid rgba(34,197,94,.2)',borderRadius:14,padding:14}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:pedidoActual.cp>0?8:0}}>
+                  <span style={{fontSize:13,color:'#888'}}>Total a cobrar</span>
+                  <span style={{fontSize:24,fontWeight:900,color:'#22C55E'}}>L. {pedidoActual.mc.toFixed(2)}</span>
+                </div>
+                {pedidoActual.cp > 0 && (
+                  <div style={{borderTop:'1px solid rgba(34,197,94,.2)',paddingTop:8,display:'flex',justifyContent:'space-between'}}>
+                    <div><div style={{fontSize:11,color:'#888'}}>Paga con: L.{pedidoActual.cp.toFixed(2)}</div></div>
+                    <div style={{textAlign:'right'}}>
+                      <div style={{fontSize:11,color:'#888'}}>Cambio:</div>
+                      <div style={{fontSize:18,fontWeight:900,color:'#22C55E'}}>L. {cambio}</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        {/* TIMER */}
+        <TimerPedido p={pedidoActual} ahora={ahora}/>
+
+      </div>
+
+      {/* FAB ACCIÓN PRINCIPAL — fijo abajo, fácil acceso pulgar izquierdo */}
+      {eb && (
+        <div style={{position:'fixed',bottom:0,left:0,right:0,padding:'12px 12px 28px',background:'linear-gradient(to top, #0F0F0F 60%, transparent)',zIndex:20}}>
+          <button onClick={handleAvanzar} style={{width:'100%',padding:'18px 0',borderRadius:18,background:eb.color,color:'#fff',fontSize:17,fontWeight:900,display:'flex',alignItems:'center',justifyContent:'center',gap:10,boxShadow:`0 0 24px ${eb.color}66`}}>
+            {eb.lbl}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── MI GUACA ─────────────────────────────────────────────
+function TabGuaca({historial, saldo, movimientos, onIrDepositos}){
+  const [desde,setDesde]=useState('');
+  const [hasta,setHasta]=useState('');
+  const [openDia,setOpenDia]=useState({});
+
+  const fin = historial.filter(p=>p.est==='FINALIZADO');
+  const hoy = new Date().setHours(0,0,0,0);
+  const d = new Date(hoy); d.setDate(d.getDate()-((d.getDay()+6)%7)); const lunSem=d.getTime();
+  const ini = new Date(new Date().getFullYear(),new Date().getMonth(),1).getTime();
+  let tH=0,pH=0,tS=0,pS=0,tM=0,pM=0;
+  const porDia={};
+  fin.forEach(p=>{
+    const g=parseFloat(p.gan||0), dia=new Date(p.ts).toISOString().slice(0,10);
+    if(!porDia[dia])porDia[dia]={t:0,items:[]};
+    porDia[dia].t+=g; porDia[dia].items.push(p);
+    if(p.ts>=hoy){tH+=g;pH++;}
+    if(p.ts>=lunSem){tS+=g;pS++;}
+    if(p.ts>=ini){tM+=g;pM++;}
+  });
+  let rT=0,rC=0;
+  if(desde&&hasta){const d1=new Date(desde+'T00:00:00').getTime(),d2=new Date(hasta+'T23:59:59').getTime();fin.forEach(p=>{if(p.ts>=d1&&p.ts<=d2){rT+=parseFloat(p.gan||0);rC++;}});}
+  let nivel='Bronce',stars='⭐',pct=0;
+  if(pM>=150){nivel='Oro';stars='⭐⭐⭐';pct=100;}
+  else if(pM>=75){nivel='Plata';stars='⭐⭐';pct=Math.round((pM-75)/75*100);}
+  else{pct=Math.round(pM/75*100);}
+
+  // Semáforo de saldo
+  const sBajo   = saldo < MIN_SALDO;
+  const sCerca  = saldo >= MIN_SALDO && saldo < 200;
+  const sOk     = saldo >= 200;
+  const sColor  = sBajo ? '#EF4444' : sCerca ? '#F59E0B' : '#22C55E';
+  const sBarPct = Math.min(100, (saldo / 500) * 100);
+
+  const dias = Object.keys(porDia).sort().reverse();
+
+
+  return(
+    <div style={{paddingBottom:20}}>
+
+      {/* ── BILLETERA ── */}
+      <div style={{margin:12,background:'#1A1A1A',border:`1px solid ${sColor}44`,borderRadius:18,overflow:'hidden'}}>
+        <div style={{background:sBajo?'#7f1d1d':sCerca?'#78350f':'#14532d',padding:'11px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <h3 style={{fontSize:13,fontWeight:800,textTransform:'uppercase',letterSpacing:'.06em',color:'#fff'}}>💳 Mi Billetera</h3>
+          <span style={{fontSize:11,color:'rgba(255,255,255,.7)',fontWeight:600}}>Mínimo {fmtL(MIN_SALDO)}</span>
+        </div>
+        <div style={{padding:16}}>
+          {/* Saldo grande */}
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',marginBottom:10}}>
+            <div>
+              <div style={{fontSize:11,color:'#888',fontWeight:600,marginBottom:4}}>SALDO DISPONIBLE</div>
+              <div style={{fontSize:38,fontWeight:900,color:sColor,lineHeight:1}}>L. {saldo.toFixed(2)}</div>
+            </div>
+            <button onClick={onIrDepositos}
+              style={{background:'#FF8C00',border:'none',borderRadius:12,padding:'10px 16px',color:'#fff',fontSize:13,fontWeight:800,flexShrink:0}}>
+              + Recargar
+            </button>
+          </div>
+          {/* Barra de saldo */}
+          <div style={{background:'#2C2C2C',borderRadius:6,height:8,marginBottom:8,overflow:'hidden'}}>
+            <div style={{height:'100%',borderRadius:6,background:sColor,width:`${sBarPct}%`,transition:'width .5s'}}/>
+          </div>
+          {/* Mensaje estado */}
+          {sBajo && <div style={{fontSize:13,fontWeight:700,color:'#EF4444',background:'rgba(239,68,68,.1)',padding:'8px 12px',borderRadius:10,display:'flex',alignItems:'center',gap:8}}>⛔ Saldo insuficiente — no puedes recibir pedidos</div>}
+          {sCerca && <div style={{fontSize:13,fontWeight:700,color:'#F59E0B',background:'rgba(245,158,11,.1)',padding:'8px 12px',borderRadius:10,display:'flex',alignItems:'center',gap:8}}>⚠️ Saldo bajo — recarga pronto</div>}
+          {sOk    && <div style={{fontSize:13,fontWeight:600,color:'#22C55E',background:'rgba(34,197,94,.08)',padding:'8px 12px',borderRadius:10,display:'flex',alignItems:'center',gap:8}}>✅ Listo para trabajar</div>}
+        </div>
+      </div>
+
+
+
+      {/* ── GANANCIAS HOY / SEMANA ── */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,margin:'0 12px 12px'}}>
+        <div style={{background:'#1A1A1A',border:'1px solid #333',borderRadius:14,padding:'13px 14px'}}>
+          <div style={{fontSize:10,color:'#888',fontWeight:700,textTransform:'uppercase',marginBottom:4}}>Ganado Hoy</div>
+          <div style={{fontSize:22,fontWeight:900,color:'#22C55E'}}>{fmtL(tH)}</div>
+          <div style={{fontSize:11,color:'#888',marginTop:2}}>{pH} pedido{pH!==1?'s':''}</div>
+        </div>
+        <div style={{background:'#1A1A1A',border:'1px solid #333',borderRadius:14,padding:'13px 14px'}}>
+          <div style={{fontSize:10,color:'#888',fontWeight:700,textTransform:'uppercase',marginBottom:4}}>Esta Semana</div>
+          <div style={{fontSize:22,fontWeight:900}}>{fmtL(tS)}</div>
+          <div style={{fontSize:11,color:'#888',marginTop:2}}>{pS} pedido{pS!==1?'s':''}</div>
+        </div>
+      </div>
+
+      {/* ── SELECTOR FECHAS ── */}
+      <div style={{margin:'0 12px 12px',background:'#1A1A1A',border:'1px solid #333',borderRadius:14,padding:'14px 16px'}}>
+        <div style={{fontSize:11,color:'#888',fontWeight:700,textTransform:'uppercase',marginBottom:10}}>📅 Ganancias por período</div>
+        <div style={{display:'flex',gap:8,marginBottom:10}}>
+          <input type="date" value={desde} onChange={e=>setDesde(e.target.value)} style={{flex:1,background:'#2C2C2C',border:'1px solid #444',borderRadius:8,padding:'9px 10px',color:'#F0F0F0',fontSize:13,outline:'none'}}/>
+          <input type="date" value={hasta} onChange={e=>setHasta(e.target.value)} style={{flex:1,background:'#2C2C2C',border:'1px solid #444',borderRadius:8,padding:'9px 10px',color:'#F0F0F0',fontSize:13,outline:'none'}}/>
+        </div>
+        <div style={{background:'#2C2C2C',borderRadius:10,padding:12,textAlign:'center'}}>
+          <div style={{fontSize:26,fontWeight:900,color:'#22C55E'}}>L. {rT.toFixed(2)}</div>
+          <div style={{fontSize:12,color:'#888',marginTop:2}}>{desde&&hasta?`${rC} pedido${rC!==1?'s':''}`:'Selecciona un período'}</div>
+        </div>
+      </div>
+
+      {/* ── RESUMEN MES ── */}
+      <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.07em',padding:'4px 14px 8px'}}>Resumen del Mes</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,margin:'0 12px 12px'}}>
+        {[['💰','Ganado Total',`L.${tM.toFixed(0)}`],['📦','Pedidos',pM],['🎁','Bonos','L.0'],['⭐','Propinas','L.0'],['⏱️','Tiempo Prom.','— min'],['💵','Efectivo Cobrado','L.0']].map(([icon,lbl,val])=>(
+          <div key={lbl} style={{background:'#1A1A1A',border:'1px solid #333',borderRadius:13,padding:12,textAlign:'center'}}>
+            <div style={{fontSize:20,marginBottom:4}}>{icon}</div>
+            <div style={{fontSize:10,color:'#888',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',marginBottom:4}}>{lbl}</div>
+            <div style={{fontSize:17,fontWeight:800}}>{val}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ── SOMAR PRO ── */}
+      <div style={{margin:'0 12px 12px',background:'linear-gradient(135deg,#1a1000,#251800)',border:'1px solid rgba(245,158,11,.25)',borderRadius:16,overflow:'hidden'}}>
+        <div style={{background:'linear-gradient(90deg,#92400e,#78350f)',padding:'12px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div><div style={{fontSize:10,color:'rgba(255,255,255,.6)',fontWeight:700,textTransform:'uppercase'}}>Calificación Somar Pro</div><div style={{fontSize:17,fontWeight:800,color:'#fff',marginTop:2}}>Rider Nivel {nivel}</div></div>
+          <div style={{fontSize:18}}>{stars}</div>
+        </div>
+        <div style={{padding:'14px 16px'}}>
+          <div style={{fontSize:11,color:'#888',fontWeight:600,marginBottom:6}}>Progreso Mensual ({pM} Pedidos)</div>
+          <div style={{background:'#2C2C2C',borderRadius:6,height:8,marginBottom:8,overflow:'hidden'}}><div style={{height:'100%',background:'linear-gradient(90deg,#F59E0B,#FF8C00)',borderRadius:6,width:`${pct}%`,transition:'width .5s'}}/></div>
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'#888',marginBottom:14,fontWeight:600}}><span>Bronce (0)</span><span>Plata (75)</span><span>Oro (150)</span></div>
+          {[['🔴 Bono Combustible','Meta: 7 pedidos del día',pH,7],['📊 Recarga Semanal','Meta: 40 pedidos esta semana',pS,40]].map(([name,sub,v,max])=>(
+            <div key={name} style={{background:'#2C2C2C',borderRadius:10,padding:'10px 12px',marginBottom:8}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:5}}><span style={{fontSize:13,fontWeight:700}}>{name}</span><span style={{fontSize:12,fontWeight:800,color:'#FF8C00'}}>{v}/{max}</span></div>
+              <div style={{fontSize:11,color:'#888',marginBottom:5}}>{sub}</div>
+              <div style={{background:'#333',borderRadius:4,height:5,overflow:'hidden'}}><div style={{height:'100%',background:'#FF8C00',borderRadius:4,width:`${Math.min(100,Math.round(v/max*100))}%`,transition:'width .5s'}}/></div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── MOVIMIENTOS DE BILLETERA ── */}
+      <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.07em',padding:'4px 14px 8px'}}>Movimientos de Billetera</div>
+      {movimientos.map(m=>{
+        // LIQUIDACION = Somar paga al delivery = ingreso (verde)
+        // RECARGA = delivery pone dinero a su wallet = salida (rojo)
+        const esIngreso = m.tipo==='LIQUIDACION';
+        const color = esIngreso ? '#22C55E' : '#EF4444';
+        const fecha = new Date(m.ts).toLocaleDateString('es-HN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+        return(
+          <div key={m.id} style={{background:'#1A1A1A',borderRadius:13,padding:'12px 14px',margin:'0 12px 6px',display:'flex',justifyContent:'space-between',alignItems:'flex-start',borderLeft:`3px solid ${color}`}}>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
+                <span style={{fontSize:14}}>{m.tipo==='RECARGA'?'⬇️':'💳'}</span>
+                <span style={{fontSize:13,fontWeight:700}}>
+                  {m.tipo==='RECARGA'?'Recarga de billetera':'Pago de Somar'}
+                </span>
+              </div>
+              {m.no && <div style={{fontSize:11,fontFamily:'monospace',color:'#888'}}>{m.no}</div>}
+              {m.tipo==='DESCUENTO' && (
+                <div style={{fontSize:10,color:'#666',marginTop:3}}>
+                  {m.pago==='EFECTIVO'?'💵':'📲'} Gan. producto: {fmtL(m.gan_prod)} · Fee envío: {fmtL(m.fee_envio)}
+                </div>
+              )}
+              {m.nota && <div style={{fontSize:11,color:'#888',marginTop:2}}>{m.nota}</div>}
+              <div style={{fontSize:10,color:'#555',marginTop:3}}>{fecha}</div>
+            </div>
+            <div style={{fontSize:16,fontWeight:900,color,flexShrink:0,marginLeft:10}}>
+              {esIngreso ? '+' : '-'}{fmtL(Math.abs(m.monto))}
+            </div>
+          </div>
+        );
+      })}
+
+      {/* ── HISTORIAL DIARIO ── */}
+      <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.07em',padding:'12px 14px 8px'}}>Historial de Entregas</div>
+      {!dias.length&&<div style={{textAlign:'center',padding:'30px 24px',color:'#888'}}>Sin historial aún</div>}
+      {dias.map(dia=>{
+        const info=porDia[dia];
+        const fecha=new Date(dia+'T12:00:00').toLocaleDateString('es-HN',{weekday:'short',day:'2-digit',month:'short'});
+        return(
+          <div key={dia} style={{margin:'0 12px 6px',background:'#1A1A1A',border:'1px solid #333',borderRadius:13,overflow:'hidden'}}>
+            <div onClick={()=>setOpenDia(d=>({...d,[dia]:!d[dia]}))} style={{padding:'12px 14px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <div><div style={{fontSize:14,fontWeight:700}}>{fecha}</div><div style={{fontSize:11,color:'#888',marginTop:2}}>{info.items.length} pedidos</div></div>
+              <div style={{display:'flex',alignItems:'center',gap:8}}><div style={{fontSize:16,fontWeight:800,color:'#22C55E'}}>L. {info.t.toFixed(2)}</div><span style={{color:'#555',fontSize:18}}>{openDia[dia]?'∨':'›'}</span></div>
+            </div>
+            {openDia[dia]&&info.items.map((p,i)=>(
+              <div key={i} style={{padding:'8px 14px',display:'flex',justifyContent:'space-between',borderTop:'1px solid #222',fontSize:13}}>
+                <span style={{fontFamily:'monospace',fontSize:12,color:'#888'}}>{p.no}</span>
+                <span style={{fontWeight:700,color:'#22C55E'}}>L. {p.gan.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+      <div style={{height:12}}/>
+    </div>
+  );
+}
+
+// ─── FORM DEPÓSITO ─────────────────────────────────────────
+function DepForm({onEnviar, onConfirm}){
+  const [monto,setMonto]=useState('');
+  const [file,setFile]=useState(null);
+  const [prev,setPrev]=useState(null);
+  const [err,setErr]=useState('');
+  const hFile=e=>{
+    const f=e.target.files[0];if(!f)return;
+    const doSet=()=>{setFile(f);const r=new FileReader();r.onload=ev=>setPrev(ev.target.result);r.readAsDataURL(f);};
+    onConfirm({msg:'¿Usar esta foto como comprobante?',confirmLbl:'Sí, usar esta foto',color:'#22C55E',onSi:doSet});
+  };
+  const enviar=()=>{
+    if(!monto||parseFloat(monto)<=0)return setErr('Ingresa el monto');
+    if(!file)return setErr('Sube la foto del comprobante');
+    onEnviar(parseFloat(monto));setMonto('');setFile(null);setPrev(null);setErr('');
+  };
+  return(
+    <div style={{margin:12,background:'#1A1A1A',border:'1px solid #333',borderRadius:16,padding:16}}>
+      <div style={{fontSize:15,fontWeight:800,marginBottom:4}}>💳 Recargar Billetera</div>
+      <div style={{fontSize:12,color:'#888',marginBottom:14}}>Sube el comprobante y Despacho aprobará la recarga</div>
+      <label style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.05em',display:'block',marginBottom:6}}>Monto depositado (L.)</label>
+      <input type="number" inputMode="decimal" placeholder="0.00" value={monto} onChange={e=>setMonto(e.target.value)} style={{width:'100%',background:'#232323',border:'1.5px solid #444',borderRadius:12,padding:'15px 14px',color:'#F0F0F0',fontSize:20,fontWeight:800,outline:'none',marginBottom:14}}/>
+      <label style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.05em',display:'block',marginBottom:6}}>Foto del comprobante</label>
+      <div onClick={()=>document.getElementById('depInp').click()} style={{background:'#232323',border:`2px ${prev?'solid':'dashed'} ${prev?'#22C55E':'#444'}`,borderRadius:14,padding:prev?0:20,textAlign:'center',overflow:'hidden',marginBottom:14}}>
+        {prev?<img src={prev} style={{width:'100%',maxHeight:140,objectFit:'cover',display:'block'}}/>:<><div style={{fontSize:32,marginBottom:6}}>📷</div><div style={{fontSize:14,fontWeight:700}}>Tomar foto del comprobante</div><div style={{fontSize:12,color:'#888',marginTop:4}}>Toca aquí para abrir la cámara</div></>}
+      </div>
+      <input type="file" id="depInp" accept="image/*" capture="environment" style={{display:'none'}} onChange={hFile}/>
+      {err&&<div style={{color:'#EF4444',fontSize:12,marginBottom:10}}>{err}</div>}
+      <button onClick={enviar} style={{width:'100%',padding:16,borderRadius:14,background:'#FF8C00',color:'#fff',fontSize:16,fontWeight:800}}>Enviar Depósito</button>
+    </div>
+  );
+}
+
+
+// ─── TAB CHAT ─────────────────────────────────────────────
+function TabChat({delivery, onConfirm}){
+  const [msgs,setMsgs]=useState([]);
+  const [texto,setTexto]=useState('');
+  const [cargando,setCargando]=useState(true);
+  const [enviando,setEnviando]=useState(false);
+  const listRef=useRef(null);
+  const chRef=useRef(null);
+
+  useEffect(()=>{
+    if(!delivery?.id)return;
+    cargar();
+    if(chRef.current)sb.removeChannel(chRef.current);
+    chRef.current=sb.channel('chat_'+delivery.id)
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_mensajes',filter:`delivery_id=eq.${delivery.id}`},p=>{
+        setMsgs(ms=>[...ms,p.new]);
+        if(p.new.remitente==='DESPACHO') sb.from('chat_mensajes').update({leido:true,leido_at:new Date().toISOString()}).eq('id',p.new.id);
+      })
+      .subscribe();
+    return()=>{if(chRef.current)sb.removeChannel(chRef.current);};
+  },[delivery?.id]);
+
+  useEffect(()=>{ if(listRef.current)listRef.current.scrollTop=listRef.current.scrollHeight; },[msgs]);
+
+  const cargar=async()=>{
+    setCargando(true);
+    const {data}=await sb.from('chat_mensajes').select('*').eq('delivery_id',delivery.id).order('created_at',{ascending:true}).limit(100);
+    setMsgs(data||[]);setCargando(false);
+    await sb.from('chat_mensajes').update({leido:true,leido_at:new Date().toISOString()}).eq('delivery_id',delivery.id).eq('remitente','DESPACHO').eq('leido',false);
+  };
+
+  const enviar=async()=>{
+    const msg=texto.trim();if(!msg||enviando||!delivery?.id)return;
+    setEnviando(true);setTexto('');
+    const {error}=await sb.from('chat_mensajes').insert({delivery_id:delivery.id,remitente:'DELIVERY',mensaje:msg});
+    if(error)setTexto(msg);
+    setEnviando(false);
+  };
+
+  return(
+    <div style={{display:'flex',flexDirection:'column',height:'calc(100dvh - 34px - 56px - 56px)',minHeight:400}}>
+      <div style={{background:'#1A1A1A',borderBottom:'1px solid #333',padding:'12px 14px',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
+        <div style={{width:38,height:38,background:'#FF8C00',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>📟</div>
+        <div>
+          <div style={{fontSize:14,fontWeight:700}}>Despacho Somar Express</div>
+          <div style={{fontSize:11,color:'#22C55E',display:'flex',alignItems:'center',gap:4}}><div style={{width:6,height:6,borderRadius:'50%',background:'#22C55E',animation:'pulse 2s infinite'}}/>En línea</div>
+        </div>
+      </div>
+      <div ref={listRef} style={{flex:1,overflowY:'auto',padding:'12px',display:'flex',flexDirection:'column',gap:8}}>
+        {cargando&&<div style={{textAlign:'center',color:'#888',padding:20}}>Cargando...</div>}
+        {!cargando&&msgs.length===0&&<div style={{textAlign:'center',padding:'40px 24px'}}><div style={{fontSize:40,marginBottom:10}}>💬</div><div style={{fontSize:14,color:'#888'}}>Escríbele a Despacho aquí</div></div>}
+        {msgs.map(m=>{
+          const mio=m.remitente==='DELIVERY';
+          return(
+            <div key={m.id} style={{display:'flex',justifyContent:mio?'flex-end':'flex-start'}}>
+              {!mio&&<div style={{width:28,height:28,background:'#FF8C00',borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,flexShrink:0,marginRight:6,alignSelf:'flex-end'}}>D</div>}
+              <div style={{maxWidth:'75%'}}>
+                <div style={{background:mio?'#FF8C00':'#232323',color:'#F0F0F0',borderRadius:mio?'18px 18px 4px 18px':'18px 18px 18px 4px',padding:'10px 14px',fontSize:14,lineHeight:1.5}}>{m.mensaje}</div>
+                <div style={{fontSize:10,color:'#555',marginTop:3,textAlign:mio?'right':'left'}}>
+                  {new Date(m.created_at).toLocaleTimeString('es-HN',{hour:'2-digit',minute:'2-digit'})}
+                  {mio&&<span style={{marginLeft:4}}>{m.leido?'✓✓':'✓'}</span>}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{background:'#1A1A1A',borderTop:'1px solid #333',padding:'10px 12px',display:'flex',gap:8,flexShrink:0}}>
+        <input value={texto} onChange={e=>setTexto(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();enviar();}}} placeholder="Escribe un mensaje..." style={{flex:1,background:'#2C2C2C',border:'1px solid #444',borderRadius:24,padding:'12px 16px',color:'#F0F0F0',fontSize:14,outline:'none'}}/>
+        <button onClick={enviar} disabled={!texto.trim()||enviando} style={{width:48,height:48,borderRadius:'50%',background:texto.trim()?'#FF8C00':'#2C2C2C',color:texto.trim()?'#fff':'#555',fontSize:20,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'all .2s'}}>{enviando?'...':'➤'}</button>
+      </div>
+    </div>
+  );
+}
+
+
+// ─── TAB DEPÓSITOS ────────────────────────────────────────
+function TabDepositos({delivery, depositos, setDepositos, onConfirm, toast}){
+  const [monto,setMonto]=useState('');
+  const [file,setFile]=useState(null);
+  const [prev,setPrev]=useState(null);
+  const [err,setErr]=useState('');
+  const [enviando,setEnviando]=useState(false);
+  const hFile=e=>{const f=e.target.files[0];if(!f)return;const doSet=()=>{setFile(f);const r=new FileReader();r.onload=ev=>setPrev(ev.target.result);r.readAsDataURL(f);};onConfirm({msg:'¿Usar esta foto como comprobante?',confirmLbl:'Sí, usar esta foto',color:'#22C55E',onSi:doSet});};
+  const enviar=async()=>{
+    if(!monto||parseFloat(monto)<=0)return setErr('Ingresa el monto');
+    if(!file)return setErr('Sube la foto del comprobante');
+    setErr('');setEnviando(true);
+    const {data:{session}}=await sb.auth.getSession();
+    const uid=session?.user?.id;
+    const ext=file.name.split('.').pop()?.toLowerCase()||'jpg';
+    const {data:up,error:upErr}=await sb.storage.from('delivery-docs').upload(`${uid}/deposito_${Date.now()}.${ext}`,file,{cacheControl:'3600',upsert:true,contentType:file.type});
+    if(upErr){setErr('Error al subir foto: '+upErr.message);setEnviando(false);return;}
+    const {data:urlData}=await sb.storage.from('delivery-docs').createSignedUrl(up.path,60*60*24*365*10);
+    const {data:dep,error:insErr}=await sb.from('depositos_delivery').insert({delivery_id:delivery.id,monto:parseFloat(monto),foto_url:urlData?.signedUrl,estatus:'PENDIENTE'}).select().single();
+    if(insErr){setErr('Error: '+insErr.message);setEnviando(false);return;}
+    setDepositos(ds=>[dep,...ds]);setMonto('');setFile(null);setPrev(null);setEnviando(false);
+    toast('✅ Depósito enviado — Despacho lo revisará');
+  };
+  const cc={PENDIENTE:['#F59E0B','rgba(245,158,11,.15)'],APROBADO:['#22C55E','rgba(34,197,94,.15)'],RECHAZADO:['#EF4444','rgba(239,68,68,.15)']};
+  return(
+    <div>
+      <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.07em',padding:'14px 14px 8px'}}>Recargar Billetera</div>
+      <div style={{margin:'0 12px 12px',background:'#1A1A1A',border:'1px solid #333',borderRadius:16,padding:16}}>
+        <div style={{fontSize:15,fontWeight:800,marginBottom:4}}>💳 Registrar Depósito</div>
+        <div style={{fontSize:12,color:'#888',marginBottom:14}}>Sube el comprobante y Despacho aprobará la recarga</div>
+        <label style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.05em',display:'block',marginBottom:6}}>Monto depositado (L.)</label>
+        <input type="number" inputMode="decimal" placeholder="0.00" value={monto} onChange={e=>setMonto(e.target.value)} style={{width:'100%',background:'#232323',border:'1.5px solid #444',borderRadius:12,padding:'15px 14px',color:'#F0F0F0',fontSize:20,fontWeight:800,outline:'none',marginBottom:14}}/>
+        <label style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.05em',display:'block',marginBottom:6}}>Foto del comprobante</label>
+        <div onClick={()=>document.getElementById('depInp').click()} style={{background:'#232323',border:`2px ${prev?'solid':'dashed'} ${prev?'#22C55E':'#444'}`,borderRadius:14,padding:prev?0:20,textAlign:'center',overflow:'hidden',marginBottom:14}}>
+          {prev?<img src={prev} style={{width:'100%',maxHeight:140,objectFit:'cover',display:'block'}}/>:<><div style={{fontSize:32,marginBottom:6}}>📷</div><div style={{fontSize:14,fontWeight:700}}>Tomar foto del comprobante</div><div style={{fontSize:12,color:'#888',marginTop:4}}>Toca aquí</div></>}
+        </div>
+        <input type="file" id="depInp" accept="image/*" capture="environment" style={{display:'none'}} onChange={hFile}/>
+        {err&&<div style={{color:'#EF4444',fontSize:12,marginBottom:10}}>{err}</div>}
+        <button onClick={enviar} disabled={enviando} style={{width:'100%',padding:16,borderRadius:14,background:enviando?'#333':'#FF8C00',color:enviando?'#888':'#fff',fontSize:16,fontWeight:800}}>{enviando?'Enviando...':'Enviar Depósito'}</button>
+      </div>
+      <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.07em',padding:'8px 14px'}}>Historial</div>
+      {depositos.map(d=>{
+        const [c,bg]=cc[d.estatus||d.est]||['#888','rgba(136,136,136,.15)'];
+        return(<div key={d.id} style={{background:'#1A1A1A',borderRadius:13,padding:'13px 14px',margin:'0 12px 8px',borderLeft:`4px solid ${c}`}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}><div style={{fontSize:20,fontWeight:900}}>L. {parseFloat(d.monto).toFixed(2)}</div><span style={{fontSize:10,fontWeight:700,textTransform:'uppercase',padding:'3px 9px',borderRadius:20,background:bg,color:c}}>{d.estatus||d.est}</span></div>
+          <div style={{fontSize:11,color:'#888',marginTop:4}}>{fmtFecha(d.creado_at||d.ts)}</div>
+          {(d.notas_despacho||d.nota)&&<div style={{fontSize:12,color:'#888',marginTop:6,fontStyle:'italic'}}>{d.notas_despacho||d.nota}</div>}
+          {(d.estatus||d.est)==='PENDIENTE'&&<div style={{fontSize:11,color:'#F59E0B',marginTop:6,fontWeight:600}}>⏳ En revisión — saldo se acredita al aprobar</div>}
+        </div>);
+      })}
+    </div>
+  );
+}
+
+// ─── APP PRINCIPAL ─────────────────────────────────────────
+function App(){
+  const [tab,setTab]=useState('asignados');
+  const [pedidos,setPedidos]=useState([]);
+  const [historial,setHistorial]=useState([]);
+  const [depositos,setDepositos]=useState([]);
+  const [saldo,setSaldo]=useState(0);
+  const [movimientos,setMovimientos]=useState([]);
+  const [turno,setTurno]=useState(false);
+  const [pe,setPe]=useState(null);
+  const [sideOpen,setSideOpen]=useState(false);
+  const [detalle,setDetalle]=useState(null);
+  const [sheet,setSheet]=useState(null); // BottomSheet
+  const [toastMsg,setToastMsg]=useState('');
+  const [ahora,setAhora]=useState(Date.now());
+  useEffect(()=>{ const t=setInterval(()=>setAhora(Date.now()),1000); return()=>clearInterval(t); },[]);
+
+  // ── INIT: verificar sesión ────────────────────────────────
+  useEffect(()=>{
+    sb.auth.getSession().then(({data:{session}})=>{ if(session) iniciarApp(session.user); else setAuthed(true); });
+    sb.auth.onAuthStateChange((event,session)=>{
+      if(_registrando.current)return;
+      if(event==='SIGNED_IN'&&session) iniciarApp(session.user);
+      if(event==='SIGNED_OUT'){ setAuthed(true); setDelivery(null); }
+    });
+  },[]);
+
+  // ── SUPABASE: cargar datos delivery ──────────────────────
+  const iniciarApp = async (user) => {
+    const {data:rows,error}=await sb.from('delivery').select('id,nombre,correo,celular,ciudad,activo,estatus,saldo_billetera,vehiculo').eq('perfil_id',user.id).limit(1);
+    if(error||!rows?.length){setAuthed(true);setDelivery(null);return;}
+    const del=rows[0];
+    if(!del.activo){setAuthed(true);setDelivery(null);return;}
+    setDelivery({...del,email:del.correo||user.email});
+    setSaldo(parseFloat(del.saldo_billetera)||0);
+    setAuthed(true);
+    await cargarDatos(del.id);
+    iniciarGPS(del.id);
+    suscribirRealtime(del.id);
+  };
+
+  const cargarDatos = async (delId) => {
+    const ACTIVOS=['ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO'];
+    const [rP,rH,rD,rM]=await Promise.all([
+      sb.from('pedidos').select('*').eq('delivery_id',delId).in('estatus',ACTIVOS).order('hora_aceptado',{ascending:false}),
+      sb.from('pedidos').select('no_orden,estatus,nombre_comercio,ciudad_destino,ingreso_delivery,tarifa_envio,hora_finalizado').eq('delivery_id',delId).eq('estatus','FINALIZADO').order('hora_finalizado',{ascending:false}).limit(100),
+      sb.from('depositos_delivery').select('*').eq('delivery_id',delId).order('creado_at',{ascending:false}),
+      sb.from('depositos_delivery').select('id,monto,estatus,notas_despacho,creado_at').eq('delivery_id',delId).eq('estatus','APROBADO').order('creado_at',{ascending:false}).limit(20),
+    ]);
+    if(rP.data) setPedidos(rP.data.map(p=>({...p,tsInicio:p.hora_aceptado?new Date(p.hora_aceptado).getTime():Date.now(),tiempos:buildTiempos(p)})));
+    if(rH.data) setHistorial(rH.data);
+    if(rD.data) setDepositos(rD.data);
+    if(rM.data) setMovimientos(rM.data.map(d=>({...d,tipo:'RECARGA',nota:'Recarga aprobada por Despacho',ts:d.creado_at})));
+  };
+
+  const buildTiempos = (p)=>{
+    const t={};
+    if(p.hora_aceptado)           t.ACEPTADO           =new Date(p.hora_aceptado).getTime();
+    if(p.hora_en_establecimiento) t.EN_ESTABLECIMIENTO  =new Date(p.hora_en_establecimiento).getTime();
+    if(p.hora_en_camino)          t.PEDIDO_EN_CAMINO    =new Date(p.hora_en_camino).getTime();
+    if(p.hora_llegada)            t.ENTREGANDO          =new Date(p.hora_llegada).getTime();
+    if(p.hora_finalizado)         t.FINALIZADO          =new Date(p.hora_finalizado).getTime();
+    return t;
+  };
+
+  const iniciarGPS = (delId) => {
+    if(!navigator.geolocation)return;
+    const send=pos=>sb.from('ubicaciones_delivery').upsert({delivery_id:delId,lat:pos.coords.latitude,lng:pos.coords.longitude,precision_m:Math.round(pos.coords.accuracy),en_turno:turno,updated_at:new Date().toISOString()},{onConflict:'delivery_id'});
+    navigator.geolocation.getCurrentPosition(send,()=>{},{enableHighAccuracy:true,timeout:8000});
+    gpsRef.current=setInterval(()=>navigator.geolocation.getCurrentPosition(send,()=>{},{enableHighAccuracy:true,timeout:8000}),30000);
+  };
+
+  const suscribirRealtime = (delId) => {
+    if(rtRef.current) sb.removeChannel(rtRef.current);
+    rtRef.current=sb.channel('del_rt_'+delId)
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'asignaciones_pendientes',filter:`delivery_id=eq.${delId}`},async p=>{
+        if(p.new.estatus==='ENVIADO'){
+          const {data:ped}=await sb.from('pedidos').select('*').eq('id',p.new.pedido_id).single();
+          if(ped){setPe({...ped,_asigId:p.new.id});notifLocal('🔔 Nuevo Pedido',`${ped.nombre_comercio||'—'} · ${ped.ciudad_destino||''}`)}
+        }
+      })
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'pedidos',filter:`delivery_id=eq.${delId}`},()=>cargarDatos(delId))
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'delivery',filter:`id=eq.${delId}`},p=>{if(p.new.saldo_billetera!==undefined)setSaldo(parseFloat(p.new.saldo_billetera)||0);})
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'depositos_delivery',filter:`delivery_id=eq.${delId}`},()=>cargarDatos(delId))
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_mensajes',filter:`delivery_id=eq.${delId}`},p=>{if(p.new.remitente==='DESPACHO'&&tab!=='chat'){setChatUnread(n=>n+1);notifLocal('💬 Despacho',p.new.mensaje);}})
+      .subscribe();
+  };
+
+  const avanzarReal = async (pid,est,facData=null) => {
+    const eb=ESIG[est];if(!eb)return;
+    const campos={estatus:eb.sig};
+    if(eb.sig==='EN_ESTABLECIMIENTO') campos.hora_en_establecimiento=new Date().toISOString();
+    if(eb.sig==='PEDIDO_EN_CAMINO')   campos.hora_en_camino=new Date().toISOString();
+    if(eb.sig==='ENTREGANDO')         campos.hora_llegada=new Date().toISOString();
+    if(eb.sig==='FINALIZADO')         campos.hora_finalizado=new Date().toISOString();
+    if(facData?.facMonto)             campos.monto_pagado_en_comercio=facData.facMonto;
+    if(facData?.facFile){
+      const {data:{session}}=await sb.auth.getSession();
+      const uid=session?.user?.id;
+      const ext=facData.facFile.name.split('.').pop()?.toLowerCase()||'jpg';
+      const {data:up}=await sb.storage.from('delivery-docs').upload(`${uid}/factura_${pid}_${Date.now()}.${ext}`,facData.facFile,{cacheControl:'3600',upsert:true,contentType:facData.facFile.type});
+      if(up){const {data:u}=await sb.storage.from('delivery-docs').createSignedUrl(up.path,60*60*24*365*10);if(u)campos.foto_factura_url=u.signedUrl;}
+    }
+    const {error}=await sb.from('pedidos').update(campos).eq('id',pid).eq('delivery_id',delivery.id);
+    if(error){toast('❌ '+error.message);return;}
+    if(eb.sig==='FINALIZADO'){setDetalle(null);toast('✅ Pedido finalizado. ¡Buen trabajo!');}
+    else toast('✅ Estado actualizado');
+    await cargarDatos(delivery.id);
+  };
+
+  const toggleTurno = async (nuevoTurno) => {
+    setTurno(nuevoTurno);
+    await sb.from('ubicaciones_delivery').upsert({delivery_id:delivery.id,en_turno:nuevoTurno,lat:0,lng:0,updated_at:new Date().toISOString()},{onConflict:'delivery_id'});
+    toast(nuevoTurno?'✅ Turno activado':'⏸ Turno pausado');
+  };
+
+  const aceptarPE = async () => {
+    if(!pe)return;
+    const res=await fetch(`${EDGE_URL}/aceptar-pedido`,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPA_ANON},body:JSON.stringify({pedido_id:pe.id,asignacion_id:pe._asigId,delivery_id:delivery.id})});
+    const data=await res.json();
+    if(data.success){toast('✅ Pedido aceptado');await cargarDatos(delivery.id);}
+    else toast('⚠️ '+(data.error||'Error'));
+    setPe(null);
+  };
+
+  const cerrarSesion = async () => {
+    if(gpsRef.current) clearInterval(gpsRef.current);
+    if(rtRef.current) sb.removeChannel(rtRef.current);
+    if(delivery) await sb.from('ubicaciones_delivery').upsert({delivery_id:delivery.id,en_turno:false,lat:0,lng:0},{onConflict:'delivery_id'});
+    await sb.auth.signOut();
+    setDelivery(null); setPedidos([]); setHistorial([]); setDepositos([]); setMovimientos([]);
+  };
+
+  // ── AUTH CHECK ─────────────────────────────────────────────
+  if(!authed) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'#0F0F0F'}}><div style={{color:'#FF8C00',fontSize:40,animation:'pulse 1.5s infinite'}}>🛵</div></div>;
+  const toastRef=useRef(null);
+
+  // Realtime suscription handles pedido entrante
+
+  const toast=useCallback(msg=>{
+    setToastMsg(msg);
+    clearTimeout(toastRef.current);
+    toastRef.current=setTimeout(()=>setToastMsg(''),3000);
+  },[]);
+
+  const activos=pedidos.filter(p=>['ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO'].includes(p.est));
+
+  const avanzarReal=(pid,est)=>{
+    const eb=ESIG[est];if(!eb)return;
+    const tsAhora = Date.now();
+    if(eb.sig==='FINALIZADO'){
+      const p=pedidos.find(x=>x.id===pid);
+      const tiempos = {...(p.tiempos||{}), FINALIZADO: tsAhora};
+      setPedidos(ps=>ps.filter(x=>x.id!==pid));
+      setHistorial(hs=>[{no:p.no,est:'FINALIZADO',com:p.com,ciudad:p.ciudad,gan:p.gan,ts:tsAhora,
+        tsInicio:p.tsInicio, tiempos},...hs]);
+      setDetalle(null);
+      toast('✅ Pedido finalizado. ¡Buen trabajo!');
+    }else{
+      setPedidos(ps=>ps.map(p=>p.id===pid?{
+        ...p, est:eb.sig,
+        tiempos:{...(p.tiempos||{}), [eb.sig]: tsAhora}
+      }:p));
+      toast('✅ Estado actualizado');
+    }
+  };
+
+  // aceptarPE → defined above
+
+// depNuevo → handled by TabDepositos component directly
+
+  const TABS=[
+    {id:'historial',icon:'📋',lbl:'HISTORIAL'},
+    {id:'asignados',icon:'🛵',lbl:'ASIGNADOS'},
+    {id:'guaca',icon:'💰',lbl:'MI GUACA'},
+    {id:'chat',icon:'💬',lbl:'CHAT'},
+    {id:'perfil',icon:'👤',lbl:'MI PERFIL'},
+  ];
+
+  // Si está en vista detalle, muestra esa vista full-screen
+  if(detalle && tab==='asignados'){
+    return(
+      <div>
+        <div style={{background:'#FF8C00',color:'#fff',textAlign:'center',padding:7,fontSize:12,fontWeight:700,position:'sticky',top:0,zIndex:999}}>🧪 MODO DEMO</div>
+        <VistaPedido
+          p={detalle}
+          pedidos={pedidos}
+          onAvanzar={avanzarReal}
+          onBack={()=>setDetalle(null)}
+          onConfirm={setSheet}
+          toast={toast}
+          ahora={ahora}
+        />
+        <BottomSheet data={sheet} onClose={()=>setSheet(null)}/>
+        <Toast msg={toastMsg}/>
+      </div>
+    );
+  }
+
+  return(
+    <div>
+      {/* Banner demo */}
+      
+
+      {/* Side menu */}
+      {sideOpen&&(
+        <div style={{position:'fixed',inset:0,zIndex:100}} onClick={()=>setSideOpen(false)}>
+          <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,.6)'}}/>
+          <div onClick={e=>e.stopPropagation()} style={{position:'absolute',left:0,top:0,bottom:0,width:270,background:'#1A1A1A',borderRight:'1px solid #333',display:'flex',flexDirection:'column',animation:'slideUp .25s'}}>
+            <div style={{padding:'20px 16px 16px',borderBottom:'1px solid #333',display:'flex',alignItems:'center',gap:12}}>
+              <div style={{width:52,height:52,background:'#FF8C00',borderRadius:14,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,fontWeight:800,flexShrink:0}}>C</div>
+              <div><div style={{fontSize:15,fontWeight:700}}>Carlos Mejia</div><div style={{fontSize:12,color:'#888'}}>carlos@demo.com</div></div>
+            </div>
+            {[['💳 Mis Depósitos','depositos'],['📋 Historial','historial'],['💰 Mi Guaca','guaca'],['👤 Mi Perfil','perfil']].map(([lbl,t])=>(
+              <button key={t} onClick={()=>{setTab(t);setSideOpen(false);}} style={{display:'flex',alignItems:'center',gap:12,padding:'15px 16px',background:'none',border:'none',borderBottom:'1px solid #222',color:'#F0F0F0',width:'100%',textAlign:'left',fontSize:14,fontWeight:600}}>{lbl}</button>
+            ))}
+            <button
+              onClick={()=>{setSheet({msg:'¿Cerrar sesión?',confirmLbl:'Sí, cerrar sesión',color:'#EF4444',onSi:()=>toast('Demo: sesión cerrada')});setSideOpen(false);}}
+              style={{display:'flex',alignItems:'center',gap:12,padding:'15px 16px',background:'none',border:'none',color:'#EF4444',width:'100%',textAlign:'left',fontSize:14,fontWeight:600,marginTop:'auto',borderTop:'1px solid #333'}}>
+              🚪 Cerrar Sesión
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Pedido entrante */}
+      {pe && <PedidoEntrante pedido={pe} onAceptar={aceptarPE} onRechazar={()=>{setPe(null);toast('Pedido rechazado');}}/>}
+
+      {/* Header */}
+      <div style={{background:'#1A1A1A',borderBottom:'1px solid #333',padding:'10px 14px',display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:34,zIndex:40}}>
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <button onClick={()=>setSideOpen(true)} style={{background:'none',border:'none',color:'#F0F0F0',fontSize:24,padding:4,lineHeight:1}}>☰</button>
+          <img style={{width:34,height:34,borderRadius:9}} src="https://res.cloudinary.com/drkaxsziu/image/upload/v1767871213/Somar_Express_2048_x_2048_px_18_x_18_in__20250623_221102_0000_o0bv7a.png"/>
+          <div>
+            <div style={{fontSize:14,fontWeight:700}}>Carlos Mejia</div>
+            <div style={{fontSize:11,color:'#888'}}>{activos.length} pedido{activos.length!==1?'s':''} activo{activos.length!==1?'s':''}</div>
+          </div>
+        </div>
+        {/* Turno — con confirmación bottom sheet */}
+        <button
+          onClick={()=>{
+            if(!turno && saldo < MIN_SALDO){ toast(`⛔ Saldo insuficiente. Recarga mínimo ${fmtL(MIN_SALDO)} para trabajar.`); return; }
+            setSheet({
+            msg: turno ? '¿Pausar tu turno?\nDejarás de recibir pedidos.' : '¿Activar tu turno?\nEmpezarás a recibir pedidos.',
+            confirmLbl: turno ? 'Sí, pausar turno' : 'Sí, activar turno',
+            color: turno ? '#888' : '#22C55E',
+            onSi: ()=>{setTurno(t=>!t); toast(!turno?'✅ Turno activado':'⏸ Turno pausado');}
+          });
+          }}
+          style={{display:'flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:20,border:`1.5px solid ${turno?'#22C55E':'#555'}`,background:turno?'rgba(34,197,94,.1)':'#2C2C2C',color:turno?'#22C55E':'#888',fontSize:12,fontWeight:700}}>
+          <div style={{width:8,height:8,borderRadius:'50%',background:'currentColor',animation:turno?'pulse 1.5s infinite':'none'}}/>
+          {turno?'Disponible':saldo<MIN_SALDO?'⛔ Sin saldo':'Fuera de turno'}
+        </button>
+      </div>
+
+      {/* Contenido */}
+      <div style={{paddingBottom:80}}>
+        {tab==='asignados'&&(
+          activos.length===0
+            ?<div style={{textAlign:'center',padding:'60px 24px'}}>
+              <div style={{fontSize:52,marginBottom:14}}>🛵</div>
+              <h3 style={{fontSize:18,fontWeight:800,marginBottom:8}}>Sin pedidos activos</h3>
+              <p style={{fontSize:14,color:'#888'}}>Activa tu turno para recibir pedidos</p>
+            </div>
+            :<div>{activos.map(p=><CardResumen key={p.id} p={p} onTap={setDetalle}/>)}</div>
+        )}
+
+        {tab==='historial'&&(
+          <div>
+            <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.07em',padding:'14px 14px 8px'}}>Historial de Pedidos</div>
+            {historial.map((p,i)=>{
+              const ok=p.est==='FINALIZADO', color=ok?'#22C55E':p.est==='CANCELADO'?'#EF4444':'#F59E0B';
+              const fecha=new Date(p.ts).toLocaleDateString('es-HN',{day:'2-digit',month:'short',year:'2-digit'});
+              return(
+                <div key={i} style={{background:'#1A1A1A',borderRadius:13,padding:'13px 14px',margin:'0 12px 8px',display:'flex',justifyContent:'space-between',alignItems:'flex-start',borderLeft:`4px solid ${color}`}}>
+                  <div><div style={{fontSize:13,fontWeight:800,fontFamily:'monospace'}}>{p.no}</div><div style={{fontSize:12,color:'#888',marginTop:2}}>{p.com} → {p.ciudad}</div><div style={{fontSize:11,color:'#888',marginTop:1}}>{fecha}</div></div>
+                  <div style={{textAlign:'right'}}><div style={{fontSize:17,fontWeight:900,color:ok?'#22C55E':'#888'}}>{ok?fmtL(p.gan):'—'}</div><div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',color,marginTop:3}}>{p.est}</div></div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {tab==='guaca'&&<TabGuaca historial={historial} saldo={saldo} movimientos={movimientos} onIrDepositos={()=>setTab('depositos')}/>}
+
+        {tab==='depositos'&&(
+          <div>
+            <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.07em',padding:'14px 14px 8px'}}>Mis Depósitos</div>
+            <DepForm onEnviar={depNuevo} onConfirm={setSheet}/>
+            <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.07em',padding:'8px 14px'}}>Historial</div>
+            {depositos.map(d=>{
+              const cc={PENDIENTE:['#F59E0B','rgba(245,158,11,.15)'],APROBADO:['#22C55E','rgba(34,197,94,.15)'],RECHAZADO:['#EF4444','rgba(239,68,68,.15)']};
+              const [c,bg]=cc[d.est]||['#888','rgba(136,136,136,.15)'];
+              const fecha=new Date(d.ts).toLocaleDateString('es-HN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+              return(
+                <div key={d.id} style={{background:'#1A1A1A',borderRadius:13,padding:'13px 14px',margin:'0 12px 8px',borderLeft:`4px solid ${c}`}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}><div style={{fontSize:20,fontWeight:900}}>L. {d.monto.toFixed(2)}</div><span style={{fontSize:10,fontWeight:700,textTransform:'uppercase',padding:'3px 9px',borderRadius:20,background:bg,color:c}}>{d.est}</span></div>
+                  <div style={{fontSize:11,color:'#888',marginTop:4}}>{fecha}</div>
+                  {d.nota&&<div style={{fontSize:12,color:'#888',marginTop:6,fontStyle:'italic'}}>{d.nota}</div>}
+              {d.est==='PENDIENTE'&&<div style={{fontSize:11,color:'#F59E0B',marginTop:6,fontWeight:600}}>⏳ En revisión — saldo se acredita al aprobar</div>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {tab==='perfil'&&(
+          <div>
+            <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.07em',padding:'14px 14px 8px'}}>Mi Perfil</div>
+            <div style={{margin:'0 12px 12px',background:'#1A1A1A',border:'1px solid #333',borderRadius:16,padding:16}}>
+              <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:14}}>
+                <div style={{width:56,height:56,background:'#FF8C00',borderRadius:14,display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,fontWeight:900,flexShrink:0}}>C</div>
+                <div><div style={{fontSize:17,fontWeight:700}}>Carlos Mejia</div><div style={{fontSize:13,color:'#888'}}>carlos@demo.com</div></div>
+              </div>
+              <div style={{background:'#232323',borderRadius:12,overflow:'hidden'}}>
+                {[['Celular','9999-8888'],['Ciudad','CHOLOMA'],['Vehículo','Moto 🏍️']].map(([l,v])=>(
+                  <div key={l} style={{padding:'12px 14px',borderBottom:'1px solid #2C2C2C',display:'flex',justifyContent:'space-between'}}><span style={{fontSize:12,color:'#888'}}>{l}</span><span style={{fontSize:13,fontWeight:600}}>{v}</span></div>
+                ))}
+                <div style={{padding:'12px 14px',display:'flex',justifyContent:'space-between'}}><span style={{fontSize:12,color:'#888'}}>Estado</span><span style={{fontSize:13,fontWeight:600,color:'#22C55E'}}>Activo ✅</span></div>
+              </div>
+            </div>
+            <div style={{margin:'0 12px'}}>
+              <a href="#" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:14,background:'rgba(37,211,102,.1)',border:'1px solid rgba(37,211,102,.25)',borderRadius:14,color:'#25d366',fontWeight:700,fontSize:14}}>💬 WhatsApp Despacho</a>
+            </div>
+          </div>
+        )}
+
+        {tab==='chat'&&(
+          <div style={{textAlign:'center',padding:'60px 24px'}}>
+            <div style={{fontSize:52,marginBottom:14}}>💬</div>
+            <h3 style={{fontSize:16,fontWeight:700,marginBottom:6}}>Chat en desarrollo</h3>
+            <p style={{fontSize:13,color:'#888'}}>Próximamente</p>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom tabs */}
+      <div style={{position:'fixed',bottom:0,left:0,right:0,background:'#1A1A1A',borderTop:'1px solid #333',display:'flex',padding:'6px 0 20px',zIndex:30}}>
+        {TABS.map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:3,background:'none',border:'none',color:tab===t.id?'#FF8C00':'#555',padding:'5px 0',fontSize:9,fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',transition:'color .15s'}}>
+            {/* Indicador activo */}
+            {tab===t.id&&<div style={{width:20,height:2,background:'#FF8C00',borderRadius:2,position:'absolute',marginTop:-6}}/>}
+            <span style={{fontSize:22,lineHeight:1}}>{t.icon}</span>
+            {t.lbl}
+          </button>
+        ))}
+      </div>
+
+      <BottomSheet data={sheet} onClose={()=>setSheet(null)}/>
+      <Toast msg={toastMsg}/>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
