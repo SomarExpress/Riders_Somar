@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#FF8C00">
-<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Somar Delivery">
 <link rel="manifest" href="./manifest-delivery.json">
@@ -991,29 +991,7 @@ function App(){
 
   const activos=pedidos.filter(p=>['ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO'].includes(p.est));
 
-  const avanzarReal=(pid,est)=>{
-    const eb=ESIG[est];if(!eb)return;
-    const tsAhora = Date.now();
-    if(eb.sig==='FINALIZADO'){
-      const p=pedidos.find(x=>x.id===pid);
-      const tiempos = {...(p.tiempos||{}), FINALIZADO: tsAhora};
-      setPedidos(ps=>ps.filter(x=>x.id!==pid));
-      setHistorial(hs=>[{no:p.no,est:'FINALIZADO',com:p.com,ciudad:p.ciudad,gan:p.gan,ts:tsAhora,
-        tsInicio:p.tsInicio, tiempos},...hs]);
-      setDetalle(null);
-      toast('✅ Pedido finalizado. ¡Buen trabajo!');
-    }else{
-      setPedidos(ps=>ps.map(p=>p.id===pid?{
-        ...p, est:eb.sig,
-        tiempos:{...(p.tiempos||{}), [eb.sig]: tsAhora}
-      }:p));
-      toast('✅ Estado actualizado');
-    }
-  };
-
-  // aceptarPE → defined above
-
-// depNuevo → handled by TabDepositos component directly
+  // (funciones de producción definidas arriba)
 
   const TABS=[
     {id:'historial',icon:'📋',lbl:'HISTORIAL'},
@@ -1070,7 +1048,7 @@ function App(){
       )}
 
       {/* Pedido entrante */}
-      {pe && <PedidoEntrante pedido={pe} onAceptar={aceptarPE} onRechazar={()=>{setPe(null);toast('Pedido rechazado');}}/>}
+      {pe && <PedidoEntrante pedido={pe} onAceptar={aceptarPE} onRechazar={()=>{if(pe?._asigId) sb.from('asignaciones_pendientes').update({estatus:'RECHAZADO',respondido_at:new Date().toISOString()}).eq('id',pe._asigId);setPe(null);toast('Pedido rechazado');}}/>}
 
       {/* Header */}
       <div style={{background:'#1A1A1A',borderBottom:'1px solid #333',padding:'10px 14px',display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:34,zIndex:40}}>
@@ -1132,7 +1110,7 @@ function App(){
         {tab==='depositos'&&(
           <div>
             <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.07em',padding:'14px 14px 8px'}}>Mis Depósitos</div>
-            <DepForm onEnviar={depNuevo} onConfirm={setSheet}/>
+            <TabDepositos delivery={delivery} depositos={depositos} setDepositos={setDepositos} onConfirm={setSheet} toast={toast}/>
             <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.07em',padding:'8px 14px'}}>Historial</div>
             {depositos.map(d=>{
               const cc={PENDIENTE:['#F59E0B','rgba(245,158,11,.15)'],APROBADO:['#22C55E','rgba(34,197,94,.15)'],RECHAZADO:['#EF4444','rgba(239,68,68,.15)']};
