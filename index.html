@@ -813,6 +813,8 @@ function TabDepositos({delivery, depositos, setDepositos, onConfirm, toast}){
 
 // ─── APP PRINCIPAL ─────────────────────────────────────────
 function App(){
+  const [authed,setAuthed]=useState(false);
+  const [delivery,setDelivery]=useState(null);
   const [tab,setTab]=useState('asignados');
   const [pedidos,setPedidos]=useState([]);
   const [historial,setHistorial]=useState([]);
@@ -823,9 +825,13 @@ function App(){
   const [pe,setPe]=useState(null);
   const [sideOpen,setSideOpen]=useState(false);
   const [detalle,setDetalle]=useState(null);
-  const [sheet,setSheet]=useState(null); // BottomSheet
+  const [sheet,setSheet]=useState(null);
   const [toastMsg,setToastMsg]=useState('');
   const [ahora,setAhora]=useState(Date.now());
+  const [chatUnread,setChatUnread]=useState(0);
+  const gpsRef=useRef(null);
+  const rtRef=useRef(null);
+  const _registrando=useRef(false);
   useEffect(()=>{ const t=setInterval(()=>setAhora(Date.now()),1000); return()=>clearInterval(t); },[]);
 
   // ── INIT: verificar sesión ────────────────────────────────
