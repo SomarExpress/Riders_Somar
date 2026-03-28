@@ -1060,11 +1060,12 @@ function App(){
 
   const avanzarReal=async(pid,est,facData=null)=>{
     const eb=ESIG[est];if(!eb)return;
+    const ahora=new Date().toISOString();
     const campos={estatus:eb.sig};
-    if(eb.sig==='EN_ESTABLECIMIENTO') campos.hora_en_establecimiento=new Date().toISOString();
-    if(eb.sig==='PEDIDO_EN_CAMINO')   campos.hora_en_camino=new Date().toISOString();
-    if(eb.sig==='ENTREGANDO')         campos.hora_llegada=new Date().toISOString();
-    if(eb.sig==='FINALIZADO')         campos.hora_finalizado=new Date().toISOString();
+    if(eb.sig==='EN_ESTABLECIMIENTO') campos.hora_en_establecimiento=ahora;
+    if(eb.sig==='PEDIDO_EN_CAMINO')   campos.hora_en_camino=ahora;
+    if(eb.sig==='ENTREGANDO')         campos.hora_llegada=ahora;
+    if(eb.sig==='FINALIZADO')         campos.hora_finalizado=ahora;
     if(facData?.facMonto)             campos.monto_pagado_en_comercio=facData.facMonto;
     if(facData?.facFile){
       const {data:{session}}=await sb.auth.getSession();
@@ -1096,15 +1097,32 @@ function App(){
 
   const aceptarPE=async()=>{
     if(!pe)return;
-    const res=await fetch(EDGE_URL+'/aceptar-pedido',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPA_ANON},body:JSON.stringify({pedido_id:pe.id,asignacion_id:pe._asigId,delivery_id:delivery.id})});
-    const data=await res.json().catch(()=>({}));
-    if(data.success){toast('✅ Pedido aceptado');cargarDatos(delivery.id);}
-    else toast('⚠️ '+(data.error||'Error'));
+    detenerAlarma();
+    const horaAceptado=new Date().toISOString();
+    // Actualizar pedido: ACEPTADO + hora_aceptado
+    const {error:updErr}=await sb.from('pedidos')
+      .update({estatus:'ACEPTADO',hora_aceptado:horaAceptado})
+      .eq('id',pe.id)
+      .eq('delivery_id',delivery.id);
+    if(updErr){toast('⚠️ Error al aceptar: '+updErr.message);setPe(null);return;}
+    // Marcar asignación como aceptada
+    if(pe._asigId) await sb.from('asignaciones_pendientes')
+      .update({estatus:'ACEPTADO',respondido_at:horaAceptado})
+      .eq('id',pe._asigId);
+    toast('✅ Pedido aceptado');
+    cargarDatos(delivery.id);
     setPe(null);
   };
 
   const rechazarPE=async()=>{
-    if(pe?._asigId) await sb.from('asignaciones_pendientes').update({estatus:'RECHAZADO',respondido_at:new Date().toISOString()}).eq('id',pe._asigId);
+    detenerAlarma();
+    if(pe?._asigId) await sb.from('asignaciones_pendientes')
+      .update({estatus:'RECHAZADO',respondido_at:new Date().toISOString()})
+      .eq('id',pe._asigId);
+    if(pe?.id) await sb.from('pedidos')
+      .update({estatus:'PENDIENTE',delivery_id:null})
+      .eq('id',pe.id)
+      .eq('delivery_id',delivery.id);
     setPe(null);toast('Pedido rechazado');
   };
 
