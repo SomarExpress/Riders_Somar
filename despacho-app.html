@@ -1698,11 +1698,17 @@ async function guardarPedido() {
   const prop  = S.stepVals['sv-propina'] || 0;
   const total = prod + envio + prop;
   const ingDelivery = parseFloat((envio * 0.7).toFixed(2));
+  // Calcular multiplicador de tarifa dinámica
+  const tarifaModos = { NORMAL:1, LLUVIA:1.2, HORA_PICO:1.3, NOCTURNO:1.15 };
+  const tarifaDinVal = document.getElementById('f-tarifa-din')?.value || 'NORMAL';
+  const tarifaMod = tarifaModos[tarifaDinVal] || 1;
+
   const nuevoPed = {
-    canal:                   'DESPACHO',
+    canal:                   'WHATSAPP',
     tipo:                    S.tipoPedido,
     nombre_comercio:         document.getElementById('f-comercio')?.value || null,
     ciudad_destino:          document.getElementById('f-ciudad')?.value || 'CHOLOMA',
+    ciudad_origen:           document.getElementById('f-ciudad')?.value || 'CHOLOMA',
     nombre_destinatario:     cli,
     telefono_destinatario:   document.getElementById('f-cli-tel')?.value || null,
     nombre_cliente:          cli,
@@ -1711,13 +1717,13 @@ async function guardarPedido() {
     ubicacion_recogida_gps:  document.getElementById('f-gps-rec')?.value || null,
     datos_encargo:           document.getElementById('f-encargado')?.value || null,
     ya_encargado:            !!document.getElementById('f-encargado')?.value,
-    monto_pagado_en_comercio:parseFloat(document.getElementById('f-monto-estab')?.value || 0),
+    monto_pagado_en_comercio:parseFloat(document.getElementById('f-monto-estab')?.value || 0) || null,
     descripcion_paquete:     document.getElementById('f-descripcion')?.value || null,
     direccion_entrega:       document.getElementById('f-dir-ent')?.value || null,
     ubicacion_entrega_gps:   gpsEnt || null,
     observaciones:           document.getElementById('f-obs')?.value || null,
     metodo_pago:             S.metodoPago,
-    tarifa_dinamica:         document.getElementById('f-tarifa-din')?.value || 'NORMAL',
+    tarifa_dinamica:         tarifaMod,
     subtotal:                prod,
     tarifa_envio:            envio,
     propina:                 prop,
@@ -1728,7 +1734,8 @@ async function guardarPedido() {
     estatus:                 'PENDIENTE',
     quien_paga:              document.getElementById('f-quien-paga')?.value || 'DESTINATARIO',
     recibira_efectivo:       parseFloat(document.getElementById('f-paga-con')?.value || 0) > 0,
-    monto_recibido_efectivo: parseFloat(document.getElementById('f-paga-con')?.value || 0),
+    monto_recibido_efectivo: parseFloat(document.getElementById('f-paga-con')?.value || 0) || null,
+    agente:                  'DESPACHO',
   };
   const { data, error } = await sb.from('pedidos').insert(nuevoPed).select().single();
   btn.textContent = '💾 Guardar Pedido'; btn.disabled = false;
