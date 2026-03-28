@@ -822,9 +822,9 @@ function onPedidoChange(payload) {
 async function cargarMetricas() {
   const hoy = new Date().toISOString().split('T')[0];
   const { data } = await sb.from('pedidos')
-    .select('id,estatus,tarifa_envio,ingreso_delivery,no_orden,nombre_comercio,ciudad_destino,tipo,metodo_pago,delivery_id,creado_at,nombre_destinatario')
-    .gte('creado_at', hoy + 'T00:00:00')
-    .order('creado_at', { ascending: false });
+    .select('*')
+    .gte('created_at', hoy + 'T00:00:00')
+    .order('created_at', { ascending: false });
   if(!data) return;
   S.pedidos = data;
   const total = data.length;
@@ -833,6 +833,7 @@ async function cargarMetricas() {
   const sa    = data.filter(p => ['SIN_ASIGNAR','PENDIENTE'].includes(p.estatus)).length;
   const ing   = data.filter(p => p.estatus === 'FINALIZADO').reduce((s,p) => s + parseFloat(p.tarifa_envio||0), 0);
   const drv   = data.filter(p => p.estatus === 'FINALIZADO').reduce((s,p) => s + parseFloat(p.ingreso_delivery||0), 0);
+  const somar = data.filter(p => p.estatus === 'FINALIZADO').reduce((s,p) => s + parseFloat(p.ingreso_somar||0), 0);
   document.getElementById('m-total').textContent = total;
   document.getElementById('m-fin').textContent   = fin;
   document.getElementById('m-proc').textContent  = proc;
@@ -841,7 +842,7 @@ async function cargarMetricas() {
   document.getElementById('m-fsub').textContent  = total > 0 ? `${Math.round(fin/total*100)}% tasa éxito` : '—';
   document.getElementById('fin-ing').textContent    = `L. ${ing.toFixed(2)}`;
   document.getElementById('fin-drv').textContent    = `- L. ${drv.toFixed(2)}`;
-  document.getElementById('fin-margen').textContent = `L. ${(ing - drv).toFixed(2)}`;
+  document.getElementById('fin-margen').textContent = `L. ${somar.toFixed(2)}`;
   document.getElementById('badge-activos').textContent = proc + sa;
   renderListaActivos();
 }
@@ -1142,7 +1143,7 @@ async function cargarDepositos(estatus='PENDIENTE') {
   const { data } = await sb.from('depositos_delivery')
     .select('*, delivery:delivery_id(nombre, saldo_billetera)')
     .eq('estatus', estatus)
-    .order('creado_at', { ascending: false });
+    .order('created_at', { ascending: false });
   const el = document.getElementById('dep-lista');
   if(!data?.length) { el.innerHTML = '<div class="empty">Sin depósitos</div>'; return; }
   if(estatus === 'PENDIENTE') document.getElementById('badge-dep').textContent = data.length;
@@ -1153,7 +1154,7 @@ async function cargarDepositos(estatus='PENDIENTE') {
         <div class="ch-av" style="border:2px solid var(--or)">${inic(d.delivery?.nombre||'?')}</div>
         <div style="flex:1">
           <div style="font-size:14px;font-weight:700">${d.delivery?.nombre||'—'}</div>
-          <div style="font-size:11px;color:var(--td)">${fmtFecha(d.creado_at)}</div>
+          <div style="font-size:11px;color:var(--td)">${fmtFecha(d.created_at)}</div>
         </div>
         <div class="dep-monto">L. ${parseFloat(d.monto).toFixed(2)}</div>
       </div>
@@ -1204,10 +1205,10 @@ async function cargarHistorial() {
   const hasta = document.getElementById('hist-hasta').value;
   if(!desde || !hasta) return;
   const { data } = await sb.from('pedidos')
-    .select('id,no_orden,nombre_comercio,nombre_destinatario,estatus,tarifa_envio,ingreso_delivery,metodo_pago,tipo,creado_at,ciudad_destino')
-    .gte('creado_at', desde + 'T00:00:00')
-    .lte('creado_at', hasta + 'T23:59:59')
-    .order('creado_at', { ascending: false });
+    .select('*')
+    .gte('created_at', desde + 'T00:00:00')
+    .lte('created_at', hasta + 'T23:59:59')
+    .order('created_at', { ascending: false });
   if(!data?.length) { document.getElementById('hist-content').innerHTML = '<div class="empty">Sin pedidos en ese rango</div>'; return; }
   const fin = data.filter(p => p.estatus === 'FINALIZADO');
   const ing = fin.reduce((s,p) => s + parseFloat(p.tarifa_envio||0), 0);
@@ -1218,7 +1219,7 @@ async function cargarHistorial() {
 function renderHistorial(peds) {
   const grupos = {};
   peds.forEach(p => {
-    const d = new Date(p.creado_at);
+    const d = new Date(p.created_at);
     const y = d.getFullYear(), m = d.getMonth(), w = getWeek(d);
     if(!grupos[y]) grupos[y] = {};
     if(!grupos[y][m]) grupos[y][m] = {};
@@ -1255,7 +1256,7 @@ function renderHistorial(peds) {
               <td>${chipEst(p.estatus)}</td>
               <td style="font-size:11px">${p.metodo_pago||'—'}</td>
               <td class="mono" style="color:var(--or)">L.${parseFloat(p.tarifa_envio||0).toFixed(0)}</td>
-              <td class="mono" style="font-size:10px;color:var(--td)">${fmtFecha(p.creado_at)}</td>
+              <td class="mono" style="font-size:10px;color:var(--td)">${fmtFecha(p.created_at)}</td>
             </tr>`).join('')}
             </tbody></table>
           </div>
@@ -1454,29 +1455,34 @@ async function guardarPedido() {
   const total = prod + envio + prop;
   const ingDelivery = parseFloat((envio * 0.7).toFixed(2));
   const nuevoPed = {
-    origen:             'DESPACHO',
-    tipo:               S.tipoPedido,
-    nombre_comercio:    document.getElementById('f-comercio')?.value || null,
-    ciudad_destino:     document.getElementById('f-ciudad')?.value || 'CHOLOMA',
-    nombre_destinatario:cli,
-    telefono_destinatario: document.getElementById('f-cli-tel')?.value || null,
-    direccion_recogida: document.getElementById('f-dir-rec')?.value || null,
-    ubicacion_comercio: document.getElementById('f-gps-rec')?.value || null,
-    datos_encargo:      document.getElementById('f-encargado')?.value || null,
-    monto_cobrar:       parseFloat(document.getElementById('f-monto-estab')?.value || 0),
-    descripcion_paquete:document.getElementById('f-descripcion')?.value || null,
-    direccion_entrega:  document.getElementById('f-dir-ent')?.value || null,
-    ubicacion_entrega_gps: gpsEnt || null,
-    observaciones:      document.getElementById('f-obs')?.value || null,
-    metodo_pago:        S.metodoPago,
-    tarifa_dinamica:    document.getElementById('f-tarifa-din')?.value || 'NORMAL',
-    total_productos:    prod,
-    tarifa_envio:       envio,
-    propina:            prop,
-    monto_cobrar:       total,
-    ingreso_delivery:   ingDelivery,
-    estatus:            'PENDIENTE',
-    monto_pagado_con:   parseFloat(document.getElementById('f-paga-con')?.value || 0),
+    canal:                   'DESPACHO',
+    tipo:                    S.tipoPedido,
+    nombre_comercio:         document.getElementById('f-comercio')?.value || null,
+    ciudad_destino:          document.getElementById('f-ciudad')?.value || 'CHOLOMA',
+    nombre_destinatario:     cli,
+    telefono_destinatario:   document.getElementById('f-cli-tel')?.value || null,
+    nombre_cliente:          cli,
+    celular_cliente:         document.getElementById('f-cli-tel')?.value || null,
+    direccion_recogida:      document.getElementById('f-dir-rec')?.value || null,
+    ubicacion_recogida_gps:  document.getElementById('f-gps-rec')?.value || null,
+    datos_encargo:           document.getElementById('f-encargado')?.value || null,
+    ya_encargado:            !!document.getElementById('f-encargado')?.value,
+    monto_pagado_en_comercio:parseFloat(document.getElementById('f-monto-estab')?.value || 0),
+    descripcion_paquete:     document.getElementById('f-descripcion')?.value || null,
+    direccion_entrega:       document.getElementById('f-dir-ent')?.value || null,
+    ubicacion_entrega_gps:   gpsEnt || null,
+    observaciones:           document.getElementById('f-obs')?.value || null,
+    metodo_pago:             S.metodoPago,
+    tarifa_dinamica:         document.getElementById('f-tarifa-din')?.value || 'NORMAL',
+    subtotal:                prod,
+    tarifa_envio:            envio,
+    propina:                 prop,
+    total:                   total,
+    monto_cobrar:            total,
+    ingreso_delivery:        ingDelivery,
+    ingreso_somar:           parseFloat((envio * 0.3).toFixed(2)),
+    estatus:                 'PENDIENTE',
+    quien_paga:              parseFloat(document.getElementById('f-paga-con')?.value || 0),
   };
   const { data, error } = await sb.from('pedidos').insert(nuevoPed).select().single();
   btn.textContent = '💾 Guardar Pedido'; btn.disabled = false;
@@ -1507,7 +1513,7 @@ async function buscarCliente(q) {
 }
 
 async function cargarComerciosDL() {
-  const { data } = await sb.from('comercios').select('nombre').limit(80).catch(()=>({data:[]}));
+  const { data } = await sb.from('comercios').select('nombre').limit(80);
   const dl = document.getElementById('com-list');
   if(dl && data) dl.innerHTML = data.map(c => `<option value="${c.nombre}">`).join('');
 }
