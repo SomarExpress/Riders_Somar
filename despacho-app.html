@@ -784,8 +784,15 @@ function initRealtime() {
       }
       cargarDepositos(S.pedFiltro === 'depositos' ? S.solFiltro : 'PENDIENTE');
     })
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'ubicaciones_delivery' }, p => {
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'ubicaciones_delivery' }, p => {
       actualizarMarker(p.new);
+      // Actualizar en_turno en estado local
+      const idx = S.riders.findIndex(r => r.id === p.new?.delivery_id);
+      if(idx >= 0) {
+        S.riders[idx].en_turno = p.new?.en_turno ?? false;
+        renderRidersMini();
+        if(document.getElementById('view-riders').classList.contains('active')) renderRidersGrid();
+      }
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'aplicaciones_delivery' }, p => {
       if(p.eventType === 'INSERT') { badgeInc('badge-sol'); notif('🏍 Nueva solicitud de rider', p.new.nombre, false); }
@@ -1024,7 +1031,11 @@ async function cargarRiders() {
     .select('*, ubicaciones_delivery(en_turno, lat, lng)')
     .order('nombre');
   if(data) {
-    S.riders = data.map(d => ({ ...d, en_turno: d.ubicaciones_delivery?.[0]?.en_turno || false }));
+    S.riders = data.map(d => ({
+      ...d,
+      // en_turno: from ubicaciones if exists, else from delivery.turno column
+      en_turno: d.ubicaciones_delivery?.[0]?.en_turno ?? d.turno ?? false
+    }));
     renderRidersMini();
     renderRidersGrid();
   }
@@ -1150,20 +1161,21 @@ function filtSol(btn, estatus) {
 // DEPÓSITOS
 // ════════════════════════════════════════════════════════════
 async function cargarDepositos(estatus='PENDIENTE') {
-  const { data } = await sb.from('depositos_delivery')
-    .select('*, delivery:delivery_id(nombre, saldo_billetera)')
+  const { data, error: depErr } = await sb.from('depositos_delivery')
+    .select('*, delivery(nombre, saldo_billetera)')
     .eq('estatus', estatus)
     .order('created_at', { ascending: false });
+  if(depErr) { console.error('depositos error:', depErr.message); }
   const el = document.getElementById('dep-lista');
   if(!data?.length) { el.innerHTML = '<div class="empty">Sin depósitos</div>'; return; }
   if(estatus === 'PENDIENTE') document.getElementById('badge-dep').textContent = data.length;
   el.innerHTML = data.map(d => {
-    const saldoActual = parseFloat(d.delivery?.saldo_billetera || 0);
+    const saldoActual = parseFloat((d.delivery?.saldo_billetera ?? d.delivery?.[0]?.saldo_billetera ?? 0));
     return `<div class="dep-card">
       <div class="dep-hdr">
-        <div class="ch-av" style="border:2px solid var(--or)">${inic(d.delivery?.nombre||'?')}</div>
+        <div class="ch-av" style="border:2px solid var(--or)">${inic((d.delivery?.nombre || d.delivery?.[0]?.nombre || '?'))}</div>
         <div style="flex:1">
-          <div style="font-size:14px;font-weight:700">${d.delivery?.nombre||'—'}</div>
+          <div style="font-size:14px;font-weight:700">${(d.delivery?.nombre || d.delivery?.[0]?.nombre || '—')}</div>
           <div style="font-size:11px;color:var(--td)">${fmtFecha(d.created_at)}</div>
         </div>
         <div class="dep-monto">L. ${parseFloat(d.monto).toFixed(2)}</div>
