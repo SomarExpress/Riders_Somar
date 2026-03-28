@@ -35,6 +35,71 @@
 <script type="text/babel">
 const { useState, useEffect, useRef, useCallback } = React;
 
+// ════════════════════════════════════════════════════════════
+// AUDIO + VIBRACIÓN (Delivery)
+// ════════════════════════════════════════════════════════════
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let _actx = null;
+function getACtx() {
+  if(!_actx) _actx = new AudioCtx();
+  if(_actx.state === 'suspended') _actx.resume();
+  return _actx;
+}
+document.addEventListener('click', () => { try { getACtx(); } catch(e){} }, { once: true });
+document.addEventListener('touchstart', () => { try { getACtx(); } catch(e){} }, { once: true });
+
+function beep(freq=880, dur=0.15, vol=0.4, type='sine') {
+  try {
+    const ctx = getACtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = type; osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(vol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + dur);
+  } catch(e) { console.warn('[audio]', e); }
+}
+function vibrar(patron) { if('vibrate' in navigator) navigator.vibrate(patron); }
+
+// Pedido entrante — alarma urgente repetida
+let _alarmInterval = null;
+function iniciarAlarma() {
+  detenerAlarma();
+  const tocar = () => {
+    beep(880, 0.12, 0.7, 'square');
+    setTimeout(() => beep(1100, 0.12, 0.7, 'square'), 150);
+    setTimeout(() => beep(880, 0.12, 0.7, 'square'), 300);
+    vibrar([300, 100, 300, 100, 300]);
+  };
+  tocar();
+  _alarmInterval = setInterval(tocar, 1200);
+}
+function detenerAlarma() {
+  if(_alarmInterval) { clearInterval(_alarmInterval); _alarmInterval = null; }
+}
+function sonarEstadoAvanzado() {
+  // Beep positivo — avanzó un estado
+  beep(660, 0.1, 0.4, 'sine');
+  setTimeout(() => beep(880, 0.15, 0.4, 'sine'), 100);
+  vibrar([100, 50, 200]);
+}
+function sonarFinalizado() {
+  // Acorde de éxito
+  beep(523, 0.1, 0.4, 'sine');
+  setTimeout(() => beep(659, 0.1, 0.4, 'sine'), 100);
+  setTimeout(() => beep(784, 0.1, 0.4, 'sine'), 200);
+  setTimeout(() => beep(1047, 0.25, 0.5, 'sine'), 300);
+  vibrar([100, 50, 100, 50, 400]);
+}
+function sonarMensaje() {
+  beep(1100, 0.08, 0.3, 'sine');
+  setTimeout(() => beep(880, 0.12, 0.3, 'sine'), 100);
+  vibrar([80, 40, 80]);
+}
+
+
+
 // ─── CONFIG PRODUCCIÓN ───────────────────────────────────
 const SUPA_URL  = 'https://jjrmzouigcmeztkybrvp.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqcm16b3VpZ2NtZXp0a3licnZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MzExNDgsImV4cCI6MjA4ODUwNzE0OH0.tNUHxGWMWh7Q6v4mH3y5gOxpczpEJHwNqwH2TehL61I';
@@ -1012,7 +1077,7 @@ function App(){
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'asignaciones_pendientes',filter:'delivery_id=eq.'+delId},async p=>{
         if(p.new.estatus!=='ENVIADO')return;
         const {data:ped}=await sb.from('pedidos').select('*').eq('id',p.new.pedido_id).single();
-        if(ped){setPe({...ped,_asigId:p.new.id});notifLocal('🔔 Nuevo Pedido',(ped.nombre_comercio||'—')+' · '+(ped.ciudad_destino||''));}
+        if(ped){setPe({...ped,_asigId:p.new.id});notifLocal('🔔 Nuevo Pedido',(ped.nombre_comercio||'—')+' · '+(ped.ciudad_destino||''));iniciarAlarma();}
       })
       .on('postgres_changes',{event:'UPDATE',schema:'public',table:'pedidos',filter:'delivery_id=eq.'+delId},()=>cargarDatos(delId))
       .on('postgres_changes',{event:'UPDATE',schema:'public',table:'delivery',filter:'id=eq.'+delId},p=>{if(p.new.saldo_billetera!==undefined)setSaldo(parseFloat(p.new.saldo_billetera)||0);})
@@ -1021,6 +1086,7 @@ function App(){
         if(p.new.remitente==='DESPACHO'){
           setChatUnread(n=>n+1);
           notifLocal('💬 Despacho',p.new.mensaje);
+          sonarMensaje();
         }
       })
       .subscribe();
@@ -1043,8 +1109,8 @@ function App(){
     }
     const {error}=await sb.from('pedidos').update(campos).eq('id',pid).eq('delivery_id',delivery.id);
     if(error){toast('❌ '+error.message);return;}
-    if(eb.sig==='FINALIZADO'){setDetalle(null);toast('✅ ¡Pedido finalizado!');}
-    else toast('✅ Estado actualizado');
+    if(eb.sig==='FINALIZADO'){setDetalle(null);toast('✅ ¡Pedido finalizado!');sonarFinalizado();}
+    else{toast('✅ Estado actualizado');sonarEstadoAvanzado();}
     cargarDatos(delivery.id);
   };
 
@@ -1064,6 +1130,7 @@ function App(){
 
   const aceptarPE=async()=>{
     if(!pe)return;
+    detenerAlarma();
     const res=await fetch(EDGE_URL+'/aceptar-pedido',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPA_ANON},body:JSON.stringify({pedido_id:pe.id,asignacion_id:pe._asigId,delivery_id:delivery.id})});
     const data=await res.json().catch(()=>({}));
     if(data.success){toast('✅ Pedido aceptado');cargarDatos(delivery.id);}
@@ -1072,6 +1139,7 @@ function App(){
   };
 
   const rechazarPE=async()=>{
+    detenerAlarma();
     if(pe?._asigId) await sb.from('asignaciones_pendientes').update({estatus:'RECHAZADO',respondido_at:new Date().toISOString()}).eq('id',pe._asigId);
     setPe(null);toast('Pedido rechazado');
   };
