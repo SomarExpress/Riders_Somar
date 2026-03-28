@@ -290,7 +290,7 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
       <div class="nav-lbl">Gestión</div>
       <div class="nav-item" onclick="nav('riders')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></svg>
-        Repartidores
+        Riders
       </div>
       <div class="nav-item" onclick="nav('solicitudes')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
@@ -600,14 +600,19 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
         <div id="map-live"></div>
       </div>
 
-      <!-- ═══ REPARTIDORES ═════════════════════════════════════ -->
-      <div class="view" id="view-riders">
-        <div class="filter-bar">
-          <button class="fbtn active" onclick="filtRiders(this,'todos')">Todos</button>
-          <button class="fbtn" onclick="filtRiders(this,'online')">En Línea</button>
-          <button class="fbtn" onclick="filtRiders(this,'offline')">Desconectados</button>
+      <!-- ═══ RIDERS ═══════════════════════════════════════════ -->
+      <div class="view" id="view-riders" style="display:flex;flex-direction:column;height:100%;overflow:hidden;padding:0;">
+        <!-- Mapa riders -->
+        <div id="map-riders" style="flex:0 0 340px;width:100%;z-index:1;"></div>
+        <!-- Lista + filtros -->
+        <div style="flex:1;overflow-y:auto;padding:12px;">
+          <div class="filter-bar" style="margin-bottom:10px;">
+            <button class="fbtn active" onclick="filtRiders(this,'todos')">Todos</button>
+            <button class="fbtn" onclick="filtRiders(this,'online')">En Línea</button>
+            <button class="fbtn" onclick="filtRiders(this,'offline')">Desconectados</button>
+          </div>
+          <div class="drv-grid" id="riders-grid"><div class="empty" style="grid-column:1/-1">Cargando...</div></div>
         </div>
-        <div class="drv-grid" id="riders-grid"><div class="empty" style="grid-column:1/-1">Cargando...</div></div>
       </div>
 
       <!-- ═══ SOLICITUDES DE RIDERS ═══════════════════════════ -->
@@ -702,30 +707,46 @@ const S = {
   pedidos: [], riders: [], depositos: [], solFiltro: 'PENDIENTE',
   pedFiltro: 'todos', selRiderId: null, selPedidoId: null,
   mapInit: false, map: null, markers: {},
+  mapRidersInit: false, mapRiders: null, markersRiders: {},
   chatRiderId: null, chatSub: null,
   tipoPedido: 'MANDADO', metodoPago: 'EFECTIVO', pagarEstab: false,
   stepVals: { 'sv-prod': 0, 'sv-envio': 50, 'sv-propina': 0 },
 };
 
 // ════════════════════════════════════════════════════════════
-// AUDIO + VIBRACIÓN (Despacho)
+// AUDIO + VIBRACIÓN (Despacho) — compatible Android/iOS/PC
 // ════════════════════════════════════════════════════════════
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
 let _actx = null;
+let _audioDesbloqueado = false;
 
 function getACtx() {
-  if(!_actx) _actx = new AudioCtx();
-  if(_actx.state === 'suspended') _actx.resume();
+  if(!_actx && AudioCtx) _actx = new AudioCtx();
+  if(_actx && _actx.state === 'suspended') _actx.resume();
   return _actx;
 }
 
-// Desbloquear AudioContext en primer click/tap del usuario
-document.addEventListener('click', () => { try { getACtx(); } catch(e){} }, { once: true });
-document.addEventListener('touchstart', () => { try { getACtx(); } catch(e){} }, { once: true });
-
-function beep(freq=880, dur=0.15, vol=0.4, type='sine') {
+function desbloquearAudio() {
+  if(_audioDesbloqueado) return;
   try {
     const ctx = getACtx();
+    if(ctx) {
+      const buf = ctx.createBuffer(1,1,22050);
+      const src = ctx.createBufferSource();
+      src.buffer=buf; src.connect(ctx.destination); src.start(0);
+      _audioDesbloqueado = true;
+    }
+  } catch(e) {}
+}
+['click','touchstart','touchend','keydown'].forEach(ev =>
+  document.addEventListener(ev, desbloquearAudio, { once:false, passive:true })
+);
+
+function beep(freq=880, dur=0.15, vol=0.5, type='sine') {
+  try {
+    const ctx = getACtx();
+    if(!ctx) return;
+    if(ctx.state === 'suspended') ctx.resume();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain); gain.connect(ctx.destination);
@@ -735,41 +756,39 @@ function beep(freq=880, dur=0.15, vol=0.4, type='sine') {
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
     osc.start(ctx.currentTime);
     osc.stop(ctx.currentTime + dur);
-  } catch(e) { console.warn('[audio]', e); }
+  } catch(e) { console.warn('[audio]', e.message); }
 }
 
 function vibrar(patron) {
-  if('vibrate' in navigator) navigator.vibrate(patron);
+  try { if('vibrate' in navigator) navigator.vibrate(patron); } catch(e) {}
 }
 
-// Sonidos específicos por evento
 function sonarPedidoNuevo() {
-  // 3 beeps urgentes - pedido sin asignar
-  beep(660, 0.12, 0.5, 'square');
-  setTimeout(() => beep(880, 0.12, 0.5, 'square'), 150);
-  setTimeout(() => beep(1100, 0.2, 0.6, 'square'), 300);
-  vibrar([200, 100, 200, 100, 400]);
+  beep(523, 0.1, 0.6, 'square');
+  setTimeout(() => beep(659, 0.1, 0.6, 'square'), 130);
+  setTimeout(() => beep(880, 0.1, 0.7, 'square'), 260);
+  setTimeout(() => beep(1046, 0.25, 0.7, 'square'), 390);
+  vibrar([200,100,200,100,400,100,400]);
 }
 
 function sonarMensajeChat() {
-  // 2 beeps suaves
-  beep(880, 0.1, 0.3, 'sine');
-  setTimeout(() => beep(1100, 0.15, 0.3, 'sine'), 130);
-  vibrar([100, 50, 100]);
+  beep(880, 0.08, 0.4, 'sine');
+  setTimeout(() => beep(1100, 0.15, 0.4, 'sine'), 110);
+  vibrar([80,50,80]);
 }
 
 function sonarDeposito() {
-  beep(660, 0.1, 0.3, 'triangle');
-  setTimeout(() => beep(880, 0.2, 0.3, 'triangle'), 120);
-  vibrar([150, 80, 150]);
+  beep(660, 0.1, 0.4, 'triangle');
+  setTimeout(() => beep(880, 0.18, 0.4, 'triangle'), 130);
+  vibrar([120,60,200]);
 }
 
 function sonarPedidoFinalizado() {
-  // Acorde ascendente - entrega completada
-  beep(523, 0.1, 0.3, 'sine');
-  setTimeout(() => beep(659, 0.1, 0.3, 'sine'), 100);
-  setTimeout(() => beep(784, 0.2, 0.3, 'sine'), 200);
-  vibrar([100, 50, 100, 50, 200]);
+  beep(523, 0.08, 0.4, 'sine');
+  setTimeout(() => beep(659, 0.08, 0.4, 'sine'), 90);
+  setTimeout(() => beep(784, 0.08, 0.4, 'sine'), 180);
+  setTimeout(() => beep(1047, 0.22, 0.5, 'sine'), 270);
+  vibrar([80,40,80,40,250]);
 }
 
 // ════════════════════════════════════════════════════════════
@@ -852,13 +871,16 @@ function initRealtime() {
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'ubicaciones_delivery' }, p => {
       actualizarMarker(p.new);
-      // Actualizar en_turno en estado local inmediatamente
       const dId = p.new?.delivery_id;
       const idx = S.riders.findIndex(r => r.id === dId);
       if(idx >= 0) {
         S.riders[idx].en_turno = p.new?.en_turno === true;
+        S.riders[idx]._ubi = p.new;
         renderRidersMini();
-        if(document.getElementById('view-riders').classList.contains('active')) renderRidersGrid();
+        if(document.getElementById('view-riders').classList.contains('active')) {
+          renderRidersGrid();
+          actualizarMarkersRiders();
+        }
         if(document.getElementById('view-inicio').classList.contains('active')) renderListaActivos();
       }
     })
@@ -1142,19 +1164,22 @@ function renderRidersGrid(filtro='todos') {
   let riders = S.riders;
   if(filtro === 'online')  riders = riders.filter(d => d.en_turno === true);
   if(filtro === 'offline') riders = riders.filter(d => d.en_turno !== true);
-  if(!riders.length) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1">No hay repartidores</div>'; return; }
+  if(!riders.length) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1">No hay riders</div>'; return; }
   grid.innerHTML = riders.map(d => {
     const act = S.pedidos.filter(p => p.delivery_id === d.id && FILTROS_ACTIVOS.includes(p.estatus)).length;
     const statCol = d.en_turno ? (act > 0 ? 'var(--or)' : 'var(--verde)') : 'var(--td)';
     const statTxt = d.en_turno ? (act > 0 ? '🟠 Ocupado' : '🟢 Disponible') : '⚫ Desconectado';
     const saldoColor = parseFloat(d.saldo_billetera||0) >= 100 ? 'var(--verde)' : 'var(--rojo)';
-    return `<div class="drv-card">
+    const ubi = d._ubi;
+    const tieneGps = ubi && !(parseFloat(ubi.lat)===0 && parseFloat(ubi.lng)===0);
+    return `<div class="drv-card" id="drv-card-${d.id}" onclick="enfocarRider(${d.id})" style="cursor:pointer;transition:border .15s;">
       <div class="drv-hdr">
         <div class="drv-av" style="border:2px solid ${statCol}">${inic(d.nombre)}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.nombre}</div>
           <div class="mono" style="font-size:10px;color:var(--td)">${d.celular||'—'}</div>
           <span style="font-size:10px;color:${statCol};font-weight:700">${statTxt}</span>
+          ${d.en_turno && !tieneGps ? '<span style="font-size:10px;color:var(--am);margin-left:6px">📍 GPS pendiente</span>' : ''}
         </div>
       </div>
       <div class="drv-stats">
@@ -1162,11 +1187,14 @@ function renderRidersGrid(filtro='todos') {
         <div class="drv-stat"><div class="drv-stat-val" style="color:${saldoColor};font-size:16px">L.${parseFloat(d.saldo_billetera||0).toFixed(0)}</div><div class="drv-stat-lbl">Saldo</div></div>
       </div>
       <div style="margin-top:10px;display:flex;gap:6px;">
-        <button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center" onclick="irChat(${d.id})">💬 Chat</button>
-        ${d.en_turno && act < 2 ? `<button class="btn btn-primary btn-sm" onclick="abrirAsignarRider(${d.id})">Asignar</button>` : ''}
+        ${d.en_turno ? `<button class="btn btn-ghost btn-sm" style="flex:0 0 auto" onclick="event.stopPropagation();enfocarRider(${d.id})">📍 Ver en mapa</button>` : ''}
+        <button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center" onclick="event.stopPropagation();irChat(${d.id})">💬 Chat</button>
+        ${d.en_turno && act < 2 ? `<button class="btn btn-primary btn-sm" onclick="event.stopPropagation();abrirAsignarRider(${d.id})">Asignar</button>` : ''}
       </div>
     </div>`;
   }).join('');
+  // Actualizar markers del mapa riders también
+  if(S.mapRidersInit) actualizarMarkersRiders();
 }
 
 function filtRiders(btn, f) {
@@ -1240,28 +1268,39 @@ function filtSol(btn, estatus) {
 // DEPÓSITOS
 // ════════════════════════════════════════════════════════════
 async function cargarDepositos(estatus='PENDIENTE') {
+  const el = document.getElementById('dep-lista');
+  el.innerHTML = '<div class="empty">Cargando...</div>';
+  // Query separada para evitar problemas de join con RLS
   const { data, error: depErr } = await sb.from('depositos_delivery')
-    .select('*, delivery(nombre, saldo_billetera)')
+    .select('*')
     .eq('estatus', estatus)
     .order('created_at', { ascending: false });
-  if(depErr) { console.error('depositos error:', depErr.message); }
-  const el = document.getElementById('dep-lista');
-  if(!data?.length) { el.innerHTML = '<div class="empty">Sin depósitos</div>'; return; }
+  if(depErr) { console.error('depositos error:', depErr.message); el.innerHTML = '<div class="empty">Error al cargar</div>'; return; }
+  if(!data?.length) { el.innerHTML = '<div class="empty">Sin depósitos ' + estatus.toLowerCase() + 's</div>'; return; }
   if(estatus === 'PENDIENTE') document.getElementById('badge-dep').textContent = data.length;
+  // Obtener info de riders por separado
+  const riderIds = [...new Set(data.map(d => d.delivery_id).filter(Boolean))];
+  let ridersMap = {};
+  if(riderIds.length) {
+    const { data: rds } = await sb.from('delivery').select('id,nombre,saldo_billetera').in('id', riderIds);
+    rds?.forEach(r => ridersMap[r.id] = r);
+  }
   el.innerHTML = data.map(d => {
-    const saldoActual = parseFloat((d.delivery?.saldo_billetera ?? d.delivery?.[0]?.saldo_billetera ?? 0));
+    const rider = ridersMap[d.delivery_id] || {};
+    const nombre = rider.nombre || '—';
+    const saldoActual = parseFloat(rider.saldo_billetera || 0);
     return `<div class="dep-card">
       <div class="dep-hdr">
-        <div class="ch-av" style="border:2px solid var(--or)">${inic((d.delivery?.nombre || d.delivery?.[0]?.nombre || '?'))}</div>
+        <div class="ch-av" style="border:2px solid var(--or)">${inic(nombre)}</div>
         <div style="flex:1">
-          <div style="font-size:14px;font-weight:700">${(d.delivery?.nombre || d.delivery?.[0]?.nombre || '—')}</div>
+          <div style="font-size:14px;font-weight:700">${nombre}</div>
           <div style="font-size:11px;color:var(--td)">${fmtFecha(d.created_at)}</div>
         </div>
         <div class="dep-monto">L. ${parseFloat(d.monto).toFixed(2)}</div>
       </div>
       ${d.foto_url
         ? `<div class="dep-img" onclick="window.open('${d.foto_url}','_blank')" style="background-image:url(${d.foto_url})"><div class="dep-img-overlay">📷 Ver comprobante ↗</div></div>`
-        : `<div class="dep-img">📷 Sin comprobante</div>`}
+        : `<div class="dep-img" style="display:flex;align-items:center;justify-content:center;color:var(--td);font-size:13px;">📷 Sin comprobante</div>`}
       <div class="dep-footer">
         <div style="font-size:12px;color:var(--td);margin-right:auto">
           Saldo actual: <span class="mono" style="color:var(--rojo)">L.${saldoActual.toFixed(2)}</span>
@@ -1444,6 +1483,77 @@ async function enviarMsg() {
 function irChat(dId) {
   nav('chat');
   setTimeout(() => selChat(dId), 100);
+}
+
+
+// ════════════════════════════════════════════════════════════
+// MAPA RIDERS (vista Riders)
+// ════════════════════════════════════════════════════════════
+function initMapRiders() {
+  const el = document.getElementById('map-riders');
+  if(!el || S.mapRidersInit) return;
+  S.mapRidersInit = true;
+  const map = L.map('map-riders', { zoomControl: true }).setView([15.6133, -87.9480], 13);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution:'© CartoDB', maxZoom:19 }).addTo(map);
+  S.mapRiders = map;
+  actualizarMarkersRiders();
+}
+
+function actualizarMarkersRiders() {
+  if(!S.mapRiders) return;
+  // Limpiar markers que ya no deben estar
+  Object.keys(S.markersRiders).forEach(dId => {
+    const r = S.riders.find(x => x.id === parseInt(dId));
+    if(!r || !r.en_turno) {
+      S.mapRiders.removeLayer(S.markersRiders[dId]);
+      delete S.markersRiders[dId];
+    }
+  });
+  S.riders.forEach(d => {
+    if(!d.en_turno) return;
+    const ubi = d._ubi;
+    const sinGps = !ubi || (parseFloat(ubi.lat)===0 && parseFloat(ubi.lng)===0);
+    const lat = sinGps ? 15.6133 : parseFloat(ubi.lat);
+    const lng = sinGps ? -87.9480 : parseFloat(ubi.lng);
+    const act = S.pedidos.filter(p => p.delivery_id === d.id && FILTROS_ACTIVOS.includes(p.estatus)).length;
+    const color = sinGps ? '#555' : (act > 0 ? '#FF8C00' : '#22c55e');
+    const label = inic(d.nombre);
+    const icon = L.divIcon({
+      html: `<div style="width:36px;height:36px;border-radius:50%;background:${color};border:${sinGps?'2px dashed #888':'3px solid #fff'};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:${sinGps?'#aaa':'#000'};box-shadow:0 2px 8px rgba(0,0,0,.5)">${label}</div>`,
+      iconSize:[36,36], iconAnchor:[18,18], className:''
+    });
+    if(S.markersRiders[d.id]) {
+      S.markersRiders[d.id].setLatLng([lat, lng]);
+      S.markersRiders[d.id].setIcon(icon);
+    } else {
+      const m = L.marker([lat, lng], { icon }).addTo(S.mapRiders);
+      m.bindPopup(`<b>${d.nombre}</b><br>${sinGps?'GPS pendiente':act+' activo(s)'}<br>L.${parseFloat(d.saldo_billetera||0).toFixed(0)}`);
+      S.markersRiders[d.id] = m;
+    }
+  });
+}
+
+function enfocarRider(dId) {
+  // Highlight card
+  document.querySelectorAll('.drv-card').forEach(c => c.style.border = '1px solid var(--g4)');
+  const card = document.getElementById('drv-card-'+dId);
+  if(card) card.style.border = '1px solid var(--or)';
+  // Enfocar en mapa
+  if(!S.mapRiders) return;
+  const marker = S.markersRiders[dId];
+  const d = S.riders.find(x => x.id === dId);
+  if(marker) {
+    const latlng = marker.getLatLng();
+    S.mapRiders.flyTo(latlng, 16, { animate: true, duration: 0.8 });
+    marker.openPopup();
+    // Scroll al mapa en móvil
+    document.getElementById('map-riders')?.scrollIntoView({ behavior:'smooth', block:'start' });
+  } else if(d?.en_turno) {
+    // Sin GPS aún — ir al centro
+    S.mapRiders.flyTo([15.6133, -87.9480], 14, { animate:true, duration:0.8 });
+    document.getElementById('map-riders')?.scrollIntoView({ behavior:'smooth', block:'start' });
+    toast('📍 GPS de ' + (d.nombre||'rider') + ' aún no disponible', 'ghost');
+  }
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1665,7 +1775,7 @@ function abrirAsignarRider(dId) {
 // ════════════════════════════════════════════════════════════
 // NAVEGACIÓN
 // ════════════════════════════════════════════════════════════
-const TITLES = { inicio:'Dashboard',pedidos:'Pedidos',nuevo:'Nuevo Pedido',mapa:'Mapa en Vivo',riders:'Repartidores',solicitudes:'Solicitudes de Riders',depositos:'Depósitos',historial:'Historial',chat:'Chat' };
+const TITLES = { inicio:'Dashboard',pedidos:'Pedidos',nuevo:'Nuevo Pedido',mapa:'Mapa en Vivo',riders:'Riders',solicitudes:'Solicitudes de Riders',depositos:'Depósitos',historial:'Historial',chat:'Chat' };
 
 function nav(v) {
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
@@ -1679,7 +1789,11 @@ function nav(v) {
   // Acciones por vista
   if(v === 'mapa' && !S.mapInit) initMap();
   if(v === 'pedidos') renderTablaPedidos();
-  if(v === 'riders') renderRidersGrid();
+  if(v === 'riders') {
+    renderRidersGrid();
+    if(!S.mapRidersInit) { setTimeout(initMapRiders, 80); }
+    else { setTimeout(()=>S.mapRiders?.invalidateSize(), 80); }
+  }
   if(v === 'solicitudes') cargarSolicitudes(S.solFiltro || 'PENDIENTE');
   if(v === 'depositos') cargarDepositos('PENDIENTE');
   if(v === 'historial') { /* noop, user clicks Buscar */ }
