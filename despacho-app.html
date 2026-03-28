@@ -710,7 +710,7 @@ async function doLogin() {
   if(error) { err.textContent = 'Credenciales incorrectas'; err.style.display = 'block'; return; }
   // Verificar rol DESPACHO
   const { data: perfil } = await sb.from('perfiles').select('rol,nombre').eq('id', data.user.id).single();
-  if(!perfil || !['DESPACHO','ADMIN'].includes(perfil.rol)) {
+  if(!perfil || !['STAFF','ADMIN'].includes(perfil.rol)) {
     err.textContent = 'No tienes acceso al panel de despacho';
     err.style.display = 'block';
     await sb.auth.signOut();
@@ -731,7 +731,7 @@ async function doLogout() {
 sb.auth.getSession().then(({ data: { session } }) => {
   if(!session) return; // show auth screen
   sb.from('perfiles').select('rol,nombre').eq('id', session.user.id).single().then(({ data: p }) => {
-    if(p && ['DESPACHO','ADMIN'].includes(p.rol)) {
+    if(p && ['STAFF','ADMIN'].includes(p.rol)) {
       document.getElementById('auth-screen').style.display = 'none';
       document.getElementById('u-name').textContent = p.nombre || 'Despacho';
       document.getElementById('u-av').textContent = (p.nombre || 'D').charAt(0).toUpperCase();
