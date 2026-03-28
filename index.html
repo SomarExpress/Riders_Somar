@@ -35,71 +35,6 @@
 <script type="text/babel">
 const { useState, useEffect, useRef, useCallback } = React;
 
-// ════════════════════════════════════════════════════════════
-// AUDIO + VIBRACIÓN (Delivery)
-// ════════════════════════════════════════════════════════════
-const AudioCtx = window.AudioContext || window.webkitAudioContext;
-let _actx = null;
-function getACtx() {
-  if(!_actx) _actx = new AudioCtx();
-  if(_actx.state === 'suspended') _actx.resume();
-  return _actx;
-}
-document.addEventListener('click', () => { try { getACtx(); } catch(e){} }, { once: true });
-document.addEventListener('touchstart', () => { try { getACtx(); } catch(e){} }, { once: true });
-
-function beep(freq=880, dur=0.15, vol=0.4, type='sine') {
-  try {
-    const ctx = getACtx();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.type = type; osc.frequency.setValueAtTime(freq, ctx.currentTime);
-    gain.gain.setValueAtTime(vol, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
-    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + dur);
-  } catch(e) { console.warn('[audio]', e); }
-}
-function vibrar(patron) { if('vibrate' in navigator) navigator.vibrate(patron); }
-
-// Pedido entrante — alarma urgente repetida
-let _alarmInterval = null;
-function iniciarAlarma() {
-  detenerAlarma();
-  const tocar = () => {
-    beep(880, 0.12, 0.7, 'square');
-    setTimeout(() => beep(1100, 0.12, 0.7, 'square'), 150);
-    setTimeout(() => beep(880, 0.12, 0.7, 'square'), 300);
-    vibrar([300, 100, 300, 100, 300]);
-  };
-  tocar();
-  _alarmInterval = setInterval(tocar, 1200);
-}
-function detenerAlarma() {
-  if(_alarmInterval) { clearInterval(_alarmInterval); _alarmInterval = null; }
-}
-function sonarEstadoAvanzado() {
-  // Beep positivo — avanzó un estado
-  beep(660, 0.1, 0.4, 'sine');
-  setTimeout(() => beep(880, 0.15, 0.4, 'sine'), 100);
-  vibrar([100, 50, 200]);
-}
-function sonarFinalizado() {
-  // Acorde de éxito
-  beep(523, 0.1, 0.4, 'sine');
-  setTimeout(() => beep(659, 0.1, 0.4, 'sine'), 100);
-  setTimeout(() => beep(784, 0.1, 0.4, 'sine'), 200);
-  setTimeout(() => beep(1047, 0.25, 0.5, 'sine'), 300);
-  vibrar([100, 50, 100, 50, 400]);
-}
-function sonarMensaje() {
-  beep(1100, 0.08, 0.3, 'sine');
-  setTimeout(() => beep(880, 0.12, 0.3, 'sine'), 100);
-  vibrar([80, 40, 80]);
-}
-
-
-
 // ─── CONFIG PRODUCCIÓN ───────────────────────────────────
 const SUPA_URL  = 'https://jjrmzouigcmeztkybrvp.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqcm16b3VpZ2NtZXp0a3licnZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MzExNDgsImV4cCI6MjA4ODUwNzE0OH0.tNUHxGWMWh7Q6v4mH3y5gOxpczpEJHwNqwH2TehL61I';
@@ -968,6 +903,38 @@ function TabChat({delivery}){
   );
 }
 
+
+// ─── NORMALIZAR PEDIDO (campos BD → campos cortos del UI) ────────────────────
+function normalizarPedido(p, asigId=null) {
+  // Calcular ganancia estimada (70% de tarifa_envio)
+  const tarifa = parseFloat(p.tarifa_envio || 0);
+  const gan = parseFloat(p.ingreso_delivery || tarifa * 0.7 || 0);
+  // Calcular distancia aproximada si hay GPS
+  let km = parseFloat(p.distancia_km || 0);
+  return {
+    ...p,
+    _asigId: asigId || p._asigId,
+    // Campos cortos que usa el UI
+    com:   p.nombre_comercio || p.com || '—',
+    ciudad:p.ciudad_destino  || p.ciudad || '—',
+    km:    km,
+    gan:   gan,
+    pago:  p.metodo_pago     || p.pago || 'EFECTIVO',
+    tipo:  p.tipo            || 'DELIVERY',
+    // Campos de detalle
+    no:    p.no_orden        || p.no || '—',
+    dr:    p.direccion_recogida   || p.dr || '',
+    de:    p.direccion_entrega    || p.de || '',
+    co:    p.ubicacion_recogida_gps || p.co || '',
+    cd:    p.ubicacion_entrega_gps  || p.cd || '',
+    mc:    parseFloat(p.monto_cobrar || p.mc || 0),
+    cp:    parseFloat(p.monto_recibido_efectivo || p.cp || 0),
+    enc:   p.datos_encargo   || p.enc || '',
+    me:    parseFloat(p.monto_pagado_en_comercio || p.me || 0),
+    est:   p.estatus         || p.est || 'ACEPTADO',
+  };
+}
+
 // ─── APP PRINCIPAL ─────────────────────────────────────────
 function App(){
   // ── Auth ──────────────────────────────────────────────
@@ -989,7 +956,6 @@ function App(){
   const [saldo,setSaldo]=useState(0);
   const [turno,setTurno]=useState(false);
   const [pe,setPe]=useState(null);
-  const [gpsStatus,setGpsStatus]=useState('init'); // init | ok | error | noPermiso
   // ── Refs ─────────────────────────────────────────────
   const gpsRef=useRef(null);
   const rtRef=useRef(null);
@@ -1059,44 +1025,17 @@ function App(){
       sb.from('depositos_delivery').select('*').eq('delivery_id',delId).order('creado_at',{ascending:false}),
       sb.from('depositos_delivery').select('id,monto,estatus,notas_despacho,creado_at').eq('delivery_id',delId).eq('estatus','APROBADO').order('creado_at',{ascending:false}).limit(20),
     ]);
-    if(rP.data) setPedidos(rP.data.map(p=>({...p,tsInicio:p.hora_aceptado?new Date(p.hora_aceptado).getTime():Date.now(),tiempos:buildTiempos(p)})));
+    if(rP.data) setPedidos(rP.data.map(p=>({...normalizarPedido(p),tsInicio:p.hora_aceptado?new Date(p.hora_aceptado).getTime():Date.now(),tiempos:buildTiempos(p)})));
     if(rH.data) setHistorial(rH.data);
     if(rD.data) setDepositos(rD.data);
     if(rM.data) setMovimientos(rM.data.map(d=>({...d,tipo:'RECARGA',nota:'Recarga aprobada',ts:d.creado_at})));
   };
 
   const iniciarGPS=delId=>{
-    if(!navigator.geolocation){
-      console.warn('[GPS] geolocation no disponible');
-      return;
-    }
-    const enviarUbi=async(pos)=>{
-      const payload={
-        delivery_id:delId,
-        lat:pos.coords.latitude,
-        lng:pos.coords.longitude,
-        precision_m:Math.round(pos.coords.accuracy||0),
-        en_turno:turnoRef.current,
-        updated_at:new Date().toISOString()
-      };
-      console.log('[GPS] enviando:',payload.lat,payload.lng,'turno:',payload.en_turno);
-      const {error}=await sb.from('ubicaciones_delivery').upsert(payload,{onConflict:'delivery_id'});
-      if(error) console.error('[GPS] upsert error:',error.message,error.code);
-      else console.log('[GPS] upsert OK');
-    };
-    const onErr=e=>{
-      console.error('[GPS] error geolocation:',e.code,e.message);
-    };
-    const opts={enableHighAccuracy:true,timeout:10000,maximumAge:5000};
-    // Posición inmediata al iniciar
-    navigator.geolocation.getCurrentPosition(enviarUbi,onErr,opts);
-    // watchPosition: dispara automáticamente cuando el dispositivo se mueve
-    const watchId=navigator.geolocation.watchPosition(enviarUbi,onErr,opts);
-    // Intervalo de 20s de respaldo (watchPosition puede pausarse en background)
-    const intervalId=setInterval(()=>{
-      navigator.geolocation.getCurrentPosition(enviarUbi,onErr,opts);
-    },20000);
-    gpsRef.current={watchId,intervalId};
+    if(!navigator.geolocation)return;
+    const send=pos=>sb.from('ubicaciones_delivery').upsert({delivery_id:delId,lat:pos.coords.latitude,lng:pos.coords.longitude,precision_m:Math.round(pos.coords.accuracy),en_turno:turnoRef.current,updated_at:new Date().toISOString()},{onConflict:'delivery_id'});
+    navigator.geolocation.getCurrentPosition(send,()=>{});
+    gpsRef.current=setInterval(()=>navigator.geolocation.getCurrentPosition(send,()=>{},{enableHighAccuracy:true,timeout:8000}),30000);
   };
 
   const suscribirRealtime=delId=>{
@@ -1105,7 +1044,7 @@ function App(){
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'asignaciones_pendientes',filter:'delivery_id=eq.'+delId},async p=>{
         if(p.new.estatus!=='ENVIADO')return;
         const {data:ped}=await sb.from('pedidos').select('*').eq('id',p.new.pedido_id).single();
-        if(ped){setPe({...ped,_asigId:p.new.id});notifLocal('🔔 Nuevo Pedido',(ped.nombre_comercio||'—')+' · '+(ped.ciudad_destino||''));iniciarAlarma();}
+        if(ped){const peNorm=normalizarPedido(ped,p.new.id);setPe(peNorm);notifLocal('🔔 Nuevo Pedido',(ped.nombre_comercio||'—')+' · '+(ped.ciudad_destino||''));iniciarAlarma();}
       })
       .on('postgres_changes',{event:'UPDATE',schema:'public',table:'pedidos',filter:'delivery_id=eq.'+delId},()=>cargarDatos(delId))
       .on('postgres_changes',{event:'UPDATE',schema:'public',table:'delivery',filter:'id=eq.'+delId},p=>{if(p.new.saldo_billetera!==undefined)setSaldo(parseFloat(p.new.saldo_billetera)||0);})
@@ -1114,7 +1053,6 @@ function App(){
         if(p.new.remitente==='DESPACHO'){
           setChatUnread(n=>n+1);
           notifLocal('💬 Despacho',p.new.mensaje);
-          sonarMensaje();
         }
       })
       .subscribe();
@@ -1137,8 +1075,8 @@ function App(){
     }
     const {error}=await sb.from('pedidos').update(campos).eq('id',pid).eq('delivery_id',delivery.id);
     if(error){toast('❌ '+error.message);return;}
-    if(eb.sig==='FINALIZADO'){setDetalle(null);toast('✅ ¡Pedido finalizado!');sonarFinalizado();}
-    else{toast('✅ Estado actualizado');sonarEstadoAvanzado();}
+    if(eb.sig==='FINALIZADO'){setDetalle(null);toast('✅ ¡Pedido finalizado!');}
+    else toast('✅ Estado actualizado');
     cargarDatos(delivery.id);
   };
 
@@ -1158,7 +1096,6 @@ function App(){
 
   const aceptarPE=async()=>{
     if(!pe)return;
-    detenerAlarma();
     const res=await fetch(EDGE_URL+'/aceptar-pedido',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+SUPA_ANON},body:JSON.stringify({pedido_id:pe.id,asignacion_id:pe._asigId,delivery_id:delivery.id})});
     const data=await res.json().catch(()=>({}));
     if(data.success){toast('✅ Pedido aceptado');cargarDatos(delivery.id);}
@@ -1167,18 +1104,12 @@ function App(){
   };
 
   const rechazarPE=async()=>{
-    detenerAlarma();
     if(pe?._asigId) await sb.from('asignaciones_pendientes').update({estatus:'RECHAZADO',respondido_at:new Date().toISOString()}).eq('id',pe._asigId);
     setPe(null);toast('Pedido rechazado');
   };
 
   const cerrarSesion=async()=>{
-    if(gpsRef.current){
-      if(gpsRef.current.watchId!=null) navigator.geolocation.clearWatch(gpsRef.current.watchId);
-      if(gpsRef.current.intervalId!=null) clearInterval(gpsRef.current.intervalId);
-      // compatibilidad si aún es número
-      if(typeof gpsRef.current === 'number') clearInterval(gpsRef.current);
-    }
+    if(gpsRef.current)clearInterval(gpsRef.current);
     if(rtRef.current)sb.removeChannel(rtRef.current);
     if(delivery) await sb.from('ubicaciones_delivery').update({en_turno:false,updated_at:new Date().toISOString()}).eq('delivery_id',delivery.id).catch(()=>{});
     await sb.auth.signOut();
@@ -1265,16 +1196,6 @@ function App(){
           <div style={{width:8,height:8,borderRadius:'50%',background:'currentColor',animation:turno?'pulse 1.5s infinite':'none'}}/>
           {turno?'Disponible':saldo<MIN_SALDO?'⛔ Sin saldo':'Fuera de turno'}
         </button>
-        {/* Indicador GPS */}
-        {turno&&(
-          <div style={{fontSize:10,fontWeight:700,padding:'4px 8px',borderRadius:10,
-            background:gpsStatus==='ok'?'rgba(34,197,94,.15)':gpsStatus==='noPermiso'?'rgba(239,68,68,.15)':'rgba(245,158,11,.15)',
-            color:gpsStatus==='ok'?'#22C55E':gpsStatus==='noPermiso'?'#EF4444':'#F59E0B',
-            border:'1px solid currentColor',whiteSpace:'nowrap'
-          }}>
-            {gpsStatus==='ok'?'📍 GPS':gpsStatus==='noPermiso'?'❌ Sin permiso GPS':'⏳ GPS...'}
-          </div>
-        )}
       </div>
 
       {/* Contenido */}
@@ -1425,4 +1346,4 @@ function TabDepositos({delivery, depositos, setDepositos, onConfirm, toast}){
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
 </body>
-</html>s
+</html>
