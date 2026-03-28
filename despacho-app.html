@@ -1471,6 +1471,9 @@ function initMap() {
     });
 }
 
+// Centro de Choloma como fallback cuando GPS aún no tiene coordenadas reales
+const CHOLOMA_LAT = 15.6133, CHOLOMA_LNG = -87.9480;
+
 function actualizarMarker(u) {
   if(!S.map || u.lat == null || u.lng == null) return;
   const dId = u.delivery_id;
@@ -1483,17 +1486,25 @@ function actualizarMarker(u) {
   const saldo  = u._saldo  != null ? u._saldo : (d?.saldo_billetera || 0);
   const label  = inic(nombre);
   const activos = S.pedidos.filter(p => p.delivery_id === dId && ['ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO'].includes(p.estatus)).length;
-  const color = activos > 0 ? '#FF8C00' : '#22c55e';
+  // GPS aún no enviado (lat/lng = 0)
+  const sinGps = (parseFloat(u.lat) === 0 && parseFloat(u.lng) === 0);
+  const lat = sinGps ? CHOLOMA_LAT : parseFloat(u.lat);
+  const lng = sinGps ? CHOLOMA_LNG : parseFloat(u.lng);
+  const color = sinGps ? '#555' : (activos > 0 ? '#FF8C00' : '#22c55e');
+  const border = sinGps ? '2px dashed #888' : '3px solid #fff';
   const icon = L.divIcon({
-    html: `<div style="width:36px;height:36px;border-radius:50%;background:${color};border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#000;box-shadow:0 2px 10px rgba(0,0,0,.6)">${label}</div>`,
+    html: `<div style="width:36px;height:36px;border-radius:50%;background:${color};border:${border};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:${sinGps?'#aaa':'#000'};box-shadow:0 2px 10px rgba(0,0,0,.6);position:relative">
+      ${label}
+      ${sinGps ? '<div style="position:absolute;bottom:-2px;right:-2px;width:12px;height:12px;border-radius:50%;background:#f59e0b;border:1px solid #000;font-size:8px;display:flex;align-items:center;justify-content:center">?</div>' : ''}
+    </div>`,
     iconSize:[36,36], iconAnchor:[18,18], className:''
   });
   if(S.markers[dId]) {
-    S.markers[dId].setLatLng([u.lat, u.lng]);
+    S.markers[dId].setLatLng([lat, lng]);
     S.markers[dId].setIcon(icon);
   } else {
-    const m = L.marker([u.lat, u.lng], { icon }).addTo(S.map);
-    m.bindPopup(`<b>${nombre}</b><br>${activos} pedido(s) activo(s)<br>L.${parseFloat(saldo).toFixed(0)} saldo`);
+    const m = L.marker([lat, lng], { icon }).addTo(S.map);
+    m.bindPopup(`<b>${nombre}</b><br>${sinGps ? '📍 GPS pendiente' : (activos+' pedido(s) activo(s)')}<br>L.${parseFloat(saldo).toFixed(0)} saldo`);
     S.markers[dId] = m;
   }
 }
