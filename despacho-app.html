@@ -786,12 +786,14 @@ function initRealtime() {
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'ubicaciones_delivery' }, p => {
       actualizarMarker(p.new);
-      // Actualizar en_turno en estado local
-      const idx = S.riders.findIndex(r => r.id === p.new?.delivery_id);
+      // Actualizar en_turno en estado local inmediatamente
+      const dId = p.new?.delivery_id;
+      const idx = S.riders.findIndex(r => r.id === dId);
       if(idx >= 0) {
-        S.riders[idx].en_turno = p.new?.en_turno ?? false;
+        S.riders[idx].en_turno = p.new?.en_turno === true;
         renderRidersMini();
         if(document.getElementById('view-riders').classList.contains('active')) renderRidersGrid();
+        if(document.getElementById('view-inicio').classList.contains('active')) renderListaActivos();
       }
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'aplicaciones_delivery' }, p => {
@@ -971,7 +973,7 @@ function abrirAsignar(pedidoId) {
   S.selPedidoId = pedidoId; S.selRiderId = null;
   const p = S.pedidos.find(x => x.id === pedidoId);
   document.getElementById('modal-asig-info').textContent = `${p?.no_orden||'—'} · ${p?.nombre_comercio||'—'} → ${p?.ciudad_destino||'—'}`;
-  const disponibles = S.riders.filter(d => d.activo && d.en_turno !== false);
+  const disponibles = S.riders.filter(d => d.activo && d.en_turno === true);
   const lista = document.getElementById('modal-asig-lista');
   if(!disponibles.length) {
     lista.innerHTML = '<div style="color:var(--td);font-size:13px;text-align:center;padding:14px">No hay repartidores disponibles</div>';
@@ -1033,8 +1035,10 @@ async function cargarRiders() {
   if(data) {
     S.riders = data.map(d => ({
       ...d,
-      // en_turno: from ubicaciones if exists, else from delivery.turno column
-      en_turno: d.ubicaciones_delivery?.[0]?.en_turno ?? d.turno ?? false
+      // en_turno: SOLO desde ubicaciones_delivery — si no hay registro = desconectado
+      en_turno: d.ubicaciones_delivery?.length > 0
+        ? (d.ubicaciones_delivery[0].en_turno === true)
+        : false
     }));
     renderRidersMini();
     renderRidersGrid();
@@ -1043,11 +1047,11 @@ async function cargarRiders() {
 
 function renderRidersMini() {
   const el = document.getElementById('lista-riders-mini');
-  const online = S.riders.filter(d => d.en_turno);
+  const online = S.riders.filter(d => d.en_turno === true);
   document.getElementById('online-count').textContent = `● ${online.length} en línea`;
   el.innerHTML = S.riders.slice(0,6).map(d => {
     const act = S.pedidos.filter(p => p.delivery_id === d.id && FILTROS_ACTIVOS.includes(p.estatus)).length;
-    const c = d.en_turno ? (act > 0 ? 'var(--or)' : 'var(--verde)') : 'var(--g5)';
+    const c = d.en_turno===true ? (act > 0 ? 'var(--or)' : 'var(--verde)') : 'var(--g5)';
     return `<div style="display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--g3);">
       <div class="ch-av" style="border:2px solid ${c};width:28px;height:28px;font-size:10px;${d.en_turno?'':'opacity:.55'}">${inic(d.nombre)}</div>
       <div style="flex:1"><div style="font-size:12px;font-weight:600">${d.nombre}</div>
@@ -1061,8 +1065,8 @@ function renderRidersMini() {
 function renderRidersGrid(filtro='todos') {
   const grid = document.getElementById('riders-grid');
   let riders = S.riders;
-  if(filtro === 'online')  riders = riders.filter(d => d.en_turno);
-  if(filtro === 'offline') riders = riders.filter(d => !d.en_turno);
+  if(filtro === 'online')  riders = riders.filter(d => d.en_turno === true);
+  if(filtro === 'offline') riders = riders.filter(d => d.en_turno !== true);
   if(!riders.length) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1">No hay repartidores</div>'; return; }
   grid.innerHTML = riders.map(d => {
     const act = S.pedidos.filter(p => p.delivery_id === d.id && FILTROS_ACTIVOS.includes(p.estatus)).length;
