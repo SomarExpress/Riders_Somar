@@ -708,6 +708,71 @@ const S = {
 };
 
 // ════════════════════════════════════════════════════════════
+// AUDIO + VIBRACIÓN (Despacho)
+// ════════════════════════════════════════════════════════════
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let _actx = null;
+
+function getACtx() {
+  if(!_actx) _actx = new AudioCtx();
+  if(_actx.state === 'suspended') _actx.resume();
+  return _actx;
+}
+
+// Desbloquear AudioContext en primer click/tap del usuario
+document.addEventListener('click', () => { try { getACtx(); } catch(e){} }, { once: true });
+document.addEventListener('touchstart', () => { try { getACtx(); } catch(e){} }, { once: true });
+
+function beep(freq=880, dur=0.15, vol=0.4, type='sine') {
+  try {
+    const ctx = getACtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(vol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + dur);
+  } catch(e) { console.warn('[audio]', e); }
+}
+
+function vibrar(patron) {
+  if('vibrate' in navigator) navigator.vibrate(patron);
+}
+
+// Sonidos específicos por evento
+function sonarPedidoNuevo() {
+  // 3 beeps urgentes - pedido sin asignar
+  beep(660, 0.12, 0.5, 'square');
+  setTimeout(() => beep(880, 0.12, 0.5, 'square'), 150);
+  setTimeout(() => beep(1100, 0.2, 0.6, 'square'), 300);
+  vibrar([200, 100, 200, 100, 400]);
+}
+
+function sonarMensajeChat() {
+  // 2 beeps suaves
+  beep(880, 0.1, 0.3, 'sine');
+  setTimeout(() => beep(1100, 0.15, 0.3, 'sine'), 130);
+  vibrar([100, 50, 100]);
+}
+
+function sonarDeposito() {
+  beep(660, 0.1, 0.3, 'triangle');
+  setTimeout(() => beep(880, 0.2, 0.3, 'triangle'), 120);
+  vibrar([150, 80, 150]);
+}
+
+function sonarPedidoFinalizado() {
+  // Acorde ascendente - entrega completada
+  beep(523, 0.1, 0.3, 'sine');
+  setTimeout(() => beep(659, 0.1, 0.3, 'sine'), 100);
+  setTimeout(() => beep(784, 0.2, 0.3, 'sine'), 200);
+  vibrar([100, 50, 100, 50, 200]);
+}
+
+// ════════════════════════════════════════════════════════════
 // AUTH
 // ════════════════════════════════════════════════════════════
 async function doLogin() {
@@ -781,6 +846,7 @@ function initRealtime() {
       if(p.eventType === 'INSERT' && p.new.estatus === 'PENDIENTE') {
         badgeInc('badge-dep');
         notif('💳 Depósito recibido', 'Un repartidor envió comprobante', false);
+        sonarDeposito();
       }
       cargarDepositos(S.pedFiltro === 'depositos' ? S.solFiltro : 'PENDIENTE');
     })
@@ -807,6 +873,7 @@ function initRealtime() {
         badge.textContent = parseInt(badge.textContent || '0') + 1;
         const rider = S.riders.find(r => r.id === p.new.delivery_id);
         notif('💬 ' + (rider?.nombre || 'Rider'), p.new.mensaje, false);
+        sonarMensajeChat();
         if(S.chatRiderId === p.new.delivery_id) renderChatMsgs(p.new.delivery_id);
       }
     })
@@ -832,6 +899,10 @@ function onPedidoChange(payload) {
   if(p.estatus === 'PENDIENTE') {
     notif('⚠️ Pedido sin asignar', `${p.no_orden} requiere asignación manual`, true);
     badgeInc('badge-activos');
+    sonarPedidoNuevo();
+  }
+  if(p.estatus === 'FINALIZADO') {
+    sonarPedidoFinalizado();
   }
 }
 
@@ -1383,38 +1454,46 @@ function initMap() {
   const map = L.map('map-live').setView([15.6133, -87.9480], 13);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution:'© CartoDB', maxZoom:19 }).addTo(map);
   S.map = map;
-  sb.from('ubicaciones_delivery').select('*, delivery:delivery_id(nombre)').then(({ data }) => {
-    data?.forEach(u => actualizarMarker(u));
-    // Actualizar en_turno en S.riders desde lo cargado
-    data?.forEach(u => {
-      const r = S.riders.find(x => x.id === u.delivery_id);
-      if(r) { r.en_turno = u.en_turno === true; r._ubi = u; }
+  sb.from('ubicaciones_delivery')
+    .select('delivery_id, lat, lng, en_turno, updated_at, delivery(id, nombre, saldo_billetera)')
+    .then(({ data, error }) => {
+      if(error) { console.error('[mapa] error:', error.message); return; }
+      console.log('[mapa] ubicaciones:', data);
+      data?.forEach(u => {
+        const nombre = u.delivery?.nombre || (Array.isArray(u.delivery) ? u.delivery[0]?.nombre : null) || '?';
+        const saldo  = u.delivery?.saldo_billetera || (Array.isArray(u.delivery) ? u.delivery[0]?.saldo_billetera : 0) || 0;
+        actualizarMarker({ ...u, _nombre: nombre, _saldo: saldo });
+        const r = S.riders.find(x => x.id === u.delivery_id);
+        if(r) { r.en_turno = u.en_turno === true; r._ubi = u; }
+      });
+      renderRidersMini();
+      renderRidersGrid();
     });
-    renderRidersMini();
-    renderRidersGrid();
-  });
 }
 
 function actualizarMarker(u) {
-  // Permitir lat/lng aunque sea 0 — solo filtrar si son null/undefined
   if(!S.map || u.lat == null || u.lng == null) return;
-  // Si el rider no está en turno, quitar marker del mapa
+  const dId = u.delivery_id;
   if(!u.en_turno) {
-    if(S.markers[u.delivery_id]) { S.map.removeLayer(S.markers[u.delivery_id]); delete S.markers[u.delivery_id]; }
+    if(S.markers[dId]) { S.map.removeLayer(S.markers[dId]); delete S.markers[dId]; }
     return;
   }
-  const dId = u.delivery_id;
   const d = S.riders.find(x => x.id === dId);
-  const label = inic(d?.nombre || '?');
+  const nombre = u._nombre || d?.nombre || '?';
+  const saldo  = u._saldo  != null ? u._saldo : (d?.saldo_billetera || 0);
+  const label  = inic(nombre);
+  const activos = S.pedidos.filter(p => p.delivery_id === dId && ['ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO'].includes(p.estatus)).length;
+  const color = activos > 0 ? '#FF8C00' : '#22c55e';
   const icon = L.divIcon({
-    html: `<div style="width:32px;height:32px;border-radius:50%;background:var(--or);border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#000;box-shadow:0 2px 8px rgba(0,0,0,.5)">${label}</div>`,
-    iconSize:[32,32], iconAnchor:[16,16], className:''
+    html: `<div style="width:36px;height:36px;border-radius:50%;background:${color};border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#000;box-shadow:0 2px 10px rgba(0,0,0,.6)">${label}</div>`,
+    iconSize:[36,36], iconAnchor:[18,18], className:''
   });
   if(S.markers[dId]) {
     S.markers[dId].setLatLng([u.lat, u.lng]);
+    S.markers[dId].setIcon(icon);
   } else {
     const m = L.marker([u.lat, u.lng], { icon }).addTo(S.map);
-    m.bindPopup(`<b>${d?.nombre||'—'}</b><br>L.${parseFloat(d?.saldo_billetera||0).toFixed(0)} saldo`);
+    m.bindPopup(`<b>${nombre}</b><br>${activos} pedido(s) activo(s)<br>L.${parseFloat(saldo).toFixed(0)} saldo`);
     S.markers[dId] = m;
   }
 }
