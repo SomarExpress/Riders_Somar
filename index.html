@@ -35,6 +35,110 @@
 <script type="text/babel">
 const { useState, useEffect, useRef, useCallback } = React;
 
+// ════════════════════════════════════════════════════════════
+// AUDIO + VIBRACIÓN — Delivery (Android PWA)
+// ════════════════════════════════════════════════════════════
+const _AudioCtx = window.AudioContext || window.webkitAudioContext;
+let _actx = null;
+let _audioOk = false;
+
+function _getCtx() {
+  if(!_actx && _AudioCtx) { try { _actx = new _AudioCtx(); } catch(e){} }
+  if(_actx && _actx.state === 'suspended') { try { _actx.resume(); } catch(e){} }
+  return _actx;
+}
+
+// Desbloquear en cualquier interacción del usuario
+function _desbloquear() {
+  if(_audioOk) return;
+  try {
+    const ctx = _getCtx();
+    if(ctx) {
+      const buf = ctx.createBuffer(1,1,22050);
+      const src = ctx.createBufferSource();
+      src.buffer = buf; src.connect(ctx.destination); src.start(0);
+      _audioOk = true;
+    }
+  } catch(e) {}
+}
+['click','touchstart','touchend','keydown','pointerdown'].forEach(ev =>
+  document.addEventListener(ev, _desbloquear, {passive:true})
+);
+
+function _beep(freq=880, dur=0.15, vol=0.6, type='sine') {
+  try {
+    const ctx = _getCtx();
+    if(!ctx) return;
+    if(ctx.state === 'suspended') ctx.resume();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(vol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + dur);
+  } catch(e) { console.warn('[audio]', e.message); }
+}
+
+function _vibrar(p) {
+  try { if('vibrate' in navigator) navigator.vibrate(p); } catch(e) {}
+}
+
+// ── Alarma pedido entrante (se repite hasta que se acepta/rechaza) ──────────
+let _alarmInt = null;
+function iniciarAlarma() {
+  _detenerAlarma();
+  _desbloquear();
+  const tocar = () => {
+    _beep(880, 0.1, 0.8, 'square');
+    setTimeout(() => _beep(1100, 0.1, 0.8, 'square'), 140);
+    setTimeout(() => _beep(880,  0.1, 0.8, 'square'), 280);
+    setTimeout(() => _beep(1100, 0.15,0.8, 'square'), 420);
+    _vibrar([300, 100, 300, 100, 300, 100, 300]);
+  };
+  tocar();
+  _alarmInt = setInterval(tocar, 1400);
+}
+function _detenerAlarma() {
+  if(_alarmInt) { clearInterval(_alarmInt); _alarmInt = null; }
+  _vibrar([0]);
+}
+function detenerAlarma() { _detenerAlarma(); }
+
+// ── Avanzó de estado ──────────────────────────────────────────────────────
+function sonarEstadoAvanzado() {
+  _beep(660, 0.08, 0.5, 'sine');
+  setTimeout(() => _beep(880, 0.15, 0.5, 'sine'), 100);
+  _vibrar([80, 40, 160]);
+}
+
+// ── Pedido finalizado ─────────────────────────────────────────────────────
+function sonarFinalizado() {
+  _beep(523, 0.08, 0.5, 'sine');
+  setTimeout(() => _beep(659, 0.08, 0.5, 'sine'), 90);
+  setTimeout(() => _beep(784, 0.08, 0.5, 'sine'), 180);
+  setTimeout(() => _beep(1047,0.25, 0.6, 'sine'), 270);
+  _vibrar([80, 50, 80, 50, 300]);
+}
+
+// ── Mensaje de chat entrante ──────────────────────────────────────────────
+function sonarMensaje() {
+  _beep(1100, 0.07, 0.4, 'sine');
+  setTimeout(() => _beep(880, 0.12, 0.4, 'sine'), 95);
+  _vibrar([60, 30, 60]);
+}
+
+// ── Depósito aprobado ─────────────────────────────────────────────────────
+function sonarDepositoAprobado() {
+  _beep(523, 0.08, 0.4, 'sine');
+  setTimeout(() => _beep(784, 0.2,  0.5, 'sine'), 100);
+  _vibrar([100, 50, 200]);
+}
+
+
+
 // ─── CONFIG PRODUCCIÓN ───────────────────────────────────
 const SUPA_URL  = 'https://jjrmzouigcmeztkybrvp.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqcm16b3VpZ2NtZXp0a3licnZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MzExNDgsImV4cCI6MjA4ODUwNzE0OH0.tNUHxGWMWh7Q6v4mH3y5gOxpczpEJHwNqwH2TehL61I';
@@ -115,30 +219,63 @@ function Toast({msg}){
 // ACEPTAR: zona grande izquierda | RECHAZAR: franja pequeña derecha
 function PedidoEntrante({pedido, onAceptar, onRechazar}){
   const [seg, setSeg] = useState(30);
+  const [procesando, setProcesando] = useState(false);
   const tmr = useRef(null);
+  const fired = useRef(false);
   const CIRC = 150.8;
 
   useEffect(()=>{
     setSeg(30);
+    fired.current = false;
+    setProcesando(false);
     tmr.current = setInterval(()=>{
-      setSeg(s=>{ if(s<=1){clearInterval(tmr.current);onRechazar();return 0;} return s-1; });
+      setSeg(s=>{
+        if(s<=1){
+          clearInterval(tmr.current);
+          if(!fired.current){ fired.current=true; onRechazar(); }
+          return 0;
+        }
+        return s-1;
+      });
     },1000);
-    return ()=>clearInterval(tmr.current);
-  },[pedido]);
+    return ()=>{ clearInterval(tmr.current); };
+  },[pedido?.id]);
 
   if(!pedido) return null;
-  const pct = seg/30;
+  const pct = Math.max(0, seg/30);
   const offset = CIRC - pct * CIRC;
+  // Valores seguros — nunca undefined
+  const com    = pedido.com    || pedido.nombre_comercio  || '—';
+  const ciudad = pedido.ciudad || pedido.ciudad_destino   || '—';
+  const km     = parseFloat(pedido.km || pedido.distancia_km || 0);
+  const gan    = parseFloat(pedido.gan || pedido.ingreso_delivery || 0);
+  const pago   = pedido.pago   || pedido.metodo_pago      || 'EFECTIVO';
+  const tipo   = pedido.tipo   || 'DELIVERY';
+
+  const handleAceptar = () => {
+    if(procesando) return;
+    setProcesando(true);
+    clearInterval(tmr.current);
+    fired.current = true;
+    onAceptar();
+  };
+  const handleRechazar = () => {
+    if(procesando) return;
+    setProcesando(true);
+    clearInterval(tmr.current);
+    fired.current = true;
+    onRechazar();
+  };
 
   return(
     <div style={{position:'fixed',inset:0,zIndex:180,display:'flex',flexDirection:'column'}}>
       {/* Info arriba */}
-      <div style={{background:'linear-gradient(180deg,rgba(0,0,0,.95),rgba(0,0,0,.7))',flex:1,display:'flex',flexDirection:'column',justifyContent:'center',padding:'24px 20px',gap:16}}>
+      <div style={{background:'linear-gradient(180deg,rgba(0,0,0,.97),rgba(0,0,0,.85))',flex:1,display:'flex',flexDirection:'column',justifyContent:'center',padding:'24px 20px',gap:16}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-          <div>
+          <div style={{flex:1,paddingRight:12}}>
             <div style={{fontSize:11,color:'rgba(255,255,255,.6)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:6}}>🔔 Nuevo Pedido</div>
-            <div style={{fontSize:26,fontWeight:900,lineHeight:1.1}}>{pedido.com}</div>
-            <div style={{fontSize:14,color:'rgba(255,255,255,.7)',marginTop:4}}>{pedido.tipo==='DELIVERY'?'📦 Delivery':'🛒 Compra'}</div>
+            <div style={{fontSize:24,fontWeight:900,lineHeight:1.2}}>{com}</div>
+            <div style={{fontSize:14,color:'rgba(255,255,255,.7)',marginTop:4}}>{tipo==='DELIVERY'?'📦 Delivery':'🛒 Compra'}</div>
           </div>
           {/* Countdown */}
           <div style={{position:'relative',width:64,height:64,flexShrink:0}}>
@@ -154,10 +291,10 @@ function PedidoEntrante({pedido, onAceptar, onRechazar}){
         {/* Info rápida */}
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
           {[
-            ['📍 Destino', pedido.ciudad],
-            ['📏 Distancia', `${pedido.km.toFixed(1)} km`],
-            ['💳 Pago', pedido.pago==='EFECTIVO'?'Efectivo':'Transferencia'],
-            ['💰 Tu ganancia', fmtL(pedido.gan)],
+            ['📍 Destino',    ciudad],
+            ['📏 Distancia',  km > 0 ? `${km.toFixed(1)} km` : 'N/D'],
+            ['💳 Pago',       pago==='EFECTIVO'?'Efectivo':'Transferencia'],
+            ['💰 Tu ganancia',fmtL(gan)],
           ].map(([l,v])=>(
             <div key={l} style={{background:'rgba(255,255,255,.08)',borderRadius:12,padding:'10px 12px'}}>
               <div style={{fontSize:10,color:'rgba(255,255,255,.5)',fontWeight:600,marginBottom:3}}>{l}</div>
@@ -165,17 +302,30 @@ function PedidoEntrante({pedido, onAceptar, onRechazar}){
             </div>
           ))}
         </div>
+        {procesando && <div style={{textAlign:'center',fontSize:13,color:'#888',marginTop:8}}>Procesando...</div>}
       </div>
 
-      {/* BOTONES — zona inferior, optimizados para pulgar izquierdo */}
-      <div style={{display:'flex',height:100,background:'#0F0F0F'}}>
-        {/* ACEPTAR — grande, izquierda, verde */}
-        <button onClick={onAceptar} style={{flex:3,background:'#22C55E',color:'#fff',fontSize:20,fontWeight:900,display:'flex',alignItems:'center',justifyContent:'center',gap:10,borderRight:'2px solid #0F0F0F'}}>
-          <span style={{fontSize:28}}>✓</span> ACEPTAR
+      {/* BOTONES */}
+      <div style={{display:'flex',height:110,background:'#0F0F0F',flexShrink:0}}>
+        {/* ACEPTAR */}
+        <button
+          onClick={handleAceptar}
+          disabled={procesando}
+          style={{flex:3,background:procesando?'#1a4a1a':'#22C55E',color:'#fff',fontSize:22,fontWeight:900,
+            display:'flex',alignItems:'center',justifyContent:'center',gap:10,
+            borderRight:'2px solid #0F0F0F',border:'none',cursor:procesando?'default':'pointer',
+            WebkitTapHighlightColor:'transparent',touchAction:'manipulation'}}>
+          <span style={{fontSize:32}}>✓</span> ACEPTAR
         </button>
-        {/* RECHAZAR — pequeño, derecha, gris oscuro */}
-        <button onClick={onRechazar} style={{flex:1,background:'#1A1A1A',color:'#EF4444',fontSize:13,fontWeight:700,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:4}}>
-          <span style={{fontSize:22}}>✕</span>
+        {/* RECHAZAR */}
+        <button
+          onClick={handleRechazar}
+          disabled={procesando}
+          style={{flex:1,background:'#1A1A1A',color:procesando?'#444':'#EF4444',fontSize:13,fontWeight:700,
+            display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:4,
+            border:'none',cursor:procesando?'default':'pointer',
+            WebkitTapHighlightColor:'transparent',touchAction:'manipulation'}}>
+          <span style={{fontSize:24}}>✕</span>
           Rechazar
         </button>
       </div>
@@ -1046,13 +1196,14 @@ function App(){
         const {data:ped}=await sb.from('pedidos').select('*').eq('id',p.new.pedido_id).single();
         if(ped){const peNorm=normalizarPedido(ped,p.new.id);setPe(peNorm);notifLocal('🔔 Nuevo Pedido',(ped.nombre_comercio||'—')+' · '+(ped.ciudad_destino||''));iniciarAlarma();}
       })
-      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'pedidos',filter:'delivery_id=eq.'+delId},()=>cargarDatos(delId))
-      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'delivery',filter:'id=eq.'+delId},p=>{if(p.new.saldo_billetera!==undefined)setSaldo(parseFloat(p.new.saldo_billetera)||0);})
-      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'depositos_delivery',filter:'delivery_id=eq.'+delId},()=>cargarDatos(delId))
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'pedidos',filter:'delivery_id=eq.'+delId},p=>{ cargarDatos(delId); })
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'delivery',filter:'id=eq.'+delId},p=>{ if(p.new.saldo_billetera!==undefined){ setSaldo(parseFloat(p.new.saldo_billetera)||0); sonarDepositoAprobado(); } })
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'depositos_delivery',filter:'delivery_id=eq.'+delId},p=>{ cargarDatos(delId); if(p.new?.estatus==='APROBADO') sonarDepositoAprobado(); })
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_mensajes',filter:'delivery_id=eq.'+delId},p=>{
         if(p.new.remitente==='DESPACHO'){
           setChatUnread(n=>n+1);
           notifLocal('💬 Despacho',p.new.mensaje);
+          sonarMensaje();
         }
       })
       .subscribe();
@@ -1076,8 +1227,8 @@ function App(){
     }
     const {error}=await sb.from('pedidos').update(campos).eq('id',pid).eq('delivery_id',delivery.id);
     if(error){toast('❌ '+error.message);return;}
-    if(eb.sig==='FINALIZADO'){setDetalle(null);toast('✅ ¡Pedido finalizado!');}
-    else toast('✅ Estado actualizado');
+    if(eb.sig==='FINALIZADO'){setDetalle(null);toast('✅ ¡Pedido finalizado!');sonarFinalizado();}
+    else{toast('✅ Estado actualizado');sonarEstadoAvanzado();}
     cargarDatos(delivery.id);
   };
 
