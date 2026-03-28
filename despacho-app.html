@@ -1033,13 +1033,17 @@ async function cargarRiders() {
     .select('*, ubicaciones_delivery(en_turno, lat, lng)')
     .order('nombre');
   if(data) {
-    S.riders = data.map(d => ({
-      ...d,
-      // en_turno: SOLO desde ubicaciones_delivery — si no hay registro = desconectado
-      en_turno: d.ubicaciones_delivery?.length > 0
-        ? (d.ubicaciones_delivery[0].en_turno === true)
-        : false
-    }));
+    S.riders = data.map(d => {
+      // Supabase puede devolver la relación como objeto o array según la FK definida
+      const ubi = Array.isArray(d.ubicaciones_delivery)
+        ? d.ubicaciones_delivery[0]
+        : d.ubicaciones_delivery;
+      return {
+        ...d,
+        en_turno: ubi?.en_turno === true,
+        _ubi: ubi || null,
+      };
+    });
     renderRidersMini();
     renderRidersGrid();
   }
@@ -1381,11 +1385,24 @@ function initMap() {
   S.map = map;
   sb.from('ubicaciones_delivery').select('*, delivery:delivery_id(nombre)').then(({ data }) => {
     data?.forEach(u => actualizarMarker(u));
+    // Actualizar en_turno en S.riders desde lo cargado
+    data?.forEach(u => {
+      const r = S.riders.find(x => x.id === u.delivery_id);
+      if(r) { r.en_turno = u.en_turno === true; r._ubi = u; }
+    });
+    renderRidersMini();
+    renderRidersGrid();
   });
 }
 
 function actualizarMarker(u) {
-  if(!S.map || !u.lat || !u.lng || u.lat === 0) return;
+  // Permitir lat/lng aunque sea 0 — solo filtrar si son null/undefined
+  if(!S.map || u.lat == null || u.lng == null) return;
+  // Si el rider no está en turno, quitar marker del mapa
+  if(!u.en_turno) {
+    if(S.markers[u.delivery_id]) { S.map.removeLayer(S.markers[u.delivery_id]); delete S.markers[u.delivery_id]; }
+    return;
+  }
   const dId = u.delivery_id;
   const d = S.riders.find(x => x.id === dId);
   const label = inic(d?.nombre || '?');
