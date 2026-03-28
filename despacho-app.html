@@ -1111,7 +1111,12 @@ async function confirmarAsig() {
   btn.disabled = true; btn.textContent = 'Asignando...';
   // Insertar en asignaciones_pendientes (el rider acepta o rechaza)
   const expira = new Date(Date.now() + 30000).toISOString();
-  // Cancelar asignaciones previas del mismo pedido antes de insertar
+  // Eliminar asignaciones previas del mismo par pedido+rider (evita unique constraint)
+  await sb.from('asignaciones_pendientes')
+    .delete()
+    .eq('pedido_id', S.selPedidoId)
+    .eq('delivery_id', parseInt(S.selRiderId));
+  // Cancelar otras asignaciones ENVIADAS del mismo pedido a otros riders
   await sb.from('asignaciones_pendientes')
     .update({ estatus: 'CANCELADO' })
     .eq('pedido_id', S.selPedidoId)
