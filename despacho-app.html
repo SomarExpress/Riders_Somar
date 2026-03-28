@@ -189,6 +189,7 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
 
 /* ─── MAPA ─────────────────────────────────────────────────── */
 #map-live{height:calc(100vh - 84px);border-radius:10px;overflow:hidden;}
+#map-riders{border-radius:0;overflow:hidden;min-height:300px;}
 
 /* ─── MODAL ────────────────────────────────────────────────── */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;align-items:center;justify-content:center;padding:16px;}
@@ -596,7 +597,7 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
       </div>
 
       <!-- ═══ MAPA ══════════════════════════════════════════════ -->
-      <div class="view" id="view-mapa">
+      <div class="view" id="view-mapa" style="padding:0;overflow:hidden;">
         <div id="map-live"></div>
       </div>
 
@@ -942,7 +943,7 @@ async function cargarMetricas() {
   const total = data.length;
   const fin   = data.filter(p => p.estatus === 'FINALIZADO').length;
   const proc  = data.filter(p => !['FINALIZADO','CANCELADO','PENDIENTE','SIN_ASIGNAR'].includes(p.estatus)).length;
-  const sa    = data.filter(p => ['SIN_ASIGNAR','PENDIENTE'].includes(p.estatus)).length;
+  const sa    = data.filter(p => ['PENDIENTE'].includes(p.estatus)).length;
   const ing   = data.filter(p => p.estatus === 'FINALIZADO').reduce((s,p) => s + parseFloat(p.tarifa_envio||0), 0);
   const drv   = data.filter(p => p.estatus === 'FINALIZADO').reduce((s,p) => s + parseFloat(p.ingreso_delivery||0), 0);
   const somar = data.filter(p => p.estatus === 'FINALIZADO').reduce((s,p) => s + parseFloat(p.ingreso_somar||0), 0);
@@ -1007,7 +1008,7 @@ function renderTablaPedidos() {
       <td class="mono" style="color:var(--or)">L.${parseFloat(p.tarifa_envio||0).toFixed(0)}</td>
       <td>${chipEst(p.estatus)}</td>
       <td onclick="event.stopPropagation()">
-        ${['PENDIENTE','SIN_ASIGNAR'].includes(p.estatus)
+        ${['PENDIENTE'].includes(p.estatus)
           ? `<button class="btn btn-primary btn-sm" onclick="abrirAsignar('${p.id}')">Asignar</button>`
           : `<button class="btn btn-ghost btn-sm" onclick="abrirModalPedido('${p.id}')">Ver</button>`}
       </td>
@@ -1046,7 +1047,7 @@ function abrirModalPedido(id) {
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
       ${!['FINALIZADO','CANCELADO'].includes(p.estatus) ? `<button class="btn btn-danger btn-sm" onclick="cancelarPedido('${p.id}')">Cancelar Pedido</button>` : ''}
-      ${['PENDIENTE','SIN_ASIGNAR'].includes(p.estatus) ? `<button class="btn btn-primary btn-sm" onclick="closeModal('modal-pedido');abrirAsignar('${p.id}')">Asignar Repartidor</button>` : ''}
+      ${['PENDIENTE'].includes(p.estatus) ? `<button class="btn btn-primary btn-sm" onclick="closeModal('modal-pedido');abrirAsignar('${p.id}')">Asignar Repartidor</button>` : ''}
     </div>`;
   document.getElementById('modal-pedido').classList.add('open');
 }
@@ -1764,9 +1765,8 @@ async function guardarPedido() {
           p_rider_anterior: pd.delivery_id
         });
       }
-    } else if(pd?.estatus === 'PENDIENTE') {
-      await sb.from('pedidos').update({ estatus:'SIN_ASIGNAR' }).eq('id', data.id);
-    }
+    } // Si sigue PENDIENTE, Despacho lo asigna manualmente
+    
   }, 32000);
   nav('pedidos');
 }
@@ -1785,7 +1785,7 @@ async function cargarComerciosDL() {
 }
 
 function abrirAsignarRider(dId) {
-  const pedSinAsig = S.pedidos.filter(p => ['PENDIENTE','SIN_ASIGNAR'].includes(p.estatus));
+  const pedSinAsig = S.pedidos.filter(p => ['PENDIENTE'].includes(p.estatus));
   if(!pedSinAsig.length) { toast('No hay pedidos sin asignar', 'ghost'); return; }
   abrirAsignar(pedSinAsig[0].id);
   S.selRiderId = String(dId);
@@ -1807,7 +1807,10 @@ function nav(v) {
   });
   document.getElementById('tb-title').textContent = TITLES[v] || v;
   // Acciones por vista
-  if(v === 'mapa' && !S.mapInit) initMap();
+  if(v === 'mapa') {
+    if(!S.mapInit) { setTimeout(initMap, 80); }
+    else { setTimeout(()=>S.map?.invalidateSize(), 80); }
+  }
   if(v === 'pedidos') renderTablaPedidos();
   if(v === 'riders') {
     renderRidersGrid();
