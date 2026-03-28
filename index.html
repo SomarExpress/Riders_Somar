@@ -929,9 +929,13 @@ function App(){
   const rtRef=useRef(null);
   const _reg=useRef(false);
   const toastRef=useRef(null);
+  const turnoRef=useRef(false); // siempre actualizado, sin stale closure
 
   // Tick para timers
   useEffect(()=>{ const t=setInterval(()=>setAhora(Date.now()),1000); return()=>clearInterval(t); },[]);
+
+  // Sincronizar turnoRef con estado (evita stale closure en GPS interval)
+  useEffect(()=>{ turnoRef.current = turno; },[turno]);
 
   // Auth init
   useEffect(()=>{
@@ -961,6 +965,11 @@ function App(){
     setDelivery({...del,email:del.correo||user.email});
     setSaldo(parseFloat(del.saldo_billetera)||0);
     setAuthed(true);
+    // Leer turno actual desde ubicaciones_delivery
+    const {data:ubi}=await sb.from('ubicaciones_delivery').select('en_turno').eq('delivery_id',del.id).single();
+    const turnoActual = ubi?.en_turno || false;
+    setTurno(turnoActual);
+    turnoRef.current = turnoActual;
     cargarDatos(del.id);
     iniciarGPS(del.id);
     suscribirRealtime(del.id);
@@ -992,7 +1001,7 @@ function App(){
 
   const iniciarGPS=delId=>{
     if(!navigator.geolocation)return;
-    const send=pos=>sb.from('ubicaciones_delivery').upsert({delivery_id:delId,lat:pos.coords.latitude,lng:pos.coords.longitude,precision_m:Math.round(pos.coords.accuracy),en_turno:turno,updated_at:new Date().toISOString()},{onConflict:'delivery_id'});
+    const send=pos=>sb.from('ubicaciones_delivery').upsert({delivery_id:delId,lat:pos.coords.latitude,lng:pos.coords.longitude,precision_m:Math.round(pos.coords.accuracy),en_turno:turnoRef.current,updated_at:new Date().toISOString()},{onConflict:'delivery_id'});
     navigator.geolocation.getCurrentPosition(send,()=>{});
     gpsRef.current=setInterval(()=>navigator.geolocation.getCurrentPosition(send,()=>{},{enableHighAccuracy:true,timeout:8000}),30000);
   };
@@ -1041,7 +1050,15 @@ function App(){
 
   const toggleTurno=async(val)=>{
     setTurno(val);
-    await sb.from('ubicaciones_delivery').upsert({delivery_id:delivery.id,en_turno:val,lat:0,lng:0,updated_at:new Date().toISOString()},{onConflict:'delivery_id'});
+    turnoRef.current=val;
+    // Solo actualizar en_turno — no tocar lat/lng para no borrar posición GPS real
+    const { error } = await sb.from('ubicaciones_delivery')
+      .update({ en_turno:val, updated_at:new Date().toISOString() })
+      .eq('delivery_id', delivery.id);
+    // Si no existe el registro aún, crearlo (primera vez)
+    if(error) {
+      await sb.from('ubicaciones_delivery').insert({ delivery_id:delivery.id, en_turno:val, lat:0, lng:0, updated_at:new Date().toISOString() });
+    }
     toast(val?'✅ Turno activado':'⏸ Turno pausado');
   };
 
@@ -1062,7 +1079,7 @@ function App(){
   const cerrarSesion=async()=>{
     if(gpsRef.current)clearInterval(gpsRef.current);
     if(rtRef.current)sb.removeChannel(rtRef.current);
-    if(delivery) await sb.from('ubicaciones_delivery').upsert({delivery_id:delivery.id,en_turno:false,lat:0,lng:0},{onConflict:'delivery_id'}).catch(()=>{});
+    if(delivery) await sb.from('ubicaciones_delivery').update({en_turno:false,updated_at:new Date().toISOString()}).eq('delivery_id',delivery.id).catch(()=>{});
     await sb.auth.signOut();
     setDelivery(null);setPedidos([]);setHistorial([]);setDepositos([]);setMovimientos([]);setSaldo(0);setTurno(false);
   };
