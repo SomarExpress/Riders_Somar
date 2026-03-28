@@ -405,8 +405,9 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
         <div class="filter-bar">
           <button class="fbtn active" onclick="filtPed(this,'todos')">Todos</button>
           <button class="fbtn" onclick="filtPed(this,'activos')">Activos</button>
-          <button class="fbtn" onclick="filtPed(this,'SIN_ASIGNAR')">Sin Asignar</button>
+          <button class="fbtn" onclick="filtPed(this,'sinAsignar')">Sin Asignar</button>
           <button class="fbtn" onclick="filtPed(this,'PENDIENTE')">Pendiente</button>
+          <button class="fbtn" onclick="filtPed(this,'BORRADOR')">Borrador</button>
           <button class="fbtn" onclick="filtPed(this,'FINALIZADO')">Finalizados</button>
           <button class="fbtn" onclick="filtPed(this,'CANCELADO')">Cancelados</button>
         </div>
@@ -441,8 +442,9 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
           <div class="form-grid">
             <div class="fg"><label class="fl">Tipo de Pedido</label>
               <div class="tog-grp">
-                <div class="tog-btn on" id="tt-COMPRA" onclick="setTipo('COMPRA')">🛒 Compra</div>
+                <div class="tog-btn on" id="tt-MANDADO" onclick="setTipo('MANDADO')">🛒 Compra/Mandado</div>
                 <div class="tog-btn" id="tt-DELIVERY" onclick="setTipo('DELIVERY')">📦 Delivery</div>
+                <div class="tog-btn" id="tt-TRASLADO" onclick="setTipo('TRASLADO')">🚗 Traslado</div>
               </div>
             </div>
             <div class="fg"><label class="fl">Nombre del Cliente <span class="r">*</span></label>
@@ -533,6 +535,7 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
               <div class="tog-grp">
                 <div class="tog-btn on" id="tpago-EFECTIVO" onclick="setMetodoPago('EFECTIVO')">💵 Efectivo</div>
                 <div class="tog-btn" id="tpago-TRANSFERENCIA" onclick="setMetodoPago('TRANSFERENCIA')">📲 Transfer.</div>
+                <div class="tog-btn" id="tpago-TARJETA" onclick="setMetodoPago('TARJETA')">💳 Tarjeta</div>
               </div>
             </div>
             <div class="fg"><label class="fl">Tarifa Dinámica</label>
@@ -563,6 +566,13 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
                 <span class="stepper-val" id="sv-propina">0.00</span>
                 <button class="stepper-btn" onclick="stepVal('sv-propina',5)">+</button>
               </div>
+            </div>
+            <div class="fg"><label class="fl">¿Quién Paga el Envío?</label>
+              <select id="f-quien-paga" class="fs">
+                <option value="DESTINATARIO">Destinatario (cliente)</option>
+                <option value="REMITENTE">Remitente (quien envía)</option>
+                <option value="COMERCIO">Comercio</option>
+              </select>
             </div>
             <div class="fg"><label class="fl">Cliente Pagará Con (L.)</label>
               <input type="number" id="f-paga-con" class="fi" placeholder="0.00" step="0.01">
@@ -693,7 +703,7 @@ const S = {
   pedFiltro: 'todos', selRiderId: null, selPedidoId: null,
   mapInit: false, map: null, markers: {},
   chatRiderId: null, chatSub: null,
-  tipoPedido: 'COMPRA', metodoPago: 'EFECTIVO', pagarEstab: false,
+  tipoPedido: 'MANDADO', metodoPago: 'EFECTIVO', pagarEstab: false,
   stepVals: { 'sv-prod': 0, 'sv-envio': 50, 'sv-propina': 0 },
 };
 
@@ -810,7 +820,7 @@ function onPedidoChange(payload) {
   cargarMetricas();
   if(document.getElementById('view-pedidos').classList.contains('active')) renderTablaPedidos();
   renderListaActivos();
-  if(p.estatus === 'SIN_ASIGNAR' || p.estatus === 'PENDIENTE') {
+  if(p.estatus === 'PENDIENTE') {
     notif('⚠️ Pedido sin asignar', `${p.no_orden} requiere asignación manual`, true);
     badgeInc('badge-activos');
   }
@@ -865,7 +875,7 @@ function renderListaActivos() {
 // ════════════════════════════════════════════════════════════
 // PEDIDOS — TABLA
 // ════════════════════════════════════════════════════════════
-const FILTROS_ACTIVOS = ['ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO'];
+const FILTROS_ACTIVOS = ['ASIGNADO','ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO'];
 
 function filtPed(btn, f) {
   document.querySelectorAll('.filter-bar .fbtn').forEach(b => b.classList.remove('active'));
@@ -877,8 +887,9 @@ function filtPed(btn, f) {
 function renderTablaPedidos() {
   const q = (document.getElementById('ped-search')?.value || '').toLowerCase();
   let peds = S.pedidos;
-  if(S.pedFiltro === 'activos')   peds = peds.filter(p => FILTROS_ACTIVOS.includes(p.estatus));
-  else if(S.pedFiltro !== 'todos') peds = peds.filter(p => p.estatus === S.pedFiltro);
+  if(S.pedFiltro === 'activos')     peds = peds.filter(p => FILTROS_ACTIVOS.includes(p.estatus));
+  else if(S.pedFiltro === 'sinAsignar') peds = peds.filter(p => p.estatus === 'PENDIENTE');
+  else if(S.pedFiltro !== 'todos')  peds = peds.filter(p => p.estatus === S.pedFiltro);
   if(q) peds = peds.filter(p => JSON.stringify(p).toLowerCase().includes(q));
   document.getElementById('ped-count').textContent = `${peds.length} pedidos`;
   const tbody = document.getElementById('tbody-pedidos');
@@ -1000,7 +1011,7 @@ async function confirmarAsig() {
   });
   btn.textContent = 'Asignar Pedido'; btn.disabled = false;
   if(error) { toast('Error: ' + error.message, 'danger'); return; }
-  await sb.from('pedidos').update({ estatus:'ACEPTADO', delivery_id: parseInt(S.selRiderId) }).eq('id', S.selPedidoId);
+  await sb.from('pedidos').update({ estatus:'ASIGNADO', delivery_id: parseInt(S.selRiderId) }).eq('id', S.selPedidoId);
   closeModal('modal-asignar');
   toast('🏍 Repartidor asignado. Pedido enviado al rider.', 'success');
 }
@@ -1011,7 +1022,6 @@ async function confirmarAsig() {
 async function cargarRiders() {
   const { data } = await sb.from('delivery')
     .select('*, ubicaciones_delivery(en_turno, lat, lng)')
-    .eq('activo', true)
     .order('nombre');
   if(data) {
     S.riders = data.map(d => ({ ...d, en_turno: d.ubicaciones_delivery?.[0]?.en_turno || false }));
@@ -1391,7 +1401,7 @@ function wizGo(step) {
 
 function setTipo(v) {
   S.tipoPedido = v;
-  ['COMPRA','DELIVERY'].forEach(t => document.getElementById('tt-'+t)?.classList.toggle('on', t===v));
+  ['MANDADO','DELIVERY','TRASLADO'].forEach(t => document.getElementById('tt-'+t)?.classList.toggle('on', t===v));
   actualizarResumen();
 }
 
@@ -1405,7 +1415,7 @@ function setPagar(v) {
 
 function setMetodoPago(v) {
   S.metodoPago = v;
-  ['EFECTIVO','TRANSFERENCIA'].forEach(t => document.getElementById('tpago-'+t)?.classList.toggle('on', t===v));
+  ['EFECTIVO','TRANSFERENCIA','TARJETA'].forEach(t => document.getElementById('tpago-'+t)?.classList.toggle('on', t===v));
 }
 
 function stepVal(id, delta) {
@@ -1434,7 +1444,8 @@ function actualizarResumen() {
   const total = prod + envio + prop;
   const set = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
   set('r-cliente', cli);
-  set('r-tipo', `${S.tipoPedido} · ${S.metodoPago}`);
+  const tipoLabel = {MANDADO:'Compra/Mandado',DELIVERY:'Delivery',TRASLADO:'Traslado',ENVIO:'Envío',RECOGER_PAQUETE:'Recoger Paquete'};
+  set('r-tipo', `${tipoLabel[S.tipoPedido]||S.tipoPedido} · ${S.metodoPago}`);
   set('r-recolecta', rec.length > 28 ? rec.substring(0,28)+'...' : rec);
   set('r-entrega',   ent.length > 28 ? ent.substring(0,28)+'...' : ent);
   set('r-pago', S.metodoPago);
@@ -1482,7 +1493,9 @@ async function guardarPedido() {
     ingreso_delivery:        ingDelivery,
     ingreso_somar:           parseFloat((envio * 0.3).toFixed(2)),
     estatus:                 'PENDIENTE',
-    quien_paga:              parseFloat(document.getElementById('f-paga-con')?.value || 0),
+    quien_paga:              document.getElementById('f-quien-paga')?.value || 'DESTINATARIO',
+    recibira_efectivo:       parseFloat(document.getElementById('f-paga-con')?.value || 0) > 0,
+    monto_recibido_efectivo: parseFloat(document.getElementById('f-paga-con')?.value || 0),
   };
   const { data, error } = await sb.from('pedidos').insert(nuevoPed).select().single();
   btn.textContent = '💾 Guardar Pedido'; btn.disabled = false;
@@ -1547,7 +1560,7 @@ function nav(v) {
   if(v === 'solicitudes') cargarSolicitudes(S.solFiltro || 'PENDIENTE');
   if(v === 'depositos') cargarDepositos('PENDIENTE');
   if(v === 'historial') { /* noop, user clicks Buscar */ }
-  if(v === 'chat') { renderChatContacts(); }
+  if(v === 'chat') { if(!S.riders.length) cargarRiders().then(renderChatContacts); else renderChatContacts(); }
   if(v === 'nuevo') { wizGo(0); actualizarResumen(); }
   closeSB();
 }
@@ -1559,7 +1572,7 @@ function closeSB() { document.getElementById('sidebar').classList.remove('open')
 // UTILS
 // ════════════════════════════════════════════════════════════
 function chipEst(e) {
-  const labels = { PENDIENTE:'Pendiente',SIN_ASIGNAR:'Sin Asignar',ACEPTADO:'Aceptado',EN_ESTABLECIMIENTO:'Establecimiento',PEDIDO_EN_CAMINO:'En Camino',ENTREGANDO:'Entregando',FINALIZADO:'Finalizado',CANCELADO:'Cancelado' };
+  const labels = { BORRADOR:'Borrador',PENDIENTE:'Pendiente',ASIGNADO:'Asignado',ACEPTADO:'Aceptado',EN_ESTABLECIMIENTO:'Establecimiento',PEDIDO_EN_CAMINO:'En Camino',ENTREGANDO:'Entregando',FINALIZADO:'Finalizado',CANCELADO:'Cancelado',RECHAZADO:'Rechazado' };
   return `<span class="chip chip-${e||'PENDIENTE'}"><span class="dot"></span>${labels[e]||e||'—'}</span>`;
 }
 function inic(n) { if(!n) return '?'; const w=n.trim().split(' '); return (w[0][0]+(w[1]?w[1][0]:'')).toUpperCase(); }
