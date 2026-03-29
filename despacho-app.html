@@ -925,12 +925,16 @@ function onPedidoChange(payload) {
   if(document.getElementById('view-pedidos').classList.contains('active')) renderTablaPedidos();
   renderListaActivos();
   if(p.estatus === 'PENDIENTE') {
-    notif('⚠️ Pedido sin asignar', `${p.no_orden} requiere asignación manual`, true);
+    notif('⚠️ Pedido sin asignar', `${p.no_orden||'—'} requiere asignación manual`, true);
     badgeInc('badge-activos');
     sonarPedidoNuevo();
   }
+  if(p.estatus === 'ACEPTADO') {
+    notif('✅ Pedido aceptado', `${p.no_orden||'—'} fue aceptado por el rider`, false);
+  }
   if(p.estatus === 'FINALIZADO') {
     sonarPedidoFinalizado();
+    notif('🏁 Pedido finalizado', `${p.no_orden||'—'} entregado`, false);
   }
 }
 
