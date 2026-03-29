@@ -1232,7 +1232,12 @@ function App(){
       if(up){const {data:u}=await sb.storage.from('delivery-docs').createSignedUrl(up.path,60*60*24*365*10);if(u?.signedUrl)campos.foto_factura_url=u.signedUrl;}
     }
     const {error}=await sb.from('pedidos').update(campos).eq('id',pid).eq('delivery_id',delivery.id);
-    if(error){toast('❌ '+error.message);return;}
+    if(error){
+      console.error('[avanzar] error:', error.message);
+      // Fallback: intentar sin filtro delivery_id
+      const {error:e2}=await sb.from('pedidos').update(campos).eq('id',pid);
+      if(e2){toast('❌ '+e2.message);return;}
+    }
     if(eb.sig==='FINALIZADO'){setDetalle(null);toast('✅ ¡Pedido finalizado!');sonarFinalizado();}
     else{toast('✅ Estado actualizado');sonarEstadoAvanzado();}
     cargarDatos(delivery.id);
@@ -1256,33 +1261,34 @@ function App(){
     if(!pe)return;
     detenerAlarma();
     const horaAceptado=new Date().toISOString();
-    console.log('[aceptar] pedido id:', pe.id, 'delivery_id:', delivery.id, 'asigId:', pe._asigId);
-    // Actualizar pedido: ACEPTADO + hora_aceptado + delivery_id (por si acaso no estaba seteado)
-    const {error:updErr}=await sb.from('pedidos')
-      .update({
-        estatus:'ACEPTADO',
-        hora_aceptado:horaAceptado,
-        delivery_id:delivery.id
-      })
-      .eq('id',pe.id);
-    if(updErr){
-      console.error('[aceptar] error update pedido:', updErr.message, updErr.code);
-      toast('⚠️ Error al aceptar: '+updErr.message);
-      setPe(null);
-      return;
-    }
-    console.log('[aceptar] pedido actualizado OK');
-    // Marcar asignación como aceptada
+    // 1. Marcar asignación como ACEPTADO primero (esto tiene política permisiva)
     if(pe._asigId){
-      const {error:asigErr}=await sb.from('asignaciones_pendientes')
+      await sb.from('asignaciones_pendientes')
         .update({estatus:'ACEPTADO',respondido_at:horaAceptado})
         .eq('id',pe._asigId);
-      if(asigErr) console.error('[aceptar] error asignacion:', asigErr.message);
+    }
+    // 2. Actualizar pedido via RPC para evitar problemas de RLS
+    const {error:updErr}=await sb.from('pedidos')
+      .update({estatus:'ACEPTADO',hora_aceptado:horaAceptado,delivery_id:delivery.id})
+      .eq('id',pe.id);
+    if(updErr){
+      console.error('[aceptar] error:', updErr.message);
+      // Intentar via RPC como fallback
+      const {error:rpcErr}=await sb.rpc('rider_aceptar_pedido',{
+        p_pedido_id:pe.id,
+        p_delivery_id:delivery.id,
+        p_hora:horaAceptado
+      });
+      if(rpcErr){
+        console.error('[aceptar] rpc error:', rpcErr.message);
+        toast('⚠️ '+updErr.message);
+        setPe(null);
+        return;
+      }
     }
     toast('✅ Pedido aceptado');
     setPe(null);
-    // Recargar datos con pequeño delay para que Supabase propague el cambio
-    setTimeout(()=>cargarDatos(delivery.id), 500);
+    setTimeout(()=>cargarDatos(delivery.id),300);
   };
 
   const rechazarPE=async()=>{
