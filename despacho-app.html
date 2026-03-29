@@ -283,6 +283,10 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
         Pedidos
         <span class="nav-badge or" id="badge-activos">0</span>
       </div>
+      <div class="nav-item" onclick="nav('kanban')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="4" height="15" rx="1"/></svg>
+        Kanban
+      </div>
       <div class="nav-item" onclick="nav('nuevo')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
         Nuevo Pedido
@@ -347,6 +351,15 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
 
       <!-- ═══ DASHBOARD ═══════════════════════════════════════ -->
       <div class="view active" id="view-inicio">
+        <!-- Filtro de fecha -->
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
+          <span style="font-size:12px;color:var(--td);font-weight:600;">Rango:</span>
+          <input type="date" id="dash-desde" class="fi" style="width:140px;padding:5px 10px;font-size:12px;">
+          <span style="color:var(--td);font-size:12px;">→</span>
+          <input type="date" id="dash-hasta" class="fi" style="width:140px;padding:5px 10px;font-size:12px;">
+          <button class="btn btn-primary btn-sm" onclick="cargarMetricas()">Filtrar</button>
+          <button class="btn btn-ghost btn-sm" onclick="resetFiltroFecha()">Hoy</button>
+        </div>
         <div class="metrics">
           <div class="metric">
             <div class="metric-lbl">Pedidos Hoy</div>
@@ -402,6 +415,36 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ KANBAN ══════════════════════════════════════════ -->
+      <div class="view" id="view-kanban" style="padding:0;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;height:calc(100vh - 52px);overflow:hidden;">
+          <!-- PENDIENTES -->
+          <div style="border-right:1px solid var(--g4);display:flex;flex-direction:column;background:var(--g1);">
+            <div style="padding:12px 14px;border-bottom:1px solid var(--g4);background:rgba(245,158,11,.08);">
+              <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--am);">⏳ Pendientes</div>
+              <div style="font-size:11px;color:var(--td);margin-top:2px" id="kb-cnt-pend">— pedidos</div>
+            </div>
+            <div id="kb-pend" style="flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px;"></div>
+          </div>
+          <!-- EN PROCESO -->
+          <div style="border-right:1px solid var(--g4);display:flex;flex-direction:column;background:var(--g1);">
+            <div style="padding:12px 14px;border-bottom:1px solid var(--g4);background:rgba(255,140,0,.08);">
+              <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--or);">🛵 En Proceso</div>
+              <div style="font-size:11px;color:var(--td);margin-top:2px" id="kb-cnt-proc">— pedidos</div>
+            </div>
+            <div id="kb-proc" style="flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px;"></div>
+          </div>
+          <!-- FINALIZADOS -->
+          <div style="display:flex;flex-direction:column;background:var(--g1);">
+            <div style="padding:12px 14px;border-bottom:1px solid var(--g4);background:rgba(34,197,94,.08);">
+              <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--verde);">✅ Finalizados</div>
+              <div style="font-size:11px;color:var(--td);margin-top:2px" id="kb-cnt-fin">— pedidos</div>
+            </div>
+            <div id="kb-fin" style="flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px;"></div>
           </div>
         </div>
       </div>
@@ -866,6 +909,12 @@ async function init() {
   const hace30 = new Date(); hace30.setDate(hoy.getDate() - 30);
   document.getElementById('hist-hasta').value = hoy.toISOString().split('T')[0];
   document.getElementById('hist-desde').value = hace30.toISOString().split('T')[0];
+  // Inicializar fechas del dashboard en 'hoy'
+  const _hoy = new Date().toISOString().split('T')[0];
+  const _dEl = document.getElementById('dash-desde');
+  const _hEl = document.getElementById('dash-hasta');
+  if(_dEl) _dEl.value = _hoy;
+  if(_hEl) _hEl.value = _hoy;
   await Promise.all([ cargarMetricas(), cargarRiders() ]);
   cargarComerciosDL();
   initRealtime();
@@ -902,6 +951,7 @@ function initRealtime() {
         if(document.getElementById('view-riders').classList.contains('active')) {
           renderRidersGrid();
           actualizarMarkersRiders();
+          actualizarZonaCaliente();
         }
         if(document.getElementById('view-inicio').classList.contains('active')) renderListaActivos();
       }
@@ -939,6 +989,7 @@ function onPedidoChange(payload) {
   }
   cargarMetricas();
   if(document.getElementById('view-pedidos').classList.contains('active')) renderTablaPedidos();
+  if(document.getElementById('view-kanban').classList.contains('active')) renderKanban();
   renderListaActivos();
   if(p.estatus === 'PENDIENTE') {
     notif('⚠️ Pedido sin asignar', `${p.no_orden||'—'} requiere asignación manual`, true);
@@ -957,11 +1008,23 @@ function onPedidoChange(payload) {
 // ════════════════════════════════════════════════════════════
 // MÉTRICAS
 // ════════════════════════════════════════════════════════════
+function resetFiltroFecha() {
+  const hoy = new Date().toISOString().split('T')[0];
+  const dEl = document.getElementById('dash-desde');
+  const hEl = document.getElementById('dash-hasta');
+  if(dEl) dEl.value = hoy;
+  if(hEl) hEl.value = hoy;
+  cargarMetricas();
+}
+
 async function cargarMetricas() {
   const hoy = new Date().toISOString().split('T')[0];
+  const desde = document.getElementById('dash-desde')?.value || hoy;
+  const hasta = document.getElementById('dash-hasta')?.value || hoy;
   const { data } = await sb.from('pedidos')
     .select('*')
-    .gte('created_at', hoy + 'T00:00:00')
+    .gte('created_at', desde + 'T00:00:00')
+    .lte('created_at', hasta + 'T23:59:59')
     .order('created_at', { ascending: false });
   if(!data) return;
   S.pedidos = data;
@@ -1542,7 +1605,79 @@ function initMapRiders() {
   const map = L.map('map-riders', { zoomControl: true }).setView([15.6133, -87.9480], 13);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution:'© CartoDB', maxZoom:19 }).addTo(map);
   S.mapRiders = map;
+  S.zonaLayer = null;
   actualizarMarkersRiders();
+  actualizarZonaCaliente();
+}
+
+function actualizarZonaCaliente() {
+  if(!S.mapRiders) return;
+  // Limpiar capa anterior
+  if(S.zonaLayer) { S.mapRiders.removeLayer(S.zonaLayer); S.zonaLayer = null; }
+  
+  // Agrupar pedidos del día por zona (ciudad_destino)
+  const hoy = new Date().toISOString().split('T')[0];
+  const pedHoy = S.pedidos.filter(p => p.created_at?.startsWith(hoy));
+  
+  // Zonas predefinidas con coordenadas
+  const ZONAS = {
+    'CHOLOMA':         { lat:15.6133, lng:-87.9480 },
+    'SAN PEDRO SULA':  { lat:15.5000, lng:-88.0251 },
+    'LA LIMA':         { lat:15.4333, lng:-87.9167 },
+    'VILLANUEVA':      { lat:15.3167, lng:-88.0167 },
+  };
+  
+  // Contar pedidos por zona
+  const conteo = {};
+  pedHoy.forEach(p => {
+    const ciudad = (p.ciudad_destino || 'CHOLOMA').toUpperCase();
+    conteo[ciudad] = (conteo[ciudad] || 0) + 1;
+  });
+  
+  const maxPed = Math.max(1, ...Object.values(conteo));
+  
+  // Dibujar círculos de calor
+  const group = L.layerGroup();
+  Object.entries(conteo).forEach(([ciudad, cnt]) => {
+    const zona = ZONAS[ciudad];
+    if(!zona) return;
+    const intensidad = cnt / maxPed; // 0-1
+    const radio = 800 + (intensidad * 2000); // 800m - 2800m
+    const color = intensidad > 0.7 ? '#EF4444' : intensidad > 0.4 ? '#F59E0B' : '#22C55E';
+    const opacity = 0.1 + (intensidad * 0.25);
+    
+    L.circle([zona.lat, zona.lng], {
+      radius: radio,
+      color: color, fillColor: color,
+      fillOpacity: opacity, weight: 1.5,
+      dashArray: '4,3'
+    }).addTo(group).bindPopup(
+      `<b>${ciudad}</b><br>${cnt} pedido${cnt!==1?'s':''} hoy<br>${intensidad>0.7?'🔴 Zona muy activa':intensidad>0.4?'🟡 Zona activa':'🟢 Zona normal'}`
+    );
+    
+    // Label con conteo
+    if(cnt > 0) {
+      L.marker([zona.lat, zona.lng], {
+        icon: L.divIcon({
+          html: `<div style="background:${color};color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)">${cnt}</div>`,
+          iconSize:[28,28], iconAnchor:[14,14], className:''
+        })
+      }).addTo(group).bindPopup(`<b>${ciudad}</b>: ${cnt} pedidos`);
+    }
+  });
+  
+  // Si no hay pedidos hoy, mostrar zonas base
+  if(Object.keys(conteo).length === 0) {
+    Object.entries(ZONAS).forEach(([nombre, z]) => {
+      L.circle([z.lat, z.lng], {
+        radius: 1000, color:'#333', fillColor:'#333',
+        fillOpacity:0.05, weight:1, dashArray:'4,3'
+      }).addTo(group).bindPopup(`${nombre} — sin pedidos hoy`);
+    });
+  }
+  
+  group.addTo(S.mapRiders);
+  S.zonaLayer = group;
 }
 
 function actualizarMarkersRiders() {
@@ -1883,10 +2018,74 @@ function abrirAsignarRider(dId) {
   document.getElementById('btn-confirm-asig').disabled = false;
 }
 
+
+// ════════════════════════════════════════════════════════════
+// KANBAN
+// ════════════════════════════════════════════════════════════
+function renderKanban() {
+  const pend = S.pedidos.filter(p => p.estatus === 'PENDIENTE');
+  const proc = S.pedidos.filter(p => ['ASIGNADO','ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO'].includes(p.estatus));
+  const fin  = S.pedidos.filter(p => p.estatus === 'FINALIZADO');
+  const canc = S.pedidos.filter(p => p.estatus === 'CANCELADO');
+
+  document.getElementById('kb-cnt-pend').textContent = `${pend.length} pedido${pend.length!==1?'s':''}`;
+  document.getElementById('kb-cnt-proc').textContent = `${proc.length} pedido${proc.length!==1?'s':''}`;
+  document.getElementById('kb-cnt-fin').textContent  = `${fin.length+canc.length} pedido${fin.length!==1?'s':''}`;
+
+  const card = (p, accentColor) => {
+    const rider = S.riders.find(r => r.id === p.delivery_id);
+    const hace = p.created_at ? Math.round((Date.now()-new Date(p.created_at).getTime())/60000) : null;
+    const urgente = hace !== null && hace > 20 && ['PENDIENTE','ASIGNADO'].includes(p.estatus);
+    return `<div onclick="abrirModalPedido('${p.id}')" style="
+      background:var(--g2);border:1px solid ${urgente?'var(--rojo)':accentColor+'33'};
+      border-left:3px solid ${accentColor};border-radius:10px;padding:10px 11px;
+      cursor:pointer;transition:all .15s;
+      ${urgente?'box-shadow:0 0 8px rgba(239,68,68,.3);':''}
+    " onmouseover="this.style.background='var(--g3)'" onmouseout="this.style.background='var(--g2)'">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:6px;">
+        <div class="mono" style="font-size:10px;color:${accentColor}">${p.no_orden||'—'}</div>
+        ${hace!==null?`<div style="font-size:10px;color:${urgente?'var(--rojo)':'var(--td)'};white-space:nowrap">${hace<60?hace+'m':Math.floor(hace/60)+'h'} ${urgente?'⚠️':''}</div>`:''}
+      </div>
+      <div style="font-size:12px;font-weight:700;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.nombre_comercio||p.nombre_destinatario||'—'}</div>
+      <div style="font-size:11px;color:var(--td);margin-bottom:6px">📍 ${p.ciudad_destino||'—'}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        ${chipEst(p.estatus)}
+        <div style="font-size:11px;color:var(--td)">${rider?`🛵 ${rider.nombre.split(' ')[0]}`:'<span style="color:var(--rojo);font-size:10px">Sin rider</span>'}</div>
+      </div>
+      ${p.estatus==='PENDIENTE'?`<button class="btn btn-primary btn-sm" style="width:100%;justify-content:center;margin-top:8px" onclick="event.stopPropagation();abrirAsignar('${p.id}')">Asignar Rider</button>`:''}
+      <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;">
+        <span style="color:var(--td)">${p.metodo_pago||'—'}</span>
+        <span class="mono" style="color:var(--or);font-weight:700">L.${parseFloat(p.tarifa_envio||0).toFixed(0)}</span>
+      </div>
+    </div>`;
+  };
+
+  const empty = txt => `<div style="text-align:center;padding:20px;font-size:12px;color:var(--td)">${txt}</div>`;
+
+  document.getElementById('kb-pend').innerHTML = pend.length
+    ? pend.map(p=>card(p,'#F59E0B')).join('')
+    : empty('Sin pedidos pendientes');
+
+  document.getElementById('kb-proc').innerHTML = proc.length
+    ? proc.map(p=>card(p,'#FF8C00')).join('')
+    : empty('Sin pedidos en proceso');
+
+  document.getElementById('kb-fin').innerHTML = (fin.length+canc.length)
+    ? [...fin.map(p=>card(p,'#22C55E')), ...canc.map(p=>card(p,'#EF4444'))].join('')
+    : empty('Sin pedidos finalizados hoy');
+}
+
+// Actualizar kanban cuando hay cambios en pedidos
+const _origOnPedidoChange = onPedidoChange;
+// Llamar renderKanban después de cada cambio si está activo
+function _postPedidoChange() {
+  if(document.getElementById('view-kanban').classList.contains('active')) renderKanban();
+}
+
 // ════════════════════════════════════════════════════════════
 // NAVEGACIÓN
 // ════════════════════════════════════════════════════════════
-const TITLES = { inicio:'Dashboard',pedidos:'Pedidos',nuevo:'Nuevo Pedido',mapa:'Mapa en Vivo',riders:'Riders',solicitudes:'Solicitudes de Riders',depositos:'Depósitos',historial:'Historial',chat:'Chat' };
+const TITLES = { inicio:'Dashboard',pedidos:'Pedidos',kanban:'Kanban — Vista de Pedidos',nuevo:'Nuevo Pedido',mapa:'Mapa en Vivo',riders:'Riders',solicitudes:'Solicitudes de Riders',depositos:'Depósitos',historial:'Historial',chat:'Chat' };
 
 function nav(v) {
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
@@ -1903,6 +2102,7 @@ function nav(v) {
     else { setTimeout(()=>S.map?.invalidateSize(), 80); }
   }
   if(v === 'pedidos') renderTablaPedidos();
+  if(v === 'kanban') renderKanban();
   if(v === 'riders') {
     renderRidersGrid();
     if(!S.mapRidersInit) { setTimeout(initMapRiders, 80); }
