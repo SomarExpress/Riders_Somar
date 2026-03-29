@@ -11,6 +11,8 @@
 <link rel="apple-touch-icon" href="https://res.cloudinary.com/drkaxsziu/image/upload/v1767871213/Somar_Express_2048_x_2048_px_18_x_18_in__20250623_221102_0000_o0bv7a.png">
 <title>Somar Express — Delivery</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1347,9 +1349,9 @@ function App(){
   const TABS=[
     {id:'historial',icon:'📋',lbl:'HISTORIAL'},
     {id:'asignados',icon:'🛵',lbl:'ASIGNADOS'},
-    {id:'guaca',icon:'💰',lbl:'MI GUACA'},
+    {id:'zona',icon:'🗺️',lbl:'MI ZONA'},
+    {id:'guaca',icon:'💰',lbl:'GUACA'},
     {id:'chat',icon:'💬',lbl:'CHAT',badge:chatUnread},
-    {id:'perfil',icon:'👤',lbl:'MI PERFIL'},
   ];
 
   return(
@@ -1416,6 +1418,7 @@ function App(){
           </div>
         )}
         {tab==='guaca'&&<TabGuaca historial={historial} saldo={saldo} movimientos={movimientos} onIrDepositos={()=>setTab('depositos')}/>}
+        {tab==='zona'&&<TabZona delivery={delivery}/>}
         {tab==='chat'&&<TabChat delivery={delivery}/>}
         {tab==='depositos'&&<TabDepositos delivery={delivery} depositos={depositos} setDepositos={setDepositos} onConfirm={setSheet} toast={toast}/>}
         {tab==='perfil'&&(
@@ -1455,6 +1458,151 @@ function App(){
   );
 }
 
+
+
+// ─── TAB ZONA ─────────────────────────────────────────────
+// Muestra mapa con zona de cobertura y posición del rider
+// Círculo de 5km centrado en Choloma
+function TabZona({delivery}){
+  const mapRef = React.useRef(null);
+  const mapInstanceRef = React.useRef(null);
+  const markerRef = React.useRef(null);
+  const [gpsPos, setGpsPos] = React.useState(null);
+  const [dentroZona, setDentroZona] = React.useState(null);
+
+  // Zona principal: centro de Choloma
+  const ZONAS = [
+    { nombre:'Choloma Centro', lat:15.6133, lng:-87.9480, radio:5000, color:'#FF8C00' },
+    { nombre:'San Pedro Sula', lat:15.5000, lng:-88.0251, radio:5000, color:'#3B82F6' },
+  ];
+
+  useEffect(()=>{
+    if(mapInstanceRef.current) return; // Ya inicializado
+    const el = document.getElementById('mapa-zona-rider');
+    if(!el) return;
+    
+    const map = window.L.map('mapa-zona-rider', {zoomControl:true}).setView([15.6133,-87.9480],12);
+    window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+      {attribution:'© CartoDB', maxZoom:19}).addTo(map);
+    
+    // Dibujar zonas de cobertura
+    ZONAS.forEach(z=>{
+      window.L.circle([z.lat,z.lng],{
+        radius: z.radio,
+        color: z.color,
+        fillColor: z.color,
+        fillOpacity: 0.08,
+        weight: 2,
+        dashArray: '6,4'
+      }).addTo(map).bindPopup(`<b>${z.nombre}</b><br>Radio: ${z.radio/1000}km`);
+      
+      // Marcador del centro de zona
+      window.L.circleMarker([z.lat,z.lng],{
+        radius:6, color:z.color, fillColor:z.color, fillOpacity:1, weight:2
+      }).addTo(map).bindPopup(`📍 ${z.nombre}`);
+    });
+
+    mapInstanceRef.current = map;
+
+    // Obtener posición actual del rider
+    if(navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(pos=>{
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setGpsPos({lat, lng});
+        
+        // Calcular si está dentro de alguna zona
+        const dentroDeZona = ZONAS.find(z=>{
+          const d = haversineKm(lat,lng,z.lat,z.lng);
+          return d <= z.radio/1000;
+        });
+        setDentroZona(dentroDeZona || null);
+
+        // Marker del rider
+        const icon = window.L.divIcon({
+          html:`<div style="width:36px;height:36px;border-radius:50%;background:#FF8C00;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,.5)">🛵</div>`,
+          iconSize:[36,36], iconAnchor:[18,18], className:''
+        });
+        markerRef.current = window.L.marker([lat,lng],{icon}).addTo(map);
+        markerRef.current.bindPopup('📍 Tu posición actual').openPopup();
+        map.flyTo([lat,lng],14,{animate:true,duration:1});
+
+        // Línea a zona más cercana
+        const zonaCercana = ZONAS.reduce((prev,curr)=>{
+          const dPrev = haversineKm(lat,lng,prev.lat,prev.lng);
+          const dCurr = haversineKm(lat,lng,curr.lat,curr.lng);
+          return dCurr < dPrev ? curr : prev;
+        });
+        const distKm = haversineKm(lat,lng,zonaCercana.lat,zonaCercana.lng);
+        if(distKm > zonaCercana.radio/1000){
+          window.L.polyline([[lat,lng],[zonaCercana.lat,zonaCercana.lng]],{
+            color:'#EF4444', dashArray:'8,4', weight:2, opacity:0.7
+          }).addTo(map).bindPopup(`${distKm.toFixed(1)}km hasta ${zonaCercana.nombre}`);
+        }
+      }, ()=>{}, {enableHighAccuracy:true,timeout:10000});
+    }
+
+    return ()=>{ /* No destruir el mapa al cambiar de tab */ };
+  },[]);
+
+  useEffect(()=>{
+    if(mapInstanceRef.current) {
+      setTimeout(()=>mapInstanceRef.current.invalidateSize(), 100);
+    }
+  });
+
+  const haversineKm = (lat1,lng1,lat2,lng2)=>{
+    const R=6371, dLat=(lat2-lat1)*Math.PI/180, dLng=(lng2-lng1)*Math.PI/180;
+    const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+    return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+  };
+
+  const zonaStatus = dentroZona
+    ? {color:'#22C55E', txt:`✅ Estás dentro de la zona ${dentroZona.nombre}`, sub:'Recibirás pedidos de esta área'}
+    : gpsPos
+      ? {color:'#EF4444', txt:'⚠️ Estás fuera de las zonas de cobertura', sub:'Acércate a Choloma o San Pedro Sula para recibir pedidos'}
+      : {color:'#888', txt:'📍 Obteniendo tu ubicación...', sub:'Asegúrate de tener GPS activo'};
+
+  return(
+    <div style={{paddingBottom:80}}>
+      {/* Status banner */}
+      <div style={{margin:'12px 12px 0',background:`${zonaStatus.color}18`,border:`1px solid ${zonaStatus.color}44`,borderRadius:14,padding:'12px 14px'}}>
+        <div style={{fontSize:14,fontWeight:700,color:zonaStatus.color}}>{zonaStatus.txt}</div>
+        <div style={{fontSize:12,color:'#888',marginTop:3}}>{zonaStatus.sub}</div>
+      </div>
+      {/* Mapa */}
+      <div id="mapa-zona-rider" style={{height:380,margin:'12px 0',width:'100%'}}/>
+      {/* Leyenda zonas */}
+      <div style={{margin:'0 12px',background:'#1A1A1A',border:'1px solid #333',borderRadius:14,padding:14}}>
+        <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:10}}>Zonas de Cobertura</div>
+        {ZONAS.map(z=>{
+          const dist = gpsPos ? haversineKm(gpsPos.lat,gpsPos.lng,z.lat,z.lng) : null;
+          const dentro = dist !== null && dist <= z.radio/1000;
+          return(
+            <div key={z.nombre} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:'1px solid #222'}}>
+              <div style={{width:12,height:12,borderRadius:'50%',background:z.color,flexShrink:0}}/>
+              <div style={{flex:1}}>
+                <div style={{fontSize:13,fontWeight:600}}>{z.nombre}</div>
+                <div style={{fontSize:11,color:'#888'}}>Radio: {z.radio/1000}km</div>
+              </div>
+              {dist !== null && (
+                <div style={{textAlign:'right'}}>
+                  <div style={{fontSize:13,fontWeight:700,color:dentro?'#22C55E':'#EF4444'}}>
+                    {dentro ? '✅ Dentro' : `${dist.toFixed(1)}km`}
+                  </div>
+                  <div style={{fontSize:10,color:'#666'}}>{dentro?'en zona':'de distancia'}</div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{margin:'10px 12px',fontSize:11,color:'#555',textAlign:'center'}}>
+        💡 Mantente dentro del radio de 5km para recibir más pedidos
+      </div>
+    </div>
+  );
+}
 
 // ─── TAB DEPÓSITOS ────────────────────────────────────────
 function TabDepositos({delivery, depositos, setDepositos, onConfirm, toast}){
