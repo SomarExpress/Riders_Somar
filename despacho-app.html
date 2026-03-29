@@ -580,6 +580,21 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
                 <option value="COMERCIO">Comercio</option>
               </select>
             </div>
+            <div class="fg"><label class="fl">% Comisión Producto</label>
+              <select id="f-pct-comision" class="fs" onchange="actualizarResumen()">
+                <option value="0">Sin comisión de producto</option>
+                <option value="8">8% del subtotal</option>
+                <option value="9">9% del subtotal</option>
+                <option value="10">10% del subtotal</option>
+              </select>
+            </div>
+            <div class="fg full"><label class="fl">Cupón de descuento</label>
+              <div style="display:flex;gap:8px;">
+                <input type="text" id="f-cupon" class="fi" placeholder="Código cupón (ej: SOMAR10)" style="flex:1;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+                <button type="button" class="btn btn-ghost btn-sm" onclick="validarCupon()">✓ Validar</button>
+              </div>
+              <div id="cupon-status" style="font-size:12px;margin-top:6px;display:none;padding:6px 10px;border-radius:8px;background:rgba(255,255,255,.05)"></div>
+            </div>
             <div class="fg"><label class="fl">Cliente Pagará Con (L.)</label>
               <input type="number" id="f-paga-con" class="fi" placeholder="0.00" step="0.01">
             </div>
@@ -716,6 +731,7 @@ const S = {
   mapRidersInit: false, mapRiders: null, markersRiders: {},
   chatRiderId: null, chatSub: null,
   tipoPedido: 'MANDADO', metodoPago: 'EFECTIVO', pagarEstab: false,
+  cuponData: null,
   stepVals: { 'sv-prod': 0, 'sv-envio': 50, 'sv-propina': 0 },
 };
 
@@ -1697,6 +1713,30 @@ function calcTarifa() {
   actualizarResumen();
 }
 
+async function validarCupon() {
+  const codigo = document.getElementById('f-cupon')?.value?.trim();
+  const statusEl = document.getElementById('cupon-status');
+  if(!codigo) { statusEl.style.display='none'; S.cuponData=null; return; }
+  statusEl.style.display='block';
+  statusEl.style.color='#888';
+  statusEl.textContent = '⏳ Validando...';
+  const prod  = S.stepVals['sv-prod'] || 0;
+  const envio = S.stepVals['sv-envio'] || 50;
+  const { data, error } = await sb.rpc('validar_cupon', {
+    p_codigo: codigo, p_subtotal: prod, p_tarifa_envio: envio
+  });
+  if(error || !data?.valido) {
+    statusEl.style.color='#EF4444';
+    statusEl.textContent = '❌ ' + (data?.error || error?.message || 'Cupón inválido');
+    S.cuponData = null;
+  } else {
+    statusEl.style.color='#22C55E';
+    statusEl.textContent = `✅ ${data.descripcion} · Ahorras L. ${parseFloat(data.descuento).toFixed(2)}`;
+    S.cuponData = data;
+  }
+  actualizarResumen();
+}
+
 function actualizarResumen() {
   const cli   = document.getElementById('f-cli-nom')?.value || '—';
   const rec   = document.getElementById('f-comercio')?.value || '—';
@@ -1704,7 +1744,12 @@ function actualizarResumen() {
   const prod  = S.stepVals['sv-prod'] || 0;
   const envio = S.stepVals['sv-envio'] || 50;
   const prop  = S.stepVals['sv-propina'] || 0;
-  const total = prod + envio + prop;
+  const desc  = S.cuponData ? parseFloat(S.cuponData.descuento) : 0;
+  const pctCom= parseFloat(document.getElementById('f-pct-comision')?.value || 0);
+  const baseApp = parseFloat(((prod * pctCom) / 100).toFixed(2));
+  const total = prod + envio + prop - desc;
+  const ingDel = parseFloat((envio * 0.70).toFixed(2));
+  const ingSom = parseFloat((envio * 0.30 + baseApp - desc).toFixed(2));
   const set = (id, v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
   set('r-cliente', cli);
   const tipoLabel = {MANDADO:'Compra/Mandado',DELIVERY:'Delivery',TRASLADO:'Traslado',ENVIO:'Envío',RECOGER_PAQUETE:'Recoger Paquete'};
@@ -1714,7 +1759,16 @@ function actualizarResumen() {
   set('r-pago', S.metodoPago);
   set('r-prod', `L. ${prod.toFixed(2)}`);
   set('r-envio', `L. ${envio.toFixed(2)}`);
-  set('r-total', `L. ${total.toFixed(2)}`);
+  if(desc > 0) set('r-total', `L. ${total.toFixed(2)} (- L.${desc.toFixed(2)} cupón)`);
+  else set('r-total', `L. ${total.toFixed(2)}`);
+  // Mostrar desglose financiero
+  const desgEl = document.getElementById('r-desglose');
+  if(desgEl) desgEl.innerHTML = `
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--td);margin-top:4px">
+      <span>Rider recibe: <b style="color:var(--verde)">L.${ingDel.toFixed(2)}</b></span>
+      <span>Somar: <b style="color:var(--or)">L.${ingSom.toFixed(2)}</b></span>
+      ${pctCom>0?`<span>Margen prod: <b>L.${baseApp.toFixed(2)}</b></span>`:''}
+    </div>`;
 }
 
 async function guardarPedido() {
@@ -1735,6 +1789,9 @@ async function guardarPedido() {
 
   const nuevoPed = {
     canal:                   'DESPACHO',
+    pct_comision:            parseFloat(document.getElementById('f-pct-comision')?.value || 0),
+    descuento:               S.cuponData ? parseFloat(S.cuponData.descuento) : 0,
+    cupon_id:                S.cuponData?.cupon_id || null,
     tipo:                    S.tipoPedido,
     nombre_comercio:         document.getElementById('f-comercio')?.value || null,
     ciudad_destino:          document.getElementById('f-ciudad')?.value || 'CHOLOMA',
@@ -1771,9 +1828,17 @@ async function guardarPedido() {
   btn.textContent = '💾 Guardar Pedido'; btn.disabled = false;
   if(error) { toast('Error: ' + error.message, 'danger'); return; }
   toast(`✅ Pedido ${data.no_orden||'creado'} · Buscando repartidor...`, 'success');
+  // Marcar cupón como usado si se aplicó
+  if(S.cuponData?.cupon_id) {
+    await sb.rpc('usar_cupon', { p_cupon_id: S.cuponData.cupon_id });
+    S.cuponData = null;
+  }
   sonarPedidoNuevo();
   // Reset wizard
-  ['f-cli-nom','f-cli-tel','f-comercio','f-dir-rec','f-gps-rec','f-encargado','f-descripcion','f-dir-ent','f-gps-ent','f-obs'].forEach(id => { const el=document.getElementById(id); if(el)el.value=''; });
+  ['f-cli-nom','f-cli-tel','f-comercio','f-dir-rec','f-gps-rec','f-encargado','f-descripcion','f-dir-ent','f-gps-ent','f-obs','f-cupon'].forEach(id => { const el=document.getElementById(id); if(el)el.value=''; });
+  S.cuponData=null;
+  const cuponSt=document.getElementById('cupon-status'); if(cuponSt)cuponSt.style.display='none';
+  const pctEl=document.getElementById('f-pct-comision'); if(pctEl)pctEl.value='0';
   S.stepVals = { 'sv-prod':0, 'sv-envio':50, 'sv-propina':0 };
   ['sv-prod','sv-envio','sv-propina'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=id==='sv-envio'?'50.00':'0.00';});
   wizGo(0);
