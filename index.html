@@ -646,22 +646,27 @@ function TabGuaca({historial, saldo, movimientos, onIrDepositos}){
   const [hasta,setHasta]=useState('');
   const [openDia,setOpenDia]=useState({});
 
-  const fin = historial.filter(p=>p.est==='FINALIZADO');
+  // historial viene de Supabase: campos reales no normalizados
+  const fin = historial.filter(p=>p.estatus==='FINALIZADO'||p.est==='FINALIZADO');
   const hoy = new Date().setHours(0,0,0,0);
   const d = new Date(hoy); d.setDate(d.getDate()-((d.getDay()+6)%7)); const lunSem=d.getTime();
   const ini = new Date(new Date().getFullYear(),new Date().getMonth(),1).getTime();
   let tH=0,pH=0,tS=0,pS=0,tM=0,pM=0;
   const porDia={};
   fin.forEach(p=>{
-    const g=parseFloat(p.gan||0), dia=new Date(p.ts).toISOString().slice(0,10);
+    // Usar ingreso_delivery (campo real) o gan (campo normalizado)
+    const g=parseFloat(p.ingreso_delivery||p.gan||0);
+    const tsRaw = p.hora_finalizado||p.ts;
+    const ts = tsRaw ? new Date(tsRaw).getTime() : 0;
+    const dia = tsRaw ? new Date(tsRaw).toISOString().slice(0,10) : 'sin-fecha';
     if(!porDia[dia])porDia[dia]={t:0,items:[]};
-    porDia[dia].t+=g; porDia[dia].items.push(p);
-    if(p.ts>=hoy){tH+=g;pH++;}
-    if(p.ts>=lunSem){tS+=g;pS++;}
-    if(p.ts>=ini){tM+=g;pM++;}
+    porDia[dia].t+=g; porDia[dia].items.push({...p,_g:g,_ts:ts});
+    if(ts>=hoy){tH+=g;pH++;}
+    if(ts>=lunSem){tS+=g;pS++;}
+    if(ts>=ini){tM+=g;pM++;}
   });
   let rT=0,rC=0;
-  if(desde&&hasta){const d1=new Date(desde+'T00:00:00').getTime(),d2=new Date(hasta+'T23:59:59').getTime();fin.forEach(p=>{if(p.ts>=d1&&p.ts<=d2){rT+=parseFloat(p.gan||0);rC++;}});}
+  if(desde&&hasta){const d1=new Date(desde+'T00:00:00').getTime(),d2=new Date(hasta+'T23:59:59').getTime();fin.forEach(p=>{const ts=new Date(p.hora_finalizado||p.ts||0).getTime();if(ts>=d1&&ts<=d2){rT+=parseFloat(p.ingreso_delivery||p.gan||0);rC++;}});}
   let nivel='Bronce',stars='⭐',pct=0;
   if(pM>=150){nivel='Oro';stars='⭐⭐⭐';pct=100;}
   else if(pM>=75){nivel='Plata';stars='⭐⭐';pct=Math.round((pM-75)/75*100);}
@@ -1061,7 +1066,7 @@ function TabChat({delivery}){
 function normalizarPedido(p, asigId=null) {
   // Calcular ganancia estimada (70% de tarifa_envio)
   const tarifa = parseFloat(p.tarifa_envio || 0);
-  const gan = parseFloat(p.ingreso_delivery || tarifa * 0.7 || 0);
+  const gan = parseFloat(p.ingreso_delivery || p.gan || tarifa * 0.7 || 0);
   // Calcular distancia aproximada si hay GPS
   let km = parseFloat(p.distancia_km || 0);
   return {
@@ -1175,7 +1180,7 @@ function App(){
     const ACTIVOS=['ASIGNADO','ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO'];
     const [rP,rH,rD,rM]=await Promise.all([
       sb.from('pedidos').select('*').eq('delivery_id',delId).in('estatus',ACTIVOS).order('hora_asignado',{ascending:false}),
-      sb.from('pedidos').select('no_orden,estatus,nombre_comercio,ciudad_destino,ingreso_delivery,tarifa_envio,hora_finalizado').eq('delivery_id',delId).eq('estatus','FINALIZADO').order('hora_finalizado',{ascending:false}).limit(100),
+      sb.from('pedidos').select('no_orden,estatus,nombre_comercio,ciudad_destino,ingreso_delivery,tarifa_envio,hora_finalizado,hora_asignado').eq('delivery_id',delId).eq('estatus','FINALIZADO').order('hora_finalizado',{ascending:false}).limit(100),
       sb.from('depositos_delivery').select('*').eq('delivery_id',delId).order('creado_at',{ascending:false}),
       sb.from('depositos_delivery').select('id,monto,estatus,notas_despacho,creado_at').eq('delivery_id',delId).eq('estatus','APROBADO').order('creado_at',{ascending:false}).limit(20),
     ]);
