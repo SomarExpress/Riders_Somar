@@ -170,13 +170,14 @@ window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); _defer
 
 
 const ESIG = {
+  ASIGNADO:           {lbl:'✅ Aceptar Pedido',             sig:'ACEPTADO',           color:'#22C55E'},
   ACEPTADO:           {lbl:'📍 Llegué al Establecimiento', sig:'EN_ESTABLECIMIENTO', color:'#F59E0B'},
   EN_ESTABLECIMIENTO: {lbl:'🛵 Pedido en Camino',          sig:'PEDIDO_EN_CAMINO',   color:'#FF8C00', liq:true},
   PEDIDO_EN_CAMINO:   {lbl:'📦 Llegué al Punto de Entrega',sig:'ENTREGANDO',         color:'#3B82F6'},
   ENTREGANDO:         {lbl:'✅ Finalizar Entrega',          sig:'FINALIZADO',         color:'#22C55E'},
 };
-const ELBL = {ACEPTADO:'Aceptado',EN_ESTABLECIMIENTO:'En Establecimiento',PEDIDO_EN_CAMINO:'En Camino',ENTREGANDO:'Entregando'};
-const ECHIP = {ACEPTADO:'#3B82F6',EN_ESTABLECIMIENTO:'#F59E0B',PEDIDO_EN_CAMINO:'#FF8C00',ENTREGANDO:'#22C55E'};
+const ELBL = {ASIGNADO:'Asignado',ACEPTADO:'Aceptado',EN_ESTABLECIMIENTO:'En Establecimiento',PEDIDO_EN_CAMINO:'En Camino',ENTREGANDO:'Entregando'};
+const ECHIP = {ASIGNADO:'#22C55E',ACEPTADO:'#3B82F6',EN_ESTABLECIMIENTO:'#F59E0B',PEDIDO_EN_CAMINO:'#FF8C00',ENTREGANDO:'#22C55E'};
 
 const fmtL = v => `L. ${parseFloat(v||0).toFixed(2)}`;
 
@@ -1159,6 +1160,7 @@ function App(){
 
   const buildTiempos=p=>{
     const t={};
+    if(p.hora_asignado)           t.ASIGNADO           =new Date(p.hora_asignado).getTime();
     if(p.hora_aceptado)           t.ACEPTADO           =new Date(p.hora_aceptado).getTime();
     if(p.hora_en_establecimiento) t.EN_ESTABLECIMIENTO  =new Date(p.hora_en_establecimiento).getTime();
     if(p.hora_en_camino)          t.PEDIDO_EN_CAMINO    =new Date(p.hora_en_camino).getTime();
@@ -1168,9 +1170,9 @@ function App(){
   };
 
   const cargarDatos=async(delId)=>{
-    const ACTIVOS=['ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO'];
+    const ACTIVOS=['ASIGNADO','ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO'];
     const [rP,rH,rD,rM]=await Promise.all([
-      sb.from('pedidos').select('*').eq('delivery_id',delId).in('estatus',ACTIVOS).order('hora_aceptado',{ascending:false}),
+      sb.from('pedidos').select('*').eq('delivery_id',delId).in('estatus',ACTIVOS).order('hora_asignado',{ascending:false}),
       sb.from('pedidos').select('no_orden,estatus,nombre_comercio,ciudad_destino,ingreso_delivery,tarifa_envio,hora_finalizado').eq('delivery_id',delId).eq('estatus','FINALIZADO').order('hora_finalizado',{ascending:false}).limit(100),
       sb.from('depositos_delivery').select('*').eq('delivery_id',delId).order('creado_at',{ascending:false}),
       sb.from('depositos_delivery').select('id,monto,estatus,notas_despacho,creado_at').eq('delivery_id',delId).eq('estatus','APROBADO').order('creado_at',{ascending:false}).limit(20),
@@ -1196,7 +1198,10 @@ function App(){
         const {data:ped}=await sb.from('pedidos').select('*').eq('id',p.new.pedido_id).single();
         if(ped){const peNorm=normalizarPedido(ped,p.new.id);setPe(peNorm);notifLocal('🔔 Nuevo Pedido',(ped.nombre_comercio||'—')+' · '+(ped.ciudad_destino||''));iniciarAlarma();}
       })
-      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'pedidos',filter:'delivery_id=eq.'+delId},p=>{ cargarDatos(delId); })
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'pedidos',filter:'delivery_id=eq.'+delId},p=>{
+        console.log('[RT] pedido UPDATE:', p.new?.estatus, p.new?.id);
+        cargarDatos(delId);
+      })
       .on('postgres_changes',{event:'UPDATE',schema:'public',table:'delivery',filter:'id=eq.'+delId},p=>{ if(p.new.saldo_billetera!==undefined){ setSaldo(parseFloat(p.new.saldo_billetera)||0); sonarDepositoAprobado(); } })
       .on('postgres_changes',{event:'UPDATE',schema:'public',table:'depositos_delivery',filter:'delivery_id=eq.'+delId},p=>{ cargarDatos(delId); if(p.new?.estatus==='APROBADO') sonarDepositoAprobado(); })
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_mensajes',filter:'delivery_id=eq.'+delId},p=>{
@@ -1213,6 +1218,7 @@ function App(){
     const eb=ESIG[est];if(!eb)return;
     const ahora=new Date().toISOString();
     const campos={estatus:eb.sig};
+    if(eb.sig==='ACEPTADO')           campos.hora_aceptado=ahora;
     if(eb.sig==='EN_ESTABLECIMIENTO') campos.hora_en_establecimiento=ahora;
     if(eb.sig==='PEDIDO_EN_CAMINO')   campos.hora_en_camino=ahora;
     if(eb.sig==='ENTREGANDO')         campos.hora_llegada=ahora;
@@ -1250,19 +1256,33 @@ function App(){
     if(!pe)return;
     detenerAlarma();
     const horaAceptado=new Date().toISOString();
-    // Actualizar pedido: ACEPTADO + hora_aceptado
+    console.log('[aceptar] pedido id:', pe.id, 'delivery_id:', delivery.id, 'asigId:', pe._asigId);
+    // Actualizar pedido: ACEPTADO + hora_aceptado + delivery_id (por si acaso no estaba seteado)
     const {error:updErr}=await sb.from('pedidos')
-      .update({estatus:'ACEPTADO',hora_aceptado:horaAceptado})
-      .eq('id',pe.id)
-      .eq('delivery_id',delivery.id);
-    if(updErr){toast('⚠️ Error al aceptar: '+updErr.message);setPe(null);return;}
+      .update({
+        estatus:'ACEPTADO',
+        hora_aceptado:horaAceptado,
+        delivery_id:delivery.id
+      })
+      .eq('id',pe.id);
+    if(updErr){
+      console.error('[aceptar] error update pedido:', updErr.message, updErr.code);
+      toast('⚠️ Error al aceptar: '+updErr.message);
+      setPe(null);
+      return;
+    }
+    console.log('[aceptar] pedido actualizado OK');
     // Marcar asignación como aceptada
-    if(pe._asigId) await sb.from('asignaciones_pendientes')
-      .update({estatus:'ACEPTADO',respondido_at:horaAceptado})
-      .eq('id',pe._asigId);
+    if(pe._asigId){
+      const {error:asigErr}=await sb.from('asignaciones_pendientes')
+        .update({estatus:'ACEPTADO',respondido_at:horaAceptado})
+        .eq('id',pe._asigId);
+      if(asigErr) console.error('[aceptar] error asignacion:', asigErr.message);
+    }
     toast('✅ Pedido aceptado');
-    cargarDatos(delivery.id);
     setPe(null);
+    // Recargar datos con pequeño delay para que Supabase propague el cambio
+    setTimeout(()=>cargarDatos(delivery.id), 500);
   };
 
   const rechazarPE=async()=>{
@@ -1300,7 +1320,7 @@ function App(){
     </div>
   );
 
-  const activos=pedidos.filter(p=>['ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO'].includes(p.estatus||p.est));
+  const activos=pedidos.filter(p=>['ASIGNADO','ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO'].includes(p.estatus||p.est));
 
   // ── Vista detalle del pedido ──────────────────────────
   if(detalle&&tab==='asignados') return(
