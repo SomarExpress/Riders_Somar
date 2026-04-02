@@ -1033,7 +1033,8 @@ function initRealtime() {
         notif('💳 Depósito recibido', 'Un repartidor envió comprobante', false);
         sonarDeposito();
       }
-      cargarDepositos(S.pedFiltro === 'depositos' ? S.solFiltro : 'PENDIENTE');
+      if(document.getElementById('view-depositos').classList.contains('active')) cargarDepositos(S.solFiltro || 'PENDIENTE');
+    else { const b=document.getElementById('badge-dep'); if(b&&p.eventType==='INSERT') b.textContent=parseInt(b.textContent||0)+1; }
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'ubicaciones_delivery' }, p => {
       actualizarMarker(p.new);
@@ -1214,6 +1215,28 @@ function renderTablaPedidos() {
 // ════════════════════════════════════════════════════════════
 function abrirModalPedido(id) { abrirPanel(id); }
 
+async function guardarPago(pedidoId) {
+  const metodo = document.getElementById('edit-metodo-pago')?.value;
+  const monto  = parseFloat(document.getElementById('edit-monto-cobrar')?.value || 0);
+  const pagaCon= parseFloat(document.getElementById('edit-paga-con')?.value || 0);
+  const { error } = await sb.from('pedidos').update({
+    metodo_pago: metodo,
+    monto_cobrar: monto,
+    monto_recibido_efectivo: pagaCon > 0 ? pagaCon : null,
+    recibira_efectivo: pagaCon > 0,
+  }).eq('id', pedidoId);
+  if(error) { toast('Error: ' + error.message, 'danger'); return; }
+  toast('✅ Pago actualizado', 'success');
+  // Actualizar pedido en estado local
+  const idx = S.pedidos.findIndex(x => x.id === pedidoId);
+  if(idx >= 0) {
+    S.pedidos[idx].metodo_pago = metodo;
+    S.pedidos[idx].monto_cobrar = monto;
+    S.pedidos[idx].monto_recibido_efectivo = pagaCon;
+    renderPanel(S.pedidos[idx]);
+  }
+}
+
 function cerrarPanel() {
   document.getElementById('panel-pedido').classList.remove('open');
   document.getElementById('panel-overlay').classList.remove('open');
@@ -1356,7 +1379,7 @@ function renderPanel(p) {
         </div>`
       ).join('')}
     </div>
-    <div style="background:var(--g2);border-radius:10px;overflow:hidden;">
+    <div style="background:var(--g2);border-radius:10px;overflow:hidden;margin-bottom:14px;">
       ${[
         ['Ingreso Rider (70%)',  `<span style="color:var(--verde)">${fL(p.ingreso_delivery)}</span>`],
         ['Ingreso Somar (30%)',  `<span style="color:var(--or)">${fL(p.ingreso_somar)}</span>`],
@@ -1366,6 +1389,32 @@ function renderPanel(p) {
         </div>`
       ).join('')}
     </div>
+
+    <!-- Campos de pago editables -->
+    ${!['FINALIZADO','CANCELADO'].includes(p.estatus) ? `
+    <div style="font-size:10px;font-weight:700;color:var(--td);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;">Actualizar Pago</div>
+    <div style="background:var(--g2);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;">
+      <div>
+        <label style="font-size:11px;color:var(--td);font-weight:600;display:block;margin-bottom:4px;">Método de pago</label>
+        <select id="edit-metodo-pago" style="width:100%;background:var(--g3);border:1px solid var(--g5);border-radius:6px;padding:8px 10px;color:var(--tx);font-size:13px;">
+          <option value="EFECTIVO" ${p.metodo_pago==='EFECTIVO'?'selected':''}>💵 Efectivo</option>
+          <option value="TRANSFERENCIA" ${p.metodo_pago==='TRANSFERENCIA'?'selected':''}>📲 Transferencia</option>
+          <option value="TARJETA" ${p.metodo_pago==='TARJETA'?'selected':''}>💳 Tarjeta</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--td);font-weight:600;display:block;margin-bottom:4px;">Total a cobrar (L.)</label>
+        <input type="number" id="edit-monto-cobrar" step="0.01" value="${parseFloat(p.monto_cobrar||0).toFixed(2)}"
+          style="width:100%;background:var(--g3);border:1px solid var(--g5);border-radius:6px;padding:8px 10px;color:var(--tx);font-size:14px;font-weight:700;">
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--td);font-weight:600;display:block;margin-bottom:4px;">Cliente pagará con (L.)</label>
+        <input type="number" id="edit-paga-con" step="0.01" value="${parseFloat(p.monto_recibido_efectivo||0).toFixed(2)}"
+          style="width:100%;background:var(--g3);border:1px solid var(--g5);border-radius:6px;padding:8px 10px;color:var(--tx);font-size:14px;">
+      </div>
+      <button class="btn btn-primary" style="justify-content:center" onclick="guardarPago('${p.id}')">💾 Guardar cambios de pago</button>
+    </div>
+    ` : ''}
   `;
 
   // Footer con acciones
