@@ -196,6 +196,38 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
 #map-live{height:calc(100vh - 84px);border-radius:10px;overflow:hidden;}
 #map-riders{border-radius:0;overflow:hidden;min-height:300px;}
 
+/* ─── PANEL DETALLE PEDIDO ────────────────────────────────── */
+#panel-pedido {
+  position:fixed;right:-480px;top:0;bottom:0;width:460px;max-width:96vw;
+  background:var(--g1);border-left:1px solid var(--g4);z-index:200;
+  display:flex;flex-direction:column;transition:right .28s cubic-bezier(.4,0,.2,1);
+  overflow:hidden;box-shadow:-8px 0 40px rgba(0,0,0,.5);
+}
+#panel-pedido.open { right:0; }
+#panel-overlay { position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:199;display:none; }
+#panel-overlay.open { display:block; }
+.panel-hdr { padding:14px 16px;border-bottom:1px solid var(--g4);display:flex;align-items:center;gap:10px;flex-shrink:0; }
+.panel-body { flex:1;overflow-y:auto;padding:14px 16px; }
+.panel-footer { padding:12px 16px;border-top:1px solid var(--g4);display:flex;gap:8px;flex-shrink:0; }
+/* Timeline */
+.tl { display:flex;flex-direction:column;gap:0; }
+.tl-item { display:flex;gap:12px;position:relative; }
+.tl-item:not(:last-child) .tl-line { position:absolute;left:11px;top:24px;bottom:-4px;width:2px;background:var(--g4); }
+.tl-item.done .tl-line { background:var(--verde); }
+.tl-item.active .tl-line { background:linear-gradient(var(--or),var(--g4)); }
+.tl-dot { width:24px;height:24px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;border:2px solid var(--g4);background:var(--g2);position:relative;z-index:1; }
+.tl-item.done .tl-dot { background:var(--verde);border-color:var(--verde);color:#000; }
+.tl-item.active .tl-dot { background:var(--or);border-color:var(--or);color:#000; }
+.tl-item.pending .tl-dot { opacity:.4; }
+.tl-content { padding:2px 0 16px;flex:1; }
+.tl-lbl { font-size:12px;font-weight:700;margin-bottom:2px; }
+.tl-time { font-size:10px;color:var(--td);font-family:'Space Mono',monospace; }
+.tl-dur { font-size:11px;color:var(--or);font-family:'Space Mono',monospace;font-weight:700; }
+/* Timer badge en tabla */
+.timer-badge { font-family:'Space Mono',monospace;font-size:10px;color:var(--or);background:rgba(255,140,0,.1);padding:2px 6px;border-radius:4px;white-space:nowrap; }
+.timer-badge.warn { color:var(--am);background:rgba(245,158,11,.1); }
+.timer-badge.urgent { color:var(--rojo);background:rgba(239,68,68,.1); }
+
 /* ─── MODAL ────────────────────────────────────────────────── */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9000;align-items:center;justify-content:center;padding:16px;}
 .modal-bg.open{display:flex;}
@@ -473,7 +505,7 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
             <table class="tbl">
               <thead><tr>
                 <th>N° Orden</th><th>Comercio / Tipo</th><th>Destino</th>
-                <th>Repartidor</th><th>Pago</th><th>Tarifa</th><th>Estado</th><th></th>
+                <th>Repartidor</th><th>Pago</th><th>Tarifa</th><th>Estado</th><th>⏱ Tiempo</th><th></th>
               </tr></thead>
               <tbody id="tbody-pedidos"><tr><td colspan="8" class="empty">Cargando...</td></tr></tbody>
             </table>
@@ -752,10 +784,19 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
 </div><!-- /app -->
 
 <!-- MODALS -->
-<div class="modal-bg" id="modal-pedido">
-  <div class="modal">
-    <div id="modal-ped-content"></div>
+<!-- Panel lateral detalle pedido -->
+<div id="panel-overlay" onclick="cerrarPanel()"></div>
+<div id="panel-pedido">
+  <div class="panel-hdr">
+    <button onclick="cerrarPanel()" style="background:none;border:none;color:var(--td);font-size:20px;padding:0;cursor:pointer;line-height:1">←</button>
+    <div style="flex:1">
+      <div id="panel-no-orden" style="font-family:'Space Mono',monospace;font-size:13px;color:var(--or);font-weight:700"></div>
+      <div id="panel-estatus-chip" style="margin-top:3px"></div>
+    </div>
+    <div id="panel-timer-total" style="font-family:'Space Mono',monospace;font-size:18px;font-weight:900;color:var(--or)">—</div>
   </div>
+  <div class="panel-body" id="panel-body"></div>
+  <div class="panel-footer" id="panel-footer"></div>
 </div>
 
 <div class="modal-bg" id="modal-asignar">
@@ -792,6 +833,7 @@ const S = {
   tipoPedido: 'MANDADO', metodoPago: 'EFECTIVO', pagarEstab: false,
   cuponData: null,
   config: {}, // configuración global del sistema
+  panelPedidoId: null, panelTsEstadoActivo: null,
   stepVals: { 'sv-prod': 0, 'sv-envio': 50, 'sv-propina': 0 },
 };
 
@@ -939,6 +981,42 @@ async function init() {
 
 function clockTick() {
   document.getElementById('clock').textContent = new Date().toLocaleTimeString('es-HN', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  tickTimers();
+}
+
+// Actualizar todos los timers visibles cada segundo
+function tickTimers() {
+  const ahora = Date.now();
+  // Timers en tabla de pedidos
+  document.querySelectorAll('[data-ts]').forEach(el => {
+    const ts = parseInt(el.dataset.ts);
+    if(!ts) return;
+    const ms = ahora - ts;
+    const m = Math.floor(ms/60000), s = Math.floor((ms%60000)/1000);
+    const txt = m > 60 ? `${Math.floor(m/60)}h${m%60}m` : m > 0 ? `${m}m${s}s` : `${s}s`;
+    el.textContent = txt;
+    el.className = 'timer-badge' + (m > 45 ? ' urgent' : m > 20 ? ' warn' : '');
+  });
+  // Timer del panel abierto
+  if(S.panelPedidoId) tickPanelTimer(ahora);
+}
+
+function tickPanelTimer(ahora) {
+  const p = S.pedidos.find(x => x.id === S.panelPedidoId);
+  if(!p) return;
+  const tsInicio = p.hora_asignado || p.created_at;
+  if(!tsInicio) return;
+  const ms = ahora - new Date(tsInicio).getTime();
+  const m = Math.floor(ms/60000), s = Math.floor((ms%60000)/1000);
+  const el = document.getElementById('panel-timer-total');
+  if(el) el.textContent = m > 60 ? `${Math.floor(m/60)}h ${m%60}m` : m > 0 ? `${m}m ${s}s` : `${s}s`;
+  // Actualizar duración del estado activo en el timeline
+  const durEl = document.getElementById('tl-dur-activo');
+  if(durEl && S.panelTsEstadoActivo) {
+    const msEst = ahora - S.panelTsEstadoActivo;
+    const me = Math.floor(msEst/60000), se = Math.floor((msEst%60000)/1000);
+    durEl.textContent = me > 0 ? `${me}m ${se}s` : `${se}s`;
+  }
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1019,6 +1097,11 @@ function onPedidoChange(payload) {
   if(p.estatus === 'FINALIZADO') {
     sonarPedidoFinalizado();
     notif('🏁 Pedido finalizado', `${p.no_orden||'—'} entregado`, false);
+  }
+  // Si el panel está abierto con este pedido, actualizarlo
+  if(S.panelPedidoId === p.id) {
+    const pActual = S.pedidos.find(x => x.id === p.id);
+    if(pActual) renderPanel(pActual);
   }
 }
 
@@ -1112,6 +1195,11 @@ function renderTablaPedidos() {
       <td style="font-size:11px">${p.metodo_pago||'—'}</td>
       <td class="mono" style="color:var(--or)">L.${parseFloat(p.tarifa_envio||0).toFixed(0)}</td>
       <td>${chipEst(p.estatus)}</td>
+      <td style="font-size:11px">
+        ${p.hora_asignado && !['FINALIZADO','CANCELADO'].includes(p.estatus)
+          ? `<span class="timer-badge" data-ts="${new Date(p.hora_asignado).getTime()}">—</span>`
+          : p.hora_finalizado ? fmtFecha(p.hora_finalizado) : '—'}
+      </td>
       <td onclick="event.stopPropagation()">
         ${['PENDIENTE'].includes(p.estatus)
           ? `<button class="btn btn-primary btn-sm" onclick="abrirAsignar('${p.id}')">Asignar</button>`
@@ -1124,37 +1212,168 @@ function renderTablaPedidos() {
 // ════════════════════════════════════════════════════════════
 // MODAL PEDIDO
 // ════════════════════════════════════════════════════════════
-function abrirModalPedido(id) {
+function abrirModalPedido(id) { abrirPanel(id); }
+
+function cerrarPanel() {
+  document.getElementById('panel-pedido').classList.remove('open');
+  document.getElementById('panel-overlay').classList.remove('open');
+  S.panelPedidoId = null;
+  S.panelTsEstadoActivo = null;
+}
+
+const ESTADOS_ORDEN = ['PENDIENTE','ASIGNADO','ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO','FINALIZADO'];
+const ESTADO_INFO = {
+  PENDIENTE:          { icon:'⏳', lbl:'Pendiente',             color:'var(--am)' },
+  ASIGNADO:           { icon:'📋', lbl:'Asignado a Rider',       color:'var(--az)' },
+  ACEPTADO:           { icon:'✅', lbl:'Aceptado por Rider',      color:'var(--az)' },
+  EN_ESTABLECIMIENTO: { icon:'🏪', lbl:'En Establecimiento',      color:'#a855f7'   },
+  PEDIDO_EN_CAMINO:   { icon:'🛵', lbl:'Pedido en Camino',        color:'var(--or)' },
+  ENTREGANDO:         { icon:'📦', lbl:'En Punto de Entrega',     color:'var(--az)' },
+  FINALIZADO:         { icon:'🏁', lbl:'Finalizado',              color:'var(--verde)' },
+  CANCELADO:          { icon:'❌', lbl:'Cancelado',               color:'var(--rojo)' },
+};
+const HORA_POR_ESTADO = {
+  ASIGNADO:'hora_asignado', ACEPTADO:'hora_aceptado',
+  EN_ESTABLECIMIENTO:'hora_en_establecimiento', PEDIDO_EN_CAMINO:'hora_en_camino',
+  ENTREGANDO:'hora_llegada', FINALIZADO:'hora_finalizado',
+};
+
+function abrirPanel(id) {
   const p = S.pedidos.find(x => x.id === id);
   if(!p) return;
+  S.panelPedidoId = id;
+  renderPanel(p);
+  document.getElementById('panel-pedido').classList.add('open');
+  document.getElementById('panel-overlay').classList.add('open');
+}
+
+function renderPanel(p) {
+  if(!p) return;
   const rider = S.riders.find(r => r.id === p.delivery_id);
-  document.getElementById('modal-ped-content').innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;gap:10px;">
-      <div>
-        <div class="modal-title" style="margin-bottom:5px">${p.no_orden||'—'}</div>
-        ${chipEst(p.estatus)}
+  const info  = ESTADO_INFO[p.estatus] || {};
+  const ahora = Date.now();
+
+  // Header
+  document.getElementById('panel-no-orden').textContent = p.no_orden || '—';
+  document.getElementById('panel-estatus-chip').innerHTML = chipEst(p.estatus);
+
+  // Timer total
+  const tsInicio = p.hora_asignado || p.created_at;
+  const msTotal  = tsInicio ? ahora - new Date(tsInicio).getTime() : 0;
+  const mT = Math.floor(msTotal/60000), sT = Math.floor((msTotal%60000)/1000);
+  document.getElementById('panel-timer-total').textContent =
+    ['FINALIZADO','CANCELADO'].includes(p.estatus) ? '—' :
+    mT > 60 ? `${Math.floor(mT/60)}h ${mT%60}m` : mT > 0 ? `${mT}m ${sT}s` : `${sT}s`;
+
+  // Timeline — calcular estado activo y su timestamp
+  const estadosActivos = p.estatus === 'CANCELADO'
+    ? ['PENDIENTE','ASIGNADO','ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO','CANCELADO']
+    : ESTADOS_ORDEN;
+  const idxActivo = estadosActivos.indexOf(p.estatus);
+  S.panelTsEstadoActivo = null;
+
+  const timelineHTML = estadosActivos.map((est, i) => {
+    const done    = i < idxActivo;
+    const active  = i === idxActivo;
+    const pending = i > idxActivo;
+    const horaKey = HORA_POR_ESTADO[est];
+    const horaVal = horaKey ? p[horaKey] : (est === 'PENDIENTE' ? p.created_at : null);
+    const tsEst   = horaVal ? new Date(horaVal).getTime() : null;
+    const tsNext  = i < idxActivo && estadosActivos[i+1] ? (() => {
+      const nk = HORA_POR_ESTADO[estadosActivos[i+1]];
+      return nk && p[nk] ? new Date(p[nk]).getTime() : null;
+    })() : null;
+    const durMs   = tsEst ? (done && tsNext ? tsNext - tsEst : active ? ahora - tsEst : null) : null;
+    const durFmt  = durMs ? (() => {
+      const m = Math.floor(durMs/60000), s = Math.floor((durMs%60000)/1000);
+      return m > 60 ? `${Math.floor(m/60)}h ${m%60}m` : m > 0 ? `${m}m ${s}s` : `${s}s`;
+    })() : null;
+
+    if(active && tsEst) S.panelTsEstadoActivo = tsEst;
+    const ei = ESTADO_INFO[est] || {};
+
+    return `<div class="tl-item ${done?'done':active?'active':'pending'}">
+      <div style="position:relative">
+        <div class="tl-dot">${done?'✓':ei.icon||'○'}</div>
+        ${i < estadosActivos.length-1 ? '<div class="tl-line"></div>' : ''}
       </div>
-      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-pedido')">✕</button>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin-bottom:14px;">
-      ${[
-        ['Comercio', p.nombre_comercio||'—'],
-        ['Tipo', p.tipo||'—'],
-        ['Destino', p.ciudad_destino||'—'],
-        ['Método Pago', p.metodo_pago||'—'],
-        ['Dirección Entrega', p.direccion_entrega||'—'],
-        ['Repartidor', rider?.nombre||'Sin asignar'],
-        ['Tarifa Envío', `L. ${parseFloat(p.tarifa_envio||0).toFixed(2)}`],
-        ['Ingreso Delivery', `L. ${parseFloat(p.ingreso_delivery||0).toFixed(2)}`],
-        ['Total a Cobrar', `L. ${parseFloat(p.monto_cobrar||0).toFixed(2)}`],
-        ['Descripción', p.descripcion_paquete||'—'],
-      ].map(([l,v]) => `<div style="color:var(--td)">${l}</div><div style="font-weight:600">${v}</div>`).join('')}
-    </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">
-      ${!['FINALIZADO','CANCELADO'].includes(p.estatus) ? `<button class="btn btn-danger btn-sm" onclick="cancelarPedido('${p.id}')">Cancelar Pedido</button>` : ''}
-      ${['PENDIENTE'].includes(p.estatus) ? `<button class="btn btn-primary btn-sm" onclick="closeModal('modal-pedido');abrirAsignar('${p.id}')">Asignar Repartidor</button>` : ''}
+      <div class="tl-content">
+        <div class="tl-lbl" style="color:${active?ei.color:'inherit'}">${ei.lbl||est}</div>
+        ${horaVal ? `<div class="tl-time">${fmtFecha(horaVal)}</div>` : ''}
+        ${durFmt && done ? `<div class="tl-dur">⏱ ${durFmt}</div>` : ''}
+        ${active && !['FINALIZADO','CANCELADO'].includes(p.estatus) ? `<div class="tl-dur" id="tl-dur-activo">⏱ ${durFmt||'0s'} (en curso)</div>` : ''}
+      </div>
     </div>`;
-  document.getElementById('modal-pedido').classList.add('open');
+  }).join('');
+
+  // Datos del pedido
+  const fL = v => `L. ${parseFloat(v||0).toFixed(2)}`;
+  const row = (l,v) => `<div style="color:var(--td);font-size:12px">${l}</div><div style="font-weight:600;font-size:12px">${v}</div>`;
+
+  document.getElementById('panel-body').innerHTML = `
+    <!-- Rider -->
+    <div style="background:${rider?'rgba(255,140,0,.06)':'rgba(239,68,68,.06)'};border:1px solid ${rider?'rgba(255,140,0,.2)':'rgba(239,68,68,.2)'};border-radius:10px;padding:12px;margin-bottom:14px;display:flex;align-items:center;gap:10px;">
+      <div style="width:40px;height:40px;border-radius:10px;background:${rider?'var(--or)':'var(--g4)'};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;flex-shrink:0;color:${rider?'#000':'var(--td)'}">
+        ${rider ? rider.nombre.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2) : '?'}
+      </div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700">${rider?.nombre || 'Sin asignar'}</div>
+        <div style="font-size:11px;color:var(--td)">${rider?.celular||''}</div>
+      </div>
+      ${rider ? `<a href="tel:${rider.celular}" class="btn btn-ghost btn-sm">📞</a>` : ''}
+    </div>
+
+    <!-- Timeline -->
+    <div style="font-size:10px;font-weight:700;color:var(--td);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;">Línea de tiempo</div>
+    <div class="tl" style="margin-bottom:18px;">${timelineHTML}</div>
+
+    <!-- Datos -->
+    <div style="font-size:10px;font-weight:700;color:var(--td);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;">Detalles del pedido</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-bottom:14px;">
+      ${row('Comercio / Origen', p.nombre_comercio||'—')}
+      ${row('Tipo', p.tipo||'—')}
+      ${row('Ciudad destino', p.ciudad_destino||'—')}
+      ${row('Método de pago', p.metodo_pago||'—')}
+      ${row('Dirección recolecta', p.direccion_recogida||p.ubicacion_recogida_gps||'—')}
+      ${row('Dirección entrega', p.direccion_entrega||p.ubicacion_entrega_gps||'—')}
+      ${p.descripcion_paquete ? row('Descripción', p.descripcion_paquete) : ''}
+      ${p.datos_encargo ? row('N° Encargado', p.datos_encargo) : ''}
+      ${p.observaciones ? row('Observaciones', p.observaciones) : ''}
+    </div>
+
+    <!-- Finanzas -->
+    <div style="font-size:10px;font-weight:700;color:var(--td);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;">Finanzas</div>
+    <div style="background:var(--g2);border-radius:10px;overflow:hidden;margin-bottom:6px;">
+      ${[
+        ['Subtotal Producto', fL(p.subtotal)],
+        ['Tarifa Envío',      fL(p.tarifa_envio)],
+        p.propina > 0 ? ['Propina', fL(p.propina)] : null,
+        p.descuento > 0 ? ['Descuento Cupón', '- '+fL(p.descuento)] : null,
+        ['Total a Cobrar',   `<b style="color:var(--or)">${fL(p.monto_cobrar)}</b>`],
+      ].filter(Boolean).map(([l,v]) =>
+        `<div style="display:flex;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--g3);font-size:12px;">
+          <span style="color:var(--td)">${l}</span><span>${v}</span>
+        </div>`
+      ).join('')}
+    </div>
+    <div style="background:var(--g2);border-radius:10px;overflow:hidden;">
+      ${[
+        ['Ingreso Rider (70%)',  `<span style="color:var(--verde)">${fL(p.ingreso_delivery)}</span>`],
+        ['Ingreso Somar (30%)',  `<span style="color:var(--or)">${fL(p.ingreso_somar)}</span>`],
+      ].map(([l,v]) =>
+        `<div style="display:flex;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--g3);font-size:12px;">
+          <span style="color:var(--td)">${l}</span><span>${v}</span>
+        </div>`
+      ).join('')}
+    </div>
+  `;
+
+  // Footer con acciones
+  document.getElementById('panel-footer').innerHTML = `
+    ${!['FINALIZADO','CANCELADO'].includes(p.estatus) ? `<button class="btn btn-danger" onclick="cancelarPedido('${p.id}')" style="flex:1;justify-content:center">Cancelar</button>` : ''}
+    ${p.estatus === 'PENDIENTE' ? `<button class="btn btn-primary" onclick="cerrarPanel();abrirAsignar('${p.id}')" style="flex:2;justify-content:center">Asignar Rider</button>` : ''}
+    ${['ASIGNADO','ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO'].includes(p.estatus) ? `<button class="btn btn-ghost" onclick="cerrarPanel();abrirAsignar('${p.id}')" style="flex:1;justify-content:center">Reasignar</button>` : ''}
+  `;
 }
 
 async function cancelarPedido(id) {
@@ -2086,7 +2305,7 @@ function renderKanban() {
     " onmouseover="this.style.background='var(--g3)'" onmouseout="this.style.background='var(--g2)'">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:5px;">
         <div class="mono" style="font-size:10px;color:${accentColor}">${p.no_orden||'—'}</div>
-        ${hace!==null?`<div style="font-size:10px;color:${urgente?'var(--rojo)':'var(--td)'};white-space:nowrap">${hace<60?hace+'m':Math.floor(hace/60)+'h'} ${urgente?'⚠️':''}</div>`:''}
+        ${ts && !['FINALIZADO','CANCELADO'].includes(p.estatus) ? `<span class='timer-badge ${hace>45?' urgent':hace>20?' warn':''}' data-ts='${new Date(ts).getTime()}'>—</span>` : hace!==null ? `<span style='font-size:10px;color:var(--td)'>${hace<60?hace+'m':Math.floor(hace/60)+'h'}</span>` : ''}
       </div>
       <div style="font-size:12px;font-weight:700;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${comercio}</div>
       <div style="font-size:11px;color:var(--td);margin-bottom:6px">📍 ${destino} · ${p.tipo||'—'}</div>
@@ -2249,7 +2468,10 @@ function chipEst(e) {
 function inic(n) { if(!n) return '?'; const w=n.trim().split(' '); return (w[0][0]+(w[1]?w[1][0]:'')).toUpperCase(); }
 function fmtFecha(iso) { if(!iso) return '—'; const d=new Date(iso); return d.toLocaleDateString('es-HN',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('es-HN',{hour:'2-digit',minute:'2-digit'}); }
 function badgeInc(id) { const el=document.getElementById(id); if(el) el.textContent = parseInt(el.textContent||0)+1; }
-function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
+function closeModal(id) {
+  if(id === 'modal-pedido') { cerrarPanel(); return; }
+  document.getElementById(id)?.classList.remove('open');
+}
 
 function toast(msg, type='success') {
   const colors = { success:'#22c55e', danger:'#ef4444', ghost:'#2e2e2e' };
