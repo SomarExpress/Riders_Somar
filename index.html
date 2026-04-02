@@ -239,6 +239,27 @@ function PedidoEntrante({pedido, onAceptar, onRechazar}){
   const fired = useRef(false);
   const CIRC = 150.8;
 
+  const [distReal, setDistReal] = useState(km);
+
+  useEffect(()=>{
+    // Calcular distancia real rider→recolecta en tiempo real
+    const gpsRec = pedido.ubicacion_recogida_gps || pedido.co;
+    if(gpsRec && navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(pos=>{
+        const latR = parseFloat(gpsRec.split(',')[0]);
+        const lngR = parseFloat(gpsRec.split(',')[1]);
+        if(latR && lngR){
+          const R=6371, lat1=pos.coords.latitude*Math.PI/180, lat2=latR*Math.PI/180;
+          const dLat=(latR-pos.coords.latitude)*Math.PI/180;
+          const dLng=(lngR-pos.coords.longitude)*Math.PI/180;
+          const a=Math.sin(dLat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;
+          const d=R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+          setDistReal(d);
+        }
+      },()=>{},{enableHighAccuracy:true,timeout:5000,maximumAge:30000});
+    }
+  },[pedido?.id]);
+
   useEffect(()=>{
     setSeg(30);
     fired.current = false;
@@ -262,7 +283,7 @@ function PedidoEntrante({pedido, onAceptar, onRechazar}){
   // Valores seguros — nunca undefined
   const com    = pedido.com    || pedido.nombre_comercio  || '—';
   const ciudad = pedido.ciudad || pedido.ciudad_destino   || '—';
-  const km     = parseFloat(pedido.km || pedido.distancia_km || 0);
+  const km = parseFloat(pedido.km || pedido.distancia_km || 0);
   const gan    = parseFloat(pedido.gan || pedido.ingreso_delivery || 0);
   const pago   = pedido.pago   || pedido.metodo_pago      || 'EFECTIVO';
   const tipo   = pedido.tipo   || 'DELIVERY';
@@ -307,7 +328,7 @@ function PedidoEntrante({pedido, onAceptar, onRechazar}){
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
           {[
             ['📍 Destino',    ciudad],
-            ['📏 Distancia',  km > 0 ? `${km.toFixed(1)} km` : 'N/D'],
+            ['📏 Distancia',  distReal > 0 ? `${distReal.toFixed(1)} km` : 'N/D'],
             ['💳 Pago',       pago==='EFECTIVO'?'Efectivo':'Transferencia'],
             ['💰 Tu ganancia',fmtL(gan)],
           ].map(([l,v])=>(
@@ -1601,11 +1622,15 @@ function App(){
 function TabZona({delivery}){
   const mapRef = React.useRef(null);
   const mapInstanceRef = React.useRef(null);
-  const markerRef = React.useRef(null);
+  const routeLayerRef = React.useRef(null);
+  const markersRef = React.useRef({});
   const [gpsPos, setGpsPos] = React.useState(null);
   const [dentroZona, setDentroZona] = React.useState(null);
+  const [pedidoSel, setPedidoSel] = React.useState(null);
+  const [rutaInfo, setRutaInfo] = React.useState(null);
+  const [cargandoRuta, setCargandoRuta] = React.useState(false);
+  const [pedidosActivos, setPedidosActivos] = React.useState([]);
 
-  // Zona principal: centro de Choloma
   const radioKm = _configSistema.zona_radio_km || 2.5;
   const radioM  = radioKm * 1000;
   const ZONAS = [
@@ -1613,135 +1638,234 @@ function TabZona({delivery}){
     { nombre:'San Pedro Sula', lat:15.500000, lng:-88.025100, radio:radioM, color:'#3B82F6' },
   ];
 
-  useEffect(()=>{
-    if(mapInstanceRef.current) return; // Ya inicializado
-    const el = document.getElementById('mapa-zona-rider');
-    if(!el) return;
-    
-    const map = window.L.map('mapa-zona-rider', {zoomControl:true}).setView([15.6133,-87.9480],12);
-    window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-      {attribution:'© CartoDB', maxZoom:19}).addTo(map);
-    
-    // Dibujar zonas de cobertura
-    ZONAS.forEach(z=>{
-      window.L.circle([z.lat,z.lng],{
-        radius: z.radio,
-        color: z.color,
-        fillColor: z.color,
-        fillOpacity: 0.08,
-        weight: 2,
-        dashArray: '6,4'
-      }).addTo(map).bindPopup(`<b>${z.nombre}</b><br>Radio: ${z.radio/1000}km`);
-      
-      // Marcador del centro de zona
-      window.L.circleMarker([z.lat,z.lng],{
-        radius:6, color:z.color, fillColor:z.color, fillOpacity:1, weight:2
-      }).addTo(map).bindPopup(`📍 ${z.nombre}`);
-    });
-
-    mapInstanceRef.current = map;
-
-    // Obtener posición actual del rider
-    if(navigator.geolocation){
-      navigator.geolocation.getCurrentPosition(pos=>{
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        setGpsPos({lat, lng});
-        
-        // Calcular si está dentro de alguna zona
-        const dentroDeZona = ZONAS.find(z=>{
-          const d = haversineKm(lat,lng,z.lat,z.lng);
-          return d <= z.radio/1000;
-        });
-        setDentroZona(dentroDeZona || null);
-
-        // Marker del rider
-        const icon = window.L.divIcon({
-          html:`<div style="width:36px;height:36px;border-radius:50%;background:#FF8C00;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,.5)">🛵</div>`,
-          iconSize:[36,36], iconAnchor:[18,18], className:''
-        });
-        markerRef.current = window.L.marker([lat,lng],{icon}).addTo(map);
-        markerRef.current.bindPopup('📍 Tu posición actual').openPopup();
-        map.flyTo([lat,lng],14,{animate:true,duration:1});
-
-        // Línea a zona más cercana
-        const zonaCercana = ZONAS.reduce((prev,curr)=>{
-          const dPrev = haversineKm(lat,lng,prev.lat,prev.lng);
-          const dCurr = haversineKm(lat,lng,curr.lat,curr.lng);
-          return dCurr < dPrev ? curr : prev;
-        });
-        const distKm = haversineKm(lat,lng,zonaCercana.lat,zonaCercana.lng);
-        if(distKm > zonaCercana.radio/1000){
-          window.L.polyline([[lat,lng],[zonaCercana.lat,zonaCercana.lng]],{
-            color:'#EF4444', dashArray:'8,4', weight:2, opacity:0.7
-          }).addTo(map).bindPopup(`${distKm.toFixed(1)}km hasta ${zonaCercana.nombre}`);
-        }
-      }, ()=>{}, {enableHighAccuracy:true,timeout:10000});
-    }
-
-    return ()=>{ /* No destruir el mapa al cambiar de tab */ };
-  },[]);
-
-  useEffect(()=>{
-    if(mapInstanceRef.current) {
-      setTimeout(()=>mapInstanceRef.current.invalidateSize(), 100);
-    }
-  });
-
   const haversineKm = (lat1,lng1,lat2,lng2)=>{
     const R=6371, dLat=(lat2-lat1)*Math.PI/180, dLng=(lng2-lng1)*Math.PI/180;
     const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
     return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
   };
 
+  const parseGps = gps => {
+    if(!gps) return null;
+    const parts = gps.split(',');
+    const lat = parseFloat(parts[0]?.trim());
+    const lng = parseFloat(parts[1]?.trim());
+    return (lat && lng) ? {lat, lng} : null;
+  };
+
+  // Obtener ruta OSRM por carretera real
+  const obtenerRutaOSRM = async (puntos) => {
+    // puntos = [{lat,lng}, {lat,lng}, ...]
+    if(puntos.length < 2) return null;
+    const coords = puntos.map(p => `${p.lng},${p.lat}`).join(';');
+    const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=false`;
+    try {
+      const res = await fetch(url, {timeout:8000});
+      const data = await res.json();
+      if(data.code !== 'Ok' || !data.routes?.length) return null;
+      const route = data.routes[0];
+      return {
+        coords: route.geometry.coordinates.map(c => [c[1], c[0]]), // [lat,lng]
+        distancia_km: (route.distance / 1000).toFixed(1),
+        tiempo_min: Math.round(route.duration / 60),
+      };
+    } catch(e) {
+      // Fallback: línea recta
+      console.warn('[OSRM] error, usando línea recta:', e.message);
+      return { coords: puntos.map(p=>[p.lat,p.lng]), distancia_km: haversineKm(puntos[0].lat,puntos[0].lng,puntos[puntos.length-1].lat,puntos[puntos.length-1].lng).toFixed(1), tiempo_min: null };
+    }
+  };
+
+  // Inicializar mapa
+  useEffect(()=>{
+    if(mapInstanceRef.current) return;
+    const el = document.getElementById('mapa-zona-rider');
+    if(!el) return;
+    const map = window.L.map('mapa-zona-rider', {zoomControl:true}).setView([15.6133,-87.9480],13);
+    window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB',maxZoom:19}).addTo(map);
+    ZONAS.forEach(z=>{
+      window.L.circle([z.lat,z.lng],{radius:z.radio,color:z.color,fillColor:z.color,fillOpacity:0.06,weight:2,dashArray:'6,4'}).addTo(map);
+    });
+    mapInstanceRef.current = map;
+
+    // GPS del rider
+    if(navigator.geolocation){
+      navigator.geolocation.getCurrentPosition(pos=>{
+        const lat=pos.coords.latitude, lng=pos.coords.longitude;
+        setGpsPos({lat,lng});
+        const dentro = ZONAS.find(z=>haversineKm(lat,lng,z.lat,z.lng)<=radioKm);
+        setDentroZona(dentro||null);
+        const icon = window.L.divIcon({html:`<div style="width:36px;height:36px;border-radius:50%;background:#FF8C00;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,.5)">🛵</div>`,iconSize:[36,36],iconAnchor:[18,18],className:''});
+        markersRef.current.rider = window.L.marker([lat,lng],{icon}).addTo(map).bindPopup('📍 Tu posición');
+        map.flyTo([lat,lng],14,{animate:true,duration:1});
+      },()=>{},{enableHighAccuracy:true,timeout:10000});
+    }
+  },[]);
+
+  // Cargar pedidos activos del rider
+  useEffect(()=>{
+    if(!delivery?.id) return;
+    const ACTIVOS=['ASIGNADO','ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO'];
+    sb.from('pedidos').select('id,no_orden,estatus,nombre_comercio,direccion_recogida,ubicacion_recogida_gps,direccion_entrega,ubicacion_entrega_gps,nombre_cliente,distancia_km')
+      .eq('delivery_id',delivery.id).in('estatus',ACTIVOS)
+      .then(({data})=>{
+        if(data){
+          setPedidosActivos(data);
+          if(data.length===1) setPedidoSel(data[0]);
+        }
+      });
+  },[delivery?.id]);
+
+  // Dibujar ruta cuando cambia pedido seleccionado
+  useEffect(()=>{
+    if(!pedidoSel || !mapInstanceRef.current || !gpsPos) return;
+    dibujarRuta(pedidoSel);
+  },[pedidoSel, gpsPos]);
+
+  const dibujarRuta = async (p) => {
+    const map = mapInstanceRef.current;
+    if(!map) return;
+    setCargandoRuta(true);
+
+    // Limpiar ruta anterior
+    if(routeLayerRef.current){ map.removeLayer(routeLayerRef.current); routeLayerRef.current=null; }
+    Object.keys(markersRef.current).forEach(k=>{ if(k!=='rider'&&markersRef.current[k]){map.removeLayer(markersRef.current[k]);delete markersRef.current[k];} });
+
+    const gpsRec = parseGps(p.ubicacion_recogida_gps);
+    const gpsEnt = parseGps(p.ubicacion_entrega_gps);
+
+    const puntos = [gpsPos];
+    if(gpsRec) puntos.push(gpsRec);
+    if(gpsEnt) puntos.push(gpsEnt);
+
+    if(puntos.length < 2){ setCargandoRuta(false); return; }
+
+    // Obtener ruta real por carretera
+    const ruta = await obtenerRutaOSRM(puntos);
+    setCargandoRuta(false);
+
+    if(ruta){
+      // Dibujar ruta
+      const layer = window.L.layerGroup();
+      
+      // Segmento 1: posición → recolecta (azul)
+      if(gpsRec && ruta.coords.length > 1){
+        window.L.polyline(ruta.coords.slice(0, Math.floor(ruta.coords.length/2)+1),
+          {color:'#3B82F6',weight:4,opacity:0.8}).addTo(layer);
+      }
+      // Segmento 2: recolecta → entrega (naranja)
+      if(gpsRec && gpsEnt){
+        window.L.polyline(ruta.coords.slice(Math.floor(ruta.coords.length/2)),
+          {color:'#FF8C00',weight:4,opacity:0.8}).addTo(layer);
+      }
+
+      layer.addTo(map);
+      routeLayerRef.current = layer;
+
+      setRutaInfo({
+        distancia: ruta.distancia_km,
+        tiempo: ruta.tiempo_min,
+      });
+
+      // Marcador recolecta
+      if(gpsRec){
+        const iconRec = window.L.divIcon({html:`<div style="background:#3B82F6;color:#fff;border-radius:8px;padding:3px 7px;font-size:10px;font-weight:800;white-space:nowrap;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5)">🏪 ${p.nombre_comercio?.slice(0,12)||'Recolecta'}</div>`,iconSize:[null,null],iconAnchor:[0,20],className:''});
+        markersRef.current.rec = window.L.marker([gpsRec.lat,gpsRec.lng],{icon:iconRec}).addTo(map).bindPopup(`<b>📍 Recolecta</b><br>${p.nombre_comercio||'—'}<br>${p.direccion_recogida||''}`);
+      }
+      // Marcador entrega
+      if(gpsEnt){
+        const iconEnt = window.L.divIcon({html:`<div style="background:#22C55E;color:#fff;border-radius:8px;padding:3px 7px;font-size:10px;font-weight:800;white-space:nowrap;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5)">🎯 ${p.nombre_cliente?.split(' ')[0]||'Entrega'}</div>`,iconSize:[null,null],iconAnchor:[0,20],className:''});
+        markersRef.current.ent = window.L.marker([gpsEnt.lat,gpsEnt.lng],{icon:iconEnt}).addTo(map).bindPopup(`<b>🎯 Entrega</b><br>${p.nombre_cliente||'—'}<br>${p.direccion_entrega||''}`);
+      }
+
+      // Ajustar vista al bounding box de la ruta
+      if(ruta.coords.length > 0){
+        const bounds = window.L.latLngBounds(ruta.coords);
+        map.fitBounds(bounds, {padding:[40,40]});
+      }
+    }
+  };
+
+  useEffect(()=>{
+    if(mapInstanceRef.current) setTimeout(()=>mapInstanceRef.current.invalidateSize(),100);
+  });
+
   const zonaStatus = dentroZona
-    ? {color:'#22C55E', txt:`✅ Estás dentro de la zona ${dentroZona.nombre}`, sub:'Recibirás pedidos de esta área'}
+    ? {color:'#22C55E',txt:`✅ Dentro de ${dentroZona.nombre}`,sub:`Radio ${radioKm}km`}
     : gpsPos
-      ? {color:'#EF4444', txt:'⚠️ Estás fuera de las zonas de cobertura', sub:'Acércate a Choloma o San Pedro Sula para recibir pedidos'}
-      : {color:'#888', txt:'📍 Obteniendo tu ubicación...', sub:'Asegúrate de tener GPS activo'};
+      ? {color:'#EF4444',txt:'⚠️ Fuera de zona de cobertura',sub:'Acércate a Choloma o SPS'}
+      : {color:'#888',txt:'📍 Obteniendo ubicación...',sub:'GPS activo'};
 
   return(
     <div style={{paddingBottom:80}}>
-      {/* Status banner */}
-      <div style={{margin:'12px 12px 0',background:`${zonaStatus.color}18`,border:`1px solid ${zonaStatus.color}44`,borderRadius:14,padding:'12px 14px'}}>
-        <div style={{fontSize:14,fontWeight:700,color:zonaStatus.color}}>{zonaStatus.txt}</div>
-        <div style={{fontSize:12,color:'#888',marginTop:3}}>{zonaStatus.sub}</div>
+      {/* Status zona */}
+      <div style={{margin:'10px 12px',background:`${zonaStatus.color}18`,border:`1px solid ${zonaStatus.color}44`,borderRadius:12,padding:'10px 14px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <div>
+          <div style={{fontSize:13,fontWeight:700,color:zonaStatus.color}}>{zonaStatus.txt}</div>
+          <div style={{fontSize:11,color:'#888',marginTop:2}}>{zonaStatus.sub}</div>
+        </div>
+        {rutaInfo&&(
+          <div style={{textAlign:'right'}}>
+            <div style={{fontSize:14,fontWeight:900,color:'#FF8C00'}}>{rutaInfo.distancia} km</div>
+            {rutaInfo.tiempo&&<div style={{fontSize:11,color:'#888'}}>~{rutaInfo.tiempo} min</div>}
+          </div>
+        )}
       </div>
-      {/* Mapa */}
-      <div id="mapa-zona-rider" style={{height:380,margin:'12px 0',width:'100%'}}/>
-      {/* Leyenda zonas */}
-      <div style={{margin:'0 12px',background:'#1A1A1A',border:'1px solid #333',borderRadius:14,padding:14}}>
-        <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:10}}>Zonas de Cobertura</div>
-        {ZONAS.map(z=>{
-          const dist = gpsPos ? haversineKm(gpsPos.lat,gpsPos.lng,z.lat,z.lng) : null;
-          const dentro = dist !== null && dist <= z.radio/1000;
-          return(
-            <div key={z.nombre} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 0',borderBottom:'1px solid #222'}}>
-              <div style={{width:12,height:12,borderRadius:'50%',background:z.color,flexShrink:0}}/>
-              <div style={{flex:1}}>
-                <div style={{fontSize:13,fontWeight:600}}>{z.nombre}</div>
-                <div style={{fontSize:11,color:'#888'}}>Radio: {z.radio/1000}km</div>
-              </div>
-              {dist !== null && (
-                <div style={{textAlign:'right'}}>
-                  <div style={{fontSize:13,fontWeight:700,color:dentro?'#22C55E':'#EF4444'}}>
-                    {dentro ? '✅ Dentro' : `${dist.toFixed(1)}km`}
-                  </div>
-                  <div style={{fontSize:10,color:'#666'}}>{dentro?'en zona':'de distancia'}</div>
-                </div>
-              )}
+
+      {/* Selector de pedido si hay más de uno */}
+      {pedidosActivos.length > 1 && (
+        <div style={{margin:'0 12px 8px',display:'flex',gap:6,overflowX:'auto',paddingBottom:4}}>
+          {pedidosActivos.map(p=>(
+            <button key={p.id} onClick={()=>setPedidoSel(p)}
+              style={{flexShrink:0,padding:'6px 12px',borderRadius:20,border:`1.5px solid ${pedidoSel?.id===p.id?'#FF8C00':'#333'}`,background:pedidoSel?.id===p.id?'rgba(255,140,0,.15)':'#1A1A1A',color:pedidoSel?.id===p.id?'#FF8C00':'#888',fontSize:11,fontWeight:700,cursor:'pointer'}}>
+              {p.no_orden||p.id.slice(-6)}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Info del pedido seleccionado */}
+      {pedidoSel&&(
+        <div style={{margin:'0 12px 8px',background:'#1A1A1A',border:'1px solid #333',borderRadius:12,padding:'10px 14px'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+            <div style={{fontSize:12,fontWeight:800,color:'#FF8C00'}}>{pedidoSel.no_orden}</div>
+            <div style={{fontSize:11,color:'#888'}}>{pedidoSel.estatus}</div>
+          </div>
+          <div style={{display:'flex',gap:10,fontSize:11,color:'#ccc'}}>
+            <div>🏪 <span style={{color:'#fff'}}>{pedidoSel.nombre_comercio||'—'}</span></div>
+            <div>→</div>
+            <div>👤 <span style={{color:'#fff'}}>{pedidoSel.nombre_cliente||'—'}</span></div>
+          </div>
+          {cargandoRuta&&<div style={{fontSize:11,color:'#888',marginTop:6}}>⏳ Calculando ruta...</div>}
+          {!cargandoRuta&&rutaInfo&&(
+            <div style={{display:'flex',gap:12,marginTop:6}}>
+              <div style={{fontSize:11}}><span style={{color:'#3B82F6'}}>━━</span> <span style={{color:'#888'}}>→ Recolecta</span></div>
+              <div style={{fontSize:11}}><span style={{color:'#FF8C00'}}>━━</span> <span style={{color:'#888'}}>→ Entrega</span></div>
             </div>
-          );
-        })}
-      </div>
-      <div style={{margin:'10px 12px',fontSize:11,color:'#555',textAlign:'center'}}>
-        💡 Mantente dentro del radio de {radioKm}km para recibir más pedidos
+          )}
+          {!pedidoSel.ubicacion_recogida_gps&&!pedidoSel.ubicacion_entrega_gps&&(
+            <div style={{fontSize:11,color:'#F59E0B',marginTop:6}}>⚠️ Sin coordenadas GPS en este pedido</div>
+          )}
+        </div>
+      )}
+
+      {pedidosActivos.length===0&&(
+        <div style={{margin:'0 12px 8px',background:'rgba(34,197,94,.08)',border:'1px solid rgba(34,197,94,.2)',borderRadius:12,padding:'10px 14px',fontSize:12,color:'#22C55E'}}>
+          ✅ Sin pedidos activos — tu zona se muestra arriba
+        </div>
+      )}
+
+      {/* Mapa */}
+      <div id="mapa-zona-rider" style={{height:380,width:'100%'}}/>
+
+      {/* Leyenda */}
+      <div style={{margin:'10px 12px 0',fontSize:11,color:'#555',textAlign:'center'}}>
+        💡 Mantente dentro del radio de {radioKm}km · Ruta real por carretera via OSRM
       </div>
     </div>
   );
 }
 
-// ─── TAB DEPÓSITOS ────────────────────────────────────────
+
 function TabDepositos({delivery, depositos, setDepositos, onConfirm, toast}){
   const [monto,setMonto]=useState('');
   const [file,setFile]=useState(null);
