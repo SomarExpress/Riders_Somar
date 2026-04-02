@@ -1612,106 +1612,104 @@ function initMapRiders() {
 
 async async function actualizarZonaCaliente() {
   if(!S.mapRiders) return;
-  // Limpiar capa anterior
   if(S.zonaLayer) { S.mapRiders.removeLayer(S.zonaLayer); S.zonaLayer = null; }
 
-  // Zonas predefinidas con coordenadas
-  const ZONAS = {
-    'CHOLOMA':         { lat:15.6133, lng:-87.9480 },
-    'SAN PEDRO SULA':  { lat:15.5000, lng:-88.0251 },
-    'LA LIMA':         { lat:15.4333, lng:-87.9167 },
-    'VILLANUEVA':      { lat:15.3167, lng:-88.0167 },
-  };
+  // ── ZONAS CONFIGURADAS — coordenadas fijas por colonia/sector ──────────────
+  // Agregar o editar zonas aquí para ajustar la cobertura del mapa
+  const ZONAS = [
+    // CHOLOMA
+    { nombre:'Choloma Centro',       ciudad:'CHOLOMA',        lat:15.609903, lng:-87.956312, radio:1200 },
+    { nombre:'Col. Buena Vista',     ciudad:'CHOLOMA',        lat:15.620000, lng:-87.960000, radio:800  },
+    { nombre:'Col. San Isidro',      ciudad:'CHOLOMA',        lat:15.603000, lng:-87.948000, radio:700  },
+    { nombre:'Residencial Las Vegas',ciudad:'CHOLOMA',        lat:15.615000, lng:-87.963000, radio:600  },
+    // SAN PEDRO SULA
+    { nombre:'SPS Centro',           ciudad:'SAN PEDRO SULA', lat:15.500000, lng:-88.025100, radio:1500 },
+    { nombre:'Col. Trejo',           ciudad:'SAN PEDRO SULA', lat:15.510000, lng:-88.020000, radio:700  },
+    { nombre:'Río Piedras',          ciudad:'SAN PEDRO SULA', lat:15.494000, lng:-88.032000, radio:600  },
+    // OTRAS
+    { nombre:'La Lima',              ciudad:'LA LIMA',        lat:15.433300, lng:-87.916700, radio:1000 },
+    { nombre:'Villanueva',           ciudad:'VILLANUEVA',     lat:15.316700, lng:-88.016700, radio:1000 },
+  ];
 
-  // Cargar pedidos de los últimos 30 días desde Supabase
-  // Solo necesitamos ciudad_destino para el mapa de calor
-  const hace30 = new Date();
-  hace30.setDate(hace30.getDate() - 30);
-  const desde30 = hace30.toISOString();
-
+  // ── CONSULTAR PEDIDOS 30 DÍAS ───────────────────────────────────────────────
+  const hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
   const { data: ped30, error } = await sb
     .from('pedidos')
     .select('ciudad_destino')
-    .gte('created_at', desde30)
+    .gte('created_at', hace30.toISOString())
     .in('estatus', ['FINALIZADO','ENTREGANDO','PEDIDO_EN_CAMINO','EN_ESTABLECIMIENTO','ACEPTADO','ASIGNADO']);
 
-  if(error) { console.error('[zona caliente]', error.message); return; }
-  if(!ped30?.length) {
-    // Sin datos — mostrar zonas base tenues
-    const group = L.layerGroup();
-    Object.entries(ZONAS).forEach(([nombre, z]) => {
-      L.circle([z.lat, z.lng], {
-        radius:1200, color:'#333', fillColor:'#333',
-        fillOpacity:0.06, weight:1, dashArray:'4,3'
-      }).addTo(group).bindPopup(`${nombre} — sin datos (30 días)`);
-    });
-    group.addTo(S.mapRiders);
-    S.zonaLayer = group;
-    return;
-  }
+  if(error) { console.error('[zona caliente]', error.message); }
 
-  // Contar pedidos por zona en los últimos 30 días
-  const conteo30 = {};
-  ped30.forEach(p => {
+  // Contar por ciudad
+  const conteo = {};
+  (ped30 || []).forEach(p => {
     const ciudad = (p.ciudad_destino || 'CHOLOMA').toUpperCase().trim();
-    conteo30[ciudad] = (conteo30[ciudad] || 0) + 1;
+    conteo[ciudad] = (conteo[ciudad] || 0) + 1;
   });
 
-  // Promedio diario por zona
-  const promedio = {};
-  Object.entries(conteo30).forEach(([ciudad, total]) => {
-    promedio[ciudad] = parseFloat((total / 30).toFixed(1));
-  });
+  const totalPed = Object.values(conteo).reduce((a,b)=>a+b, 0);
+  const maxConteo = Math.max(1, ...Object.values(conteo));
 
-  const maxProm = Math.max(1, ...Object.values(promedio));
-  const totalPed = ped30.length;
-
-  // Dibujar círculos de calor basados en promedio
+  // ── DIBUJAR ZONAS ────────────────────────────────────────────────────────────
   const group = L.layerGroup();
-  Object.entries(promedio).forEach(([ciudad, prom]) => {
-    const zona = ZONAS[ciudad];
-    if(!zona || prom === 0) return;
 
-    const intensidad = prom / maxProm; // 0-1
-    const radio = 600 + (intensidad * 2500); // 600m - 3100m
-    const color = intensidad > 0.7 ? '#EF4444'
-                : intensidad > 0.4 ? '#F59E0B'
-                : '#22C55E';
-    const fillOpacity = 0.07 + (intensidad * 0.22);
-    const total30 = conteo30[ciudad] || 0;
-    const pct = Math.round((total30 / totalPed) * 100);
+  // Agrupar zonas por ciudad para calcular intensidad
+  const ciudadesVistas = new Set();
 
-    L.circle([zona.lat, zona.lng], {
-      radius: radio,
-      color: color, fillColor: color,
-      fillOpacity, weight: 2,
-      dashArray: '5,4'
+  ZONAS.forEach(z => {
+    const cnt = conteo[z.ciudad] || 0;
+    const promDiario = parseFloat((cnt / 30).toFixed(1));
+    const intensidad = cnt / maxConteo; // 0-1 relativo al máximo
+
+    // Color según intensidad
+    const color = cnt === 0    ? '#444'
+                : intensidad > 0.7 ? '#EF4444'   // 🔴 muy activa
+                : intensidad > 0.4 ? '#F59E0B'   // 🟡 activa
+                :                    '#22C55E';  // 🟢 normal
+
+    const fillOpacity = cnt === 0 ? 0.04 : 0.07 + (intensidad * 0.2);
+    const radioAjustado = cnt === 0 ? z.radio * 0.6 : z.radio * (0.7 + intensidad * 0.6);
+
+    // Círculo de zona
+    L.circle([z.lat, z.lng], {
+      radius: radioAjustado,
+      color, fillColor: color,
+      fillOpacity, weight: cnt === 0 ? 1 : 2,
+      dashArray: cnt === 0 ? '4,6' : '5,3'
     }).addTo(group).bindPopup(`
-      <b>${ciudad}</b><br>
-      📊 Promedio: <b>${prom}/día</b><br>
-      📦 Total 30d: ${total30} pedidos<br>
-      📍 ${pct}% de la demanda<br>
-      ${intensidad>0.7?'🔴 Zona muy caliente':intensidad>0.4?'🟡 Zona activa':'🟢 Zona normal'}
+      <b>${z.nombre}</b><br>
+      ${cnt === 0
+        ? '📭 Sin pedidos en 30 días'
+        : `📊 Promedio: <b>${promDiario}/día</b><br>
+           📦 Total 30d: <b>${cnt}</b> pedidos<br>
+           📍 ${totalPed > 0 ? Math.round(cnt/totalPed*100) : 0}% de la demanda<br>
+           ${intensidad>0.7?'🔴 Zona muy caliente':intensidad>0.4?'🟡 Zona activa':'🟢 Zona normal'}`
+      }
     `);
 
-    // Badge con promedio diario
-    L.marker([zona.lat, zona.lng], {
-      icon: L.divIcon({
-        html: `<div style="
-          background:${color};color:#fff;border-radius:10px;
-          padding:3px 7px;font-size:10px;font-weight:800;
-          border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5);
-          white-space:nowrap;
-        ">${prom}/día</div>`,
-        iconSize:[null,null], iconAnchor:[20,10], className:''
-      })
-    }).addTo(group).bindPopup(`<b>${ciudad}</b>: ${prom} pedidos/día (promedio 30d)`);
+    // Badge solo para zonas con pedidos
+    if(cnt > 0 && !ciudadesVistas.has(z.ciudad)) {
+      ciudadesVistas.add(z.ciudad);
+      L.marker([z.lat, z.lng], {
+        icon: L.divIcon({
+          html: `<div style="
+            background:${color};color:#fff;border-radius:10px;
+            padding:3px 8px;font-size:10px;font-weight:800;
+            border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5);
+            white-space:nowrap;pointer-events:none;
+          ">${promDiario > 0 ? promDiario+'/día' : cnt+' ped'}</div>`,
+          iconSize:[null,null], iconAnchor:[24,10], className:''
+        })
+      }).addTo(group);
+    }
   });
 
   group.addTo(S.mapRiders);
   S.zonaLayer = group;
-  console.log('[zona caliente] cargada:', Object.keys(promedio), '— total 30d:', totalPed);
+  console.log('[zona caliente] 30d —', JSON.stringify(conteo), 'total:', totalPed);
 }
+
 
 function actualizarMarkersRiders() {
   if(!S.mapRiders) return;
