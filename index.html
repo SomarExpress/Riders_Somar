@@ -1443,7 +1443,7 @@ function App(){
       } else { clearInterval(gpsRef.current); }
     }
     if(rtRef.current)sb.removeChannel(rtRef.current);
-    if(delivery) await sb.from('ubicaciones_delivery').update({en_turno:false,updated_at:new Date().toISOString()}).eq('delivery_id',delivery.id).catch(()=>{});
+    if(delivery) { try { await sb.from('ubicaciones_delivery').update({en_turno:false,updated_at:new Date().toISOString()}).eq('delivery_id',delivery.id); } catch(e){} }
     await sb.auth.signOut();
     setDelivery(null);setPedidos([]);setHistorial([]);setDepositos([]);setMovimientos([]);setSaldo(0);setTurno(false);
   };
