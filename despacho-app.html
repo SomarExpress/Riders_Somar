@@ -2072,32 +2072,35 @@ function renderKanban() {
 
   const card = (p, accentColor) => {
     const rider = S.riders.find(r => r.id === p.delivery_id);
-    const hace = p.created_at ? Math.round((Date.now()-new Date(p.created_at).getTime())/60000) : null;
+    const ts = p.created_at || p.hora_asignado;
+    const hace = ts ? Math.round((Date.now()-new Date(ts).getTime())/60000) : null;
     const urgente = hace !== null && hace > 20 && ['PENDIENTE','ASIGNADO'].includes(p.estatus);
+    const comercio = p.nombre_comercio || p.nombre_destinatario || '—';
+    const destino  = p.ciudad_destino || '—';
+    const tarifa   = parseFloat(p.tarifa_envio||0);
     return `<div onclick="abrirModalPedido('${p.id}')" style="
       background:var(--g2);border:1px solid ${urgente?'var(--rojo)':accentColor+'33'};
       border-left:3px solid ${accentColor};border-radius:10px;padding:10px 11px;
       cursor:pointer;transition:all .15s;
       ${urgente?'box-shadow:0 0 8px rgba(239,68,68,.3);':''}
     " onmouseover="this.style.background='var(--g3)'" onmouseout="this.style.background='var(--g2)'">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:6px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;margin-bottom:5px;">
         <div class="mono" style="font-size:10px;color:${accentColor}">${p.no_orden||'—'}</div>
         ${hace!==null?`<div style="font-size:10px;color:${urgente?'var(--rojo)':'var(--td)'};white-space:nowrap">${hace<60?hace+'m':Math.floor(hace/60)+'h'} ${urgente?'⚠️':''}</div>`:''}
       </div>
-      <div style="font-size:12px;font-weight:700;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.nombre_comercio||p.nombre_destinatario||'—'}</div>
-      <div style="font-size:11px;color:var(--td);margin-bottom:6px">📍 ${p.ciudad_destino||'—'}</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-size:12px;font-weight:700;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${comercio}</div>
+      <div style="font-size:11px;color:var(--td);margin-bottom:6px">📍 ${destino} · ${p.tipo||'—'}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
         ${chipEst(p.estatus)}
-        <div style="font-size:11px;color:var(--td)">${rider?`🛵 ${rider.nombre.split(' ')[0]}`:'<span style="color:var(--rojo);font-size:10px">Sin rider</span>'}</div>
+        <div style="font-size:11px;color:var(--td)">${rider?'🛵 '+rider.nombre.split(' ')[0]:'<span style="color:var(--rojo);font-size:10px">Sin rider</span>'}</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;">
+        <span style="color:var(--td)">${p.metodo_pago||'—'}</span>
+        <span class="mono" style="color:var(--or);font-weight:700">L.${tarifa.toFixed(0)}</span>
       </div>
       ${p.estatus==='PENDIENTE'?`<button class="btn btn-primary btn-sm" style="width:100%;justify-content:center;margin-top:8px" onclick="event.stopPropagation();abrirAsignar('${p.id}')">Asignar Rider</button>`:''}
-      <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;">
-        <span style="color:var(--td)">${p.metodo_pago||'—'}</span>
-        <span class="mono" style="color:var(--or);font-weight:700">L.${parseFloat(p.tarifa_envio||0).toFixed(0)}</span>
-      </div>
     </div>`;
   };
-
   const empty = txt => `<div style="text-align:center;padding:20px;font-size:12px;color:var(--td)">${txt}</div>`;
 
   document.getElementById('kb-pend').innerHTML = pend.length
