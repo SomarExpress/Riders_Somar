@@ -316,6 +316,10 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         Historial
       </div>
+      <div class="nav-item" onclick="nav('config')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        Configuración
+      </div>
       <div class="nav-item" onclick="nav('chat')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
         Chat
@@ -710,6 +714,18 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
         <div id="hist-content"><div class="empty">Selecciona un rango de fechas</div></div>
       </div>
 
+      <!-- ═══ CONFIGURACIÓN ════════════════════════════════════ -->
+      <div class="view" id="view-config">
+        <div style="max-width:600px;">
+          <div class="card" style="margin-bottom:14px;">
+            <div class="card-hdr"><div class="card-title">⚙️ Configuración del Sistema</div></div>
+            <div id="config-content" style="padding:14px;">
+              <div class="empty">Cargando configuración...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ═══ CHAT ══════════════════════════════════════════════ -->
       <div class="view" id="view-chat">
         <div class="chat-layout" id="chat-layout">
@@ -775,6 +791,7 @@ const S = {
   chatRiderId: null, chatSub: null,
   tipoPedido: 'MANDADO', metodoPago: 'EFECTIVO', pagarEstab: false,
   cuponData: null,
+  config: {}, // configuración global del sistema
   stepVals: { 'sv-prod': 0, 'sv-envio': 50, 'sv-propina': 0 },
 };
 
@@ -915,7 +932,7 @@ async function init() {
   const _hEl = document.getElementById('dash-hasta');
   if(_dEl) _dEl.value = _hoy;
   if(_hEl) _hEl.value = _hoy;
-  await Promise.all([ cargarMetricas(), cargarRiders() ]);
+  await Promise.all([ cargarMetricas(), cargarRiders(), cargarConfig() ]);
   cargarComerciosDL();
   initRealtime();
 }
@@ -2103,10 +2120,83 @@ function _postPedidoChange() {
   if(document.getElementById('view-kanban').classList.contains('active')) renderKanban();
 }
 
+
+// ════════════════════════════════════════════════════════════
+// CONFIGURACIÓN DEL SISTEMA
+// ════════════════════════════════════════════════════════════
+async function cargarConfig() {
+  const { data, error } = await sb.from('configuracion').select('*').order('clave');
+  if(error) { console.error('[config]', error.message); return; }
+  S.config = {};
+  data?.forEach(r => { S.config[r.clave] = r.valor; });
+  console.log('[config] cargada:', S.config);
+}
+
+async function guardarConfigClave(clave, valor, btn) {
+  if(btn) { btn.disabled=true; btn.textContent='Guardando...'; }
+  const { error } = await sb.from('configuracion')
+    .upsert({ clave, valor: String(valor), updated_at: new Date().toISOString() }, { onConflict:'clave' });
+  if(error) {
+    toast('Error: ' + error.message, 'danger');
+  } else {
+    S.config[clave] = String(valor);
+    toast('✅ Configuración guardada', 'success');
+    // Si es el radio de zona, actualizar el mapa
+    if(clave === 'zona_radio_km') actualizarZonaCaliente();
+  }
+  if(btn) { btn.disabled=false; btn.textContent='Guardar'; }
+}
+
+function renderConfig() {
+  const el = document.getElementById('config-content');
+  if(!el) return;
+
+  const cfg = S.config;
+  const fila = (clave, label, desc, tipo='number', min=0, max=9999, step=0.5) => `
+    <div style="padding:14px 0;border-bottom:1px solid var(--g4);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:180px;">
+          <div style="font-size:13px;font-weight:700;margin-bottom:3px;">${label}</div>
+          <div style="font-size:11px;color:var(--td);">${desc}</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">
+          <input
+            type="${tipo}" id="cfg-${clave}"
+            value="${cfg[clave]||''}"
+            min="${min}" max="${max}" step="${step}"
+            style="width:100px;background:var(--g3);border:1px solid var(--g5);border-radius:6px;padding:7px 10px;color:var(--tx);font-size:14px;font-weight:700;text-align:center;"
+            ${tipo==='number'?'':''}
+          >
+          <button class="btn btn-primary btn-sm"
+            onclick="guardarConfigClave('${clave}', document.getElementById('cfg-${clave}').value, this)">
+            Guardar
+          </button>
+        </div>
+      </div>
+    </div>`;
+
+  el.innerHTML = `
+    <div style="font-size:11px;font-weight:700;color:var(--td);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px;">🗺️ Zonas y Cobertura</div>
+    ${fila('zona_radio_km', 'Radio de zona de cobertura (km)', 'Distancia máxima del rider al centro de la zona para recibir pedidos. La app Delivery muestra esta zona en su mapa.', 'number', 0.5, 20, 0.5)}
+
+    <div style="font-size:11px;font-weight:700;color:var(--td);text-transform:uppercase;letter-spacing:.08em;margin-top:16px;margin-bottom:2px;">💰 Comisiones</div>
+    ${fila('comision_bronce', 'Comisión nivel Bronce (%)', 'Porcentaje que Somar cobra al rider por cada envío (nivel Bronce).', 'number', 0, 100, 1)}
+    ${fila('comision_plata',  'Comisión nivel Plata (%)',  'Porcentaje para riders con 75+ pedidos/mes.', 'number', 0, 100, 1)}
+    ${fila('comision_oro',    'Comisión nivel Oro (%)',    'Porcentaje para riders con 150+ pedidos/mes.', 'number', 0, 100, 1)}
+
+    <div style="font-size:11px;font-weight:700;color:var(--td);text-transform:uppercase;letter-spacing:.08em;margin-top:16px;margin-bottom:2px;">👛 Billetera</div>
+    ${fila('saldo_minimo', 'Saldo mínimo para operar (L.)', 'El rider debe tener al menos este saldo en su billetera para recibir pedidos.', 'number', 0, 9999, 10)}
+
+    <div style="margin-top:16px;padding:10px 12px;background:rgba(255,140,0,.08);border:1px solid rgba(255,140,0,.2);border-radius:8px;font-size:11px;color:var(--td);">
+      💡 Los cambios se aplican en tiempo real. La app Delivery lee la configuración al iniciar sesión.
+    </div>
+  `;
+}
+
 // ════════════════════════════════════════════════════════════
 // NAVEGACIÓN
 // ════════════════════════════════════════════════════════════
-const TITLES = { inicio:'Dashboard',pedidos:'Pedidos',kanban:'Kanban — Vista de Pedidos',nuevo:'Nuevo Pedido',mapa:'Mapa en Vivo',riders:'Riders',solicitudes:'Solicitudes de Riders',depositos:'Depósitos',historial:'Historial',chat:'Chat' };
+const TITLES = { inicio:'Dashboard',pedidos:'Pedidos',kanban:'Kanban — Vista de Pedidos',config:'Configuración del Sistema',nuevo:'Nuevo Pedido',mapa:'Mapa en Vivo',riders:'Riders',solicitudes:'Solicitudes de Riders',depositos:'Depósitos',historial:'Historial',chat:'Chat' };
 
 function nav(v) {
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
@@ -2124,6 +2214,7 @@ function nav(v) {
   }
   if(v === 'pedidos') renderTablaPedidos();
   if(v === 'kanban') renderKanban();
+  if(v === 'config') renderConfig();
   if(v === 'riders') {
     renderRidersGrid();
     if(!S.mapRidersInit) { setTimeout(initMapRiders, 80); }
