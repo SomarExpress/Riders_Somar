@@ -1610,25 +1610,15 @@ function initMapRiders() {
   actualizarZonaCaliente(); // async - no necesita await aquí
 }
 
-async async function actualizarZonaCaliente() {
+async function actualizarZonaCaliente() {
   if(!S.mapRiders) return;
   if(S.zonaLayer) { S.mapRiders.removeLayer(S.zonaLayer); S.zonaLayer = null; }
 
   // ── ZONAS CONFIGURADAS — coordenadas fijas por colonia/sector ──────────────
   // Agregar o editar zonas aquí para ajustar la cobertura del mapa
   const ZONAS = [
-    // CHOLOMA
-    { nombre:'Choloma Centro',       ciudad:'CHOLOMA',        lat:15.609903, lng:-87.956312, radio:1200 },
-    { nombre:'Col. Buena Vista',     ciudad:'CHOLOMA',        lat:15.620000, lng:-87.960000, radio:800  },
-    { nombre:'Col. San Isidro',      ciudad:'CHOLOMA',        lat:15.603000, lng:-87.948000, radio:700  },
-    { nombre:'Residencial Las Vegas',ciudad:'CHOLOMA',        lat:15.615000, lng:-87.963000, radio:600  },
-    // SAN PEDRO SULA
-    { nombre:'SPS Centro',           ciudad:'SAN PEDRO SULA', lat:15.500000, lng:-88.025100, radio:1500 },
-    { nombre:'Col. Trejo',           ciudad:'SAN PEDRO SULA', lat:15.510000, lng:-88.020000, radio:700  },
-    { nombre:'Río Piedras',          ciudad:'SAN PEDRO SULA', lat:15.494000, lng:-88.032000, radio:600  },
-    // OTRAS
-    { nombre:'La Lima',              ciudad:'LA LIMA',        lat:15.433300, lng:-87.916700, radio:1000 },
-    { nombre:'Villanueva',           ciudad:'VILLANUEVA',     lat:15.316700, lng:-88.016700, radio:1000 },
+    { nombre:'Choloma Centro',  ciudad:'CHOLOMA',        lat:15.609903, lng:-87.956312, radio:1500 },
+    { nombre:'SPS Centro',      ciudad:'SAN PEDRO SULA', lat:15.500000, lng:-88.025100, radio:1800 },
   ];
 
   // ── CONSULTAR PEDIDOS 30 DÍAS ───────────────────────────────────────────────
