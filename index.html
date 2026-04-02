@@ -146,7 +146,20 @@ const SUPA_URL  = 'https://jjrmzouigcmeztkybrvp.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqcm16b3VpZ2NtZXp0a3licnZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MzExNDgsImV4cCI6MjA4ODUwNzE0OH0.tNUHxGWMWh7Q6v4mH3y5gOxpczpEJHwNqwH2TehL61I';
 const EDGE_URL  = SUPA_URL + '/functions/v1';
 const sb = supabase.createClient(SUPA_URL, SUPA_ANON);
-const MIN_SALDO = 100;
+const MIN_SALDO = 100; // valor por defecto, se sobreescribe desde BD
+let _configSistema = { zona_radio_km: 2.5, saldo_minimo: 100 };
+
+async function cargarConfigSistema() {
+  try {
+    const { data } = await sb.from('configuracion').select('clave,valor');
+    if(data) {
+      data.forEach(r => {
+        _configSistema[r.clave] = isNaN(r.valor) ? r.valor : parseFloat(r.valor);
+      });
+      console.log('[config]', _configSistema);
+    }
+  } catch(e) { console.warn('[config] error:', e.message); }
+}
 
 // ── PWA: SW + notificaciones ──────────────────────────────
 if('serviceWorker' in navigator) {
@@ -1163,6 +1176,7 @@ function App(){
     cargarDatos(del.id);
     iniciarGPS(del.id);
     suscribirRealtime(del.id);
+    cargarConfigSistema();
   };
 
   const buildTiempos=p=>{
@@ -1476,9 +1490,11 @@ function TabZona({delivery}){
   const [dentroZona, setDentroZona] = React.useState(null);
 
   // Zona principal: centro de Choloma
+  const radioKm = _configSistema.zona_radio_km || 2.5;
+  const radioM  = radioKm * 1000;
   const ZONAS = [
-    { nombre:'Choloma Centro', lat:15.6133, lng:-87.9480, radio:5000, color:'#FF8C00' },
-    { nombre:'San Pedro Sula', lat:15.5000, lng:-88.0251, radio:5000, color:'#3B82F6' },
+    { nombre:'Choloma Centro', lat:15.609903, lng:-87.956312, radio:radioM, color:'#FF8C00' },
+    { nombre:'San Pedro Sula', lat:15.500000, lng:-88.025100, radio:radioM, color:'#3B82F6' },
   ];
 
   useEffect(()=>{
@@ -1603,7 +1619,7 @@ function TabZona({delivery}){
         })}
       </div>
       <div style={{margin:'10px 12px',fontSize:11,color:'#555',textAlign:'center'}}>
-        💡 Mantente dentro del radio de 5km para recibir más pedidos
+        💡 Mantente dentro del radio de {radioKm}km para recibir más pedidos
       </div>
     </div>
   );
