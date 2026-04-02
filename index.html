@@ -653,10 +653,22 @@ function VistaPedido({p, pedidos, onAvanzar, onBack, onConfirm, toast, ahora}){
 }
 
 // ─── MI GUACA ─────────────────────────────────────────────
-function TabGuaca({historial, saldo, movimientos, onIrDepositos}){
+function TabGuaca({historial, saldo, movimientos, onIrDepositos, delivery}){
   const [desde,setDesde]=useState('');
   const [hasta,setHasta]=useState('');
   const [openDia,setOpenDia]=useState({});
+  const [liquidaciones,setLiquidaciones]=useState([]);
+
+  useEffect(()=>{
+    if(!delivery?.id) return;
+    // Cargar liquidaciones del rider
+    sb.from('liquidaciones_delivery')
+      .select('*')
+      .eq('delivery_id',delivery.id)
+      .order('creado_at',{ascending:false})
+      .limit(20)
+      .then(({data})=>{ if(data) setLiquidaciones(data); });
+  },[delivery?.id]);
 
   // historial viene de Supabase: campos reales no normalizados
   const fin = historial.filter(p=>p.estatus==='FINALIZADO'||p.est==='FINALIZADO');
@@ -684,19 +696,15 @@ function TabGuaca({historial, saldo, movimientos, onIrDepositos}){
   else if(pM>=75){nivel='Plata';stars='⭐⭐';pct=Math.round((pM-75)/75*100);}
   else{pct=Math.round(pM/75*100);}
 
-  // MODELO SALDO:
-  // saldo_billetera POSITIVO = rider DEBE ese monto a Somar (comisión acumulada)
-  // saldo_billetera NEGATIVO = Somar DEBE al rider
-  // Límite máximo positivo = 300 (si supera, se bloquea)
-  const MAX_SALDO = 300; // máximo que puede deber antes de bloquearse
-  const deuda = saldo; // cuánto debe el rider a Somar
-  const disponible = MAX_SALDO - deuda; // cuánto puede seguir trabajando
-  const bloqueado = deuda >= MAX_SALDO;
-  const sBajo   = deuda >= MAX_SALDO; // bloqueado
-  const sCerca  = deuda >= 200 && deuda < MAX_SALDO; // advertencia
-  const sOk     = deuda < 200;
-  const sColor  = sBajo ? '#EF4444' : sCerca ? '#F59E0B' : '#22C55E';
-  const sBarPct = Math.min(100, (deuda / MAX_SALDO) * 100); // barra de deuda
+  // MODELO SALDO CORRECTO:
+  // saldo_billetera = dinero disponible del rider (recarga y baja con comisiones)
+  // Mínimo para operar = MIN_SALDO (L.100 por defecto)
+  const bloqueado  = saldo < MIN_SALDO;
+  const sBajo      = saldo < MIN_SALDO;
+  const sCerca     = saldo >= MIN_SALDO && saldo < MIN_SALDO * 2;
+  const sOk        = saldo >= MIN_SALDO * 2;
+  const sColor     = sBajo ? '#EF4444' : sCerca ? '#F59E0B' : '#22C55E';
+  const sBarPct    = Math.min(100, (saldo / 500) * 100); // barra de saldo disponible
 
   const dias = Object.keys(porDia).sort().reverse();
 
@@ -711,13 +719,13 @@ function TabGuaca({historial, saldo, movimientos, onIrDepositos}){
           <span style={{fontSize:11,color:'rgba(255,255,255,.7)',fontWeight:600}}>Mínimo {fmtL(MIN_SALDO)}</span>
         </div>
         <div style={{padding:16}}>
-          {/* Saldo - deuda con Somar */}
+          {/* Saldo disponible */}
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',marginBottom:10}}>
             <div>
-              <div style={{fontSize:11,color:'#888',fontWeight:600,marginBottom:4}}>DEUDA CON SOMAR</div>
-              <div style={{fontSize:38,fontWeight:900,color:sColor,lineHeight:1}}>L. {deuda.toFixed(2)}</div>
+              <div style={{fontSize:11,color:'#888',fontWeight:600,marginBottom:4}}>SALDO DISPONIBLE</div>
+              <div style={{fontSize:38,fontWeight:900,color:sColor,lineHeight:1}}>L. {saldo.toFixed(2)}</div>
               <div style={{fontSize:11,color:'#888',marginTop:4}}>
-                {bloqueado ? '⛔ Bloqueado — realiza un depósito' : `Margen disponible: L. ${Math.max(0,disponible).toFixed(0)}`}
+                {bloqueado ? '⛔ Saldo insuficiente — recarga para trabajar' : `Mínimo requerido: L. ${MIN_SALDO}`}
               </div>
             </div>
             <button onClick={onIrDepositos}
@@ -725,7 +733,7 @@ function TabGuaca({historial, saldo, movimientos, onIrDepositos}){
               + Recargar
             </button>
           </div>
-          {/* Barra de deuda - llena = peligro */}
+          {/* Barra de saldo */}
           <div style={{background:'#2C2C2C',borderRadius:6,height:8,marginBottom:8,overflow:'hidden'}}>
             <div style={{height:'100%',borderRadius:6,background:sColor,width:`${sBarPct}%`,transition:'width .5s'}}/>
           </div>
@@ -1079,6 +1087,39 @@ function TabChat({delivery}){
         <button onClick={enviar} disabled={!texto.trim()||enviando} style={{width:48,height:48,borderRadius:'50%',background:texto.trim()?'#FF8C00':'#2C2C2C',color:texto.trim()?'#fff':'#555',fontSize:20,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'all .2s'}}>{enviando?'…':'➤'}</button>
       </div>
     </div>
+
+
+      {/* Liquidaciones pendientes de transferencia */}
+      {liquidaciones.filter(l=>l.estatus==='PENDIENTE').length>0&&(
+        <div style={{margin:'0 12px 12px',background:'rgba(59,130,246,.08)',border:'1px solid rgba(59,130,246,.3)',borderRadius:14,padding:14}}>
+          <div style={{fontSize:11,fontWeight:700,color:'#3B82F6',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:10}}>
+            💳 Transferencias Pendientes — Somar te debe ({liquidaciones.filter(l=>l.estatus==='PENDIENTE').length})
+          </div>
+          {liquidaciones.filter(l=>l.estatus==='PENDIENTE').map(l=>(
+            <div key={l.id} style={{background:'rgba(0,0,0,.25)',borderRadius:10,padding:'10px 12px',marginBottom:6}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <div style={{fontSize:12,color:'#ccc',flex:1,paddingRight:8}}>{l.descripcion||'Liquidación pendiente'}</div>
+                <div style={{fontSize:17,fontWeight:900,color:'#3B82F6',flexShrink:0}}>L. {parseFloat(l.monto_liquidar).toFixed(2)}</div>
+              </div>
+              <div style={{fontSize:10,color:'#666',marginTop:4}}>⏳ Pendiente · {new Date(l.creado_at).toLocaleDateString('es-HN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {liquidaciones.filter(l=>l.estatus==='LIQUIDADO').length>0&&(
+        <div style={{margin:'0 12px 12px'}}>
+          <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:8}}>Transferencias Recibidas</div>
+          {liquidaciones.filter(l=>l.estatus==='LIQUIDADO').slice(0,5).map(l=>(
+            <div key={l.id} style={{background:'#1A1A1A',borderRadius:10,padding:'10px 12px',marginBottom:6,borderLeft:'3px solid #22C55E'}}>
+              <div style={{display:'flex',justifyContent:'space-between'}}>
+                <div style={{fontSize:12,color:'#ccc',flex:1}}>{l.descripcion||'Liquidación'}</div>
+                <div style={{fontSize:15,fontWeight:800,color:'#22C55E'}}>L. {parseFloat(l.monto_liquidar).toFixed(2)}</div>
+              </div>
+              <div style={{fontSize:10,color:'#555',marginTop:3}}>✅ {l.liquidado_at?new Date(l.liquidado_at).toLocaleDateString('es-HN',{day:'2-digit',month:'short'}):''}</div>
+            </div>
+          ))}
+        </div>
+      )}
   );
 }
 
@@ -1452,11 +1493,11 @@ function App(){
           </div>
         </div>
         <button onClick={()=>{
-          if(!turno&&saldo>=300){toast('⛔ Deuda máxima. Recarga para volver a trabajar.');return;}
+          if(!turno&&saldo<MIN_SALDO){toast('⛔ Saldo insuficiente. Recarga para trabajar.');return;}
           setSheet({msg:turno?'¿Pausar tu turno? Dejarás de recibir pedidos.':'¿Activar tu turno? Empezarás a recibir pedidos.',confirmLbl:turno?'Sí, pausar':'Sí, activar',color:turno?'#888':'#22C55E',onSi:()=>toggleTurno(!turno)});
         }} style={{display:'flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:20,border:'1.5px solid '+(turno?'#22C55E':'#555'),background:turno?'rgba(34,197,94,.1)':'#2C2C2C',color:turno?'#22C55E':'#888',fontSize:12,fontWeight:700}}>
           <div style={{width:8,height:8,borderRadius:'50%',background:'currentColor',animation:turno?'pulse 1.5s infinite':'none'}}/>
-          {turno?'Disponible':saldo>=300?'⛔ Bloqueado':'Fuera de turno'}
+          {turno?'Disponible':saldo<MIN_SALDO?'⛔ Sin saldo':'Fuera de turno'}
         </button>
       </div>
 
@@ -1482,7 +1523,7 @@ function App(){
             })}
           </div>
         )}
-        {tab==='guaca'&&<TabGuaca historial={historial} saldo={saldo} movimientos={movimientos} onIrDepositos={()=>setTab('depositos')}/>}
+        {tab==='guaca'&&<TabGuaca historial={historial} saldo={saldo} movimientos={movimientos} onIrDepositos={()=>setTab('depositos')} delivery={delivery}/>}
         {tab==='zona'&&<TabZona delivery={delivery}/>}
         {tab==='chat'&&<TabChat delivery={delivery}/>}
         {tab==='depositos'&&<TabDepositos delivery={delivery} depositos={depositos} setDepositos={setDepositos} onConfirm={setSheet} toast={toast}/>}
@@ -1495,8 +1536,8 @@ function App(){
                 <div><div style={{fontSize:17,fontWeight:700}}>{delivery?.nombre}</div><div style={{fontSize:13,color:'#888'}}>{delivery?.email}</div></div>
               </div>
               <div style={{background:'#232323',borderRadius:12,overflow:'hidden'}}>
-                {[['Celular',delivery?.celular],['Ciudad',delivery?.ciudad],['Deuda Somar',fmtL(saldo)]].map(([l,v])=>(
-                  <div key={l} style={{padding:'12px 14px',borderBottom:'1px solid #2C2C2C',display:'flex',justifyContent:'space-between'}}><span style={{fontSize:12,color:'#888'}}>{l}</span><span style={{fontSize:13,fontWeight:600,color:l==='Deuda Somar'?(saldo>=300?'#EF4444':saldo>=200?'#F59E0B':'#22C55E'):'inherit'}}>{v||'—'}</span></div>
+                {[['Celular',delivery?.celular],['Ciudad',delivery?.ciudad],['Saldo',fmtL(saldo)]].map(([l,v])=>(
+                  <div key={l} style={{padding:'12px 14px',borderBottom:'1px solid #2C2C2C',display:'flex',justifyContent:'space-between'}}><span style={{fontSize:12,color:'#888'}}>{l}</span><span style={{fontSize:13,fontWeight:600,color:l==='Saldo'?(saldo<MIN_SALDO?'#EF4444':saldo<MIN_SALDO*2?'#F59E0B':'#22C55E'):'inherit'}}>{v||'—'}</span></div>
                 ))}
                 <div style={{padding:'12px 14px',display:'flex',justifyContent:'space-between'}}><span style={{fontSize:12,color:'#888'}}>Estado</span><span style={{fontSize:13,fontWeight:600,color:'#22C55E'}}>Activo ✅</span></div>
               </div>
