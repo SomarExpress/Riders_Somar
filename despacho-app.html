@@ -1108,6 +1108,7 @@ function onPedidoChange(payload) {
   cargarMetricas();
   if(document.getElementById('view-pedidos').classList.contains('active')) renderTablaPedidos();
   if(document.getElementById('view-kanban').classList.contains('active')) renderKanban();
+  if(S.mapInit) actualizarPedidosEnMapa();
   renderListaActivos();
   if(p.estatus === 'PENDIENTE') {
     notif('⚠️ Pedido sin asignar', `${p.no_orden||'—'} requiere asignación manual`, true);
@@ -2073,11 +2074,13 @@ function initMap() {
   const map = L.map('map-live').setView([15.6133, -87.9480], 13);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution:'© CartoDB', maxZoom:19 }).addTo(map);
   S.map = map;
+  S.pedidoMarkers = {}; // marcadores de pedidos en el mapa
+
+  // Cargar riders
   sb.from('ubicaciones_delivery')
     .select('delivery_id, lat, lng, en_turno, updated_at, delivery(id, nombre, saldo_billetera)')
     .then(({ data, error }) => {
       if(error) { console.error('[mapa] error:', error.message); return; }
-      console.log('[mapa] ubicaciones:', data);
       data?.forEach(u => {
         const nombre = u.delivery?.nombre || (Array.isArray(u.delivery) ? u.delivery[0]?.nombre : null) || '?';
         const saldo  = u.delivery?.saldo_billetera || (Array.isArray(u.delivery) ? u.delivery[0]?.saldo_billetera : 0) || 0;
@@ -2088,6 +2091,89 @@ function initMap() {
       renderRidersMini();
       renderRidersGrid();
     });
+
+  // Cargar pedidos activos en el mapa
+  actualizarPedidosEnMapa();
+}
+
+// Colores por estatus para marcadores de pedidos
+const COLOR_ESTATUS = {
+  PENDIENTE:'#F59E0B', ASIGNADO:'#3B82F6', ACEPTADO:'#8B5CF6',
+  EN_ESTABLECIMIENTO:'#F97316', PEDIDO_EN_CAMINO:'#FF8C00',
+  ENTREGANDO:'#22C55E', FINALIZADO:'#22C55E',
+};
+
+function actualizarPedidosEnMapa() {
+  if(!S.map) return;
+  const ACTIVOS = ['PENDIENTE','ASIGNADO','ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO'];
+  const pedActivos = S.pedidos.filter(p => ACTIVOS.includes(p.estatus));
+
+  // Limpiar marcadores de pedidos que ya no están activos
+  Object.keys(S.pedidoMarkers||{}).forEach(id => {
+    if(!pedActivos.find(p => p.id === id)) {
+      S.map.removeLayer(S.pedidoMarkers[id]);
+      delete S.pedidoMarkers[id];
+    }
+  });
+
+  pedActivos.forEach(p => {
+    // Punto de recolecta
+    const gpsRec = p.ubicacion_recogida_gps;
+    const gpsEnt = p.ubicacion_entrega_gps;
+    const color = COLOR_ESTATUS[p.estatus] || '#888';
+    const rider = S.riders.find(r => r.id === p.delivery_id);
+    const riderNombre = rider?.nombre?.split(' ')[0] || 'Sin rider';
+
+    if(gpsRec) {
+      const latR = parseFloat(gpsRec.split(',')[0]);
+      const lngR = parseFloat(gpsRec.split(',')[1]);
+      if(latR && lngR) {
+        const iconRec = L.divIcon({
+          html: `<div style="background:#1A1A1A;border:2px solid ${color};border-radius:6px;padding:2px 5px;font-size:9px;font-weight:800;color:${color};white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.5)">🏪 ${p.nombre_comercio?.slice(0,10)||'—'}</div>`,
+          iconSize:[null,null], iconAnchor:[0,0], className:''
+        });
+        const markerKey = p.id + '_rec';
+        if(S.pedidoMarkers[markerKey]) {
+          S.pedidoMarkers[markerKey].setLatLng([latR, lngR]);
+        } else {
+          const m = L.marker([latR, lngR], {icon:iconRec}).addTo(S.map);
+          m.bindPopup(`<b>${p.no_orden}</b><br>📍 Recolecta: ${p.nombre_comercio||'—'}<br>🛵 Rider: ${riderNombre}<br>Estado: ${p.estatus}`);
+          S.pedidoMarkers[markerKey] = m;
+        }
+      }
+    }
+
+    if(gpsEnt) {
+      const latE = parseFloat(gpsEnt.split(',')[0]);
+      const lngE = parseFloat(gpsEnt.split(',')[1]);
+      if(latE && lngE) {
+        const iconEnt = L.divIcon({
+          html: `<div style="background:${color};border-radius:50%;width:14px;height:14px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5)"></div>`,
+          iconSize:[14,14], iconAnchor:[7,7], className:''
+        });
+        const markerKey = p.id + '_ent';
+        if(S.pedidoMarkers[markerKey]) {
+          S.pedidoMarkers[markerKey].setLatLng([latE, lngE]);
+        } else {
+          const m = L.marker([latE, lngE], {icon:iconEnt}).addTo(S.map);
+          m.bindPopup(`<b>${p.no_orden}</b><br>🎯 Entrega: ${p.direccion_entrega||'—'}<br>👤 Cliente: ${p.nombre_cliente||'—'}`);
+          S.pedidoMarkers[markerKey] = m;
+        }
+        // Línea recolecta → entrega
+        if(gpsRec) {
+          const latR = parseFloat(gpsRec.split(',')[0]);
+          const lngR = parseFloat(gpsRec.split(',')[1]);
+          const lineKey = p.id + '_line';
+          if(!S.pedidoMarkers[lineKey]) {
+            const line = L.polyline([[latR,lngR],[latE,lngE]], {
+              color, weight:2, opacity:0.5, dashArray:'5,5'
+            }).addTo(S.map);
+            S.pedidoMarkers[lineKey] = line;
+          }
+        }
+      }
+    }
+  });
 }
 
 // Centro de Choloma como fallback cuando GPS aún no tiene coordenadas reales
@@ -2412,6 +2498,7 @@ const _origOnPedidoChange = onPedidoChange;
 // Llamar renderKanban después de cada cambio si está activo
 function _postPedidoChange() {
   if(document.getElementById('view-kanban').classList.contains('active')) renderKanban();
+  if(S.mapInit) actualizarPedidosEnMapa();
 }
 
 
