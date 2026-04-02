@@ -1207,7 +1207,8 @@ function App(){
       console.warn('[GPS] no disponible');
       return;
     }
-    const opts={enableHighAccuracy:true,timeout:10000,maximumAge:5000};
+    const opts={enableHighAccuracy:true,timeout:15000,maximumAge:10000};
+    const optsRapido={enableHighAccuracy:false,timeout:8000,maximumAge:30000};
     const enviarUbi=async(pos)=>{
       const payload={
         delivery_id:delId,
@@ -1221,14 +1222,22 @@ function App(){
       if(error) console.error('[GPS] upsert error:',error.message);
       else console.log('[GPS] OK',payload.lat,payload.lng,'turno:',payload.en_turno);
     };
-    const onErr=e=>console.error('[GPS] error:',e.code,e.message);
+    const onErr=e=>{
+      // Código 3 = timeout — normal en Android, watchPosition reintenta solo
+      if(e.code === 3) console.log('[GPS] timeout (normal, reintentando...)');
+      else console.error('[GPS] error:', e.code, e.message);
+    };
     // Posición inmediata
     navigator.geolocation.getCurrentPosition(enviarUbi,onErr,opts);
     // watchPosition: dispara al moverse
     const watchId=navigator.geolocation.watchPosition(enviarUbi,onErr,opts);
     // Intervalo 20s de respaldo (watchPosition puede pausarse en background Android)
+    // Usa opciones menos exigentes para evitar timeouts frecuentes
     const intervalId=setInterval(()=>{
-      navigator.geolocation.getCurrentPosition(enviarUbi,onErr,opts);
+      navigator.geolocation.getCurrentPosition(enviarUbi,e=>{
+        // Timeout en intervalo es normal — no loguear como error
+        if(e.code !== 3) console.warn('[GPS] intervalo error:', e.code, e.message);
+      }, optsRapido);
     },20000);
     gpsRef.current={watchId,intervalId};
   };
