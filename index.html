@@ -860,6 +860,37 @@ function TabGuaca({historial, saldo, movimientos, onIrDepositos, delivery}){
         );
       })}
       <div style={{height:12}}/>
+      {/* 💳 Transferencias pendientes de Somar */}
+      {liquidaciones&&liquidaciones.filter(l=>l.estatus==='PENDIENTE').length>0&&(
+        <div style={{margin:'12px 12px 0',background:'rgba(59,130,246,.08)',border:'1px solid rgba(59,130,246,.3)',borderRadius:14,padding:14}}>
+          <div style={{fontSize:11,fontWeight:700,color:'#3B82F6',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:10}}>
+            💳 Somar te debe · {liquidaciones.filter(l=>l.estatus==='PENDIENTE').length} pago{liquidaciones.filter(l=>l.estatus==='PENDIENTE').length!==1?'s':''}
+          </div>
+          {liquidaciones.filter(l=>l.estatus==='PENDIENTE').map(l=>(
+            <div key={l.id} style={{background:'rgba(0,0,0,.2)',borderRadius:10,padding:'10px 12px',marginBottom:6}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <div style={{fontSize:12,color:'#ccc',flex:1,marginRight:8}}>{l.descripcion||'Liquidación pendiente'}</div>
+                <div style={{fontSize:16,fontWeight:900,color:'#3B82F6',flexShrink:0}}>L. {parseFloat(l.monto_liquidar).toFixed(2)}</div>
+              </div>
+              <div style={{fontSize:10,color:'#666',marginTop:3}}>⏳ {new Date(l.creado_at).toLocaleDateString('es-HN',{day:'2-digit',month:'short'})}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {liquidaciones&&liquidaciones.filter(l=>l.estatus==='LIQUIDADO').length>0&&(
+        <div style={{margin:'6px 12px 0'}}>
+          {liquidaciones.filter(l=>l.estatus==='LIQUIDADO').slice(0,3).map(l=>(
+            <div key={l.id} style={{background:'#1A1A1A',borderRadius:10,padding:'10px 12px',marginBottom:6,borderLeft:'3px solid #22C55E'}}>
+              <div style={{display:'flex',justifyContent:'space-between'}}>
+                <div style={{fontSize:12,color:'#ccc',flex:1}}>{l.descripcion||'Transferencia recibida'}</div>
+                <div style={{fontSize:14,fontWeight:800,color:'#22C55E'}}>L. {parseFloat(l.monto_liquidar).toFixed(2)}</div>
+              </div>
+              <div style={{fontSize:10,color:'#555',marginTop:2}}>✅ Recibido</div>
+            </div>
+          ))}
+        </div>
+      )}
+
     </div>
   );
 }
