@@ -144,7 +144,6 @@ function sonarDepositoAprobado() {
 // ─── CONFIG PRODUCCIÓN ───────────────────────────────────
 const SUPA_URL  = 'https://jjrmzouigcmeztkybrvp.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqcm16b3VpZ2NtZXp0a3licnZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MzExNDgsImV4cCI6MjA4ODUwNzE0OH0.tNUHxGWMWh7Q6v4mH3y5gOxpczpEJHwNqwH2TehL61I';
-const EDGE_URL  = SUPA_URL + '/functions/v1';
 const sb = supabase.createClient(SUPA_URL, SUPA_ANON);
 const MIN_SALDO = 100; // valor por defecto, se sobreescribe desde BD
 let _configSistema = { zona_radio_km: 2.5, saldo_minimo: 100 };
@@ -880,7 +879,6 @@ function DepForm({onEnviar, onConfirm}){
   );
 }
 
-// ─── PANTALLA AUTH ───────────────────────────────────────
 function AuthScreen({onLogin}){
   const [vista,setVista]=useState('login');
   const [email,setEmail]=useState('');
@@ -1205,10 +1203,34 @@ function App(){
   };
 
   const iniciarGPS=delId=>{
-    if(!navigator.geolocation)return;
-    const send=pos=>sb.from('ubicaciones_delivery').upsert({delivery_id:delId,lat:pos.coords.latitude,lng:pos.coords.longitude,precision_m:Math.round(pos.coords.accuracy),en_turno:turnoRef.current,updated_at:new Date().toISOString()},{onConflict:'delivery_id'});
-    navigator.geolocation.getCurrentPosition(send,()=>{});
-    gpsRef.current=setInterval(()=>navigator.geolocation.getCurrentPosition(send,()=>{},{enableHighAccuracy:true,timeout:8000}),30000);
+    if(!navigator.geolocation){
+      console.warn('[GPS] no disponible');
+      return;
+    }
+    const opts={enableHighAccuracy:true,timeout:10000,maximumAge:5000};
+    const enviarUbi=async(pos)=>{
+      const payload={
+        delivery_id:delId,
+        lat:pos.coords.latitude,
+        lng:pos.coords.longitude,
+        precision_m:Math.round(pos.coords.accuracy||0),
+        en_turno:turnoRef.current,
+        updated_at:new Date().toISOString()
+      };
+      const {error}=await sb.from('ubicaciones_delivery').upsert(payload,{onConflict:'delivery_id'});
+      if(error) console.error('[GPS] upsert error:',error.message);
+      else console.log('[GPS] OK',payload.lat,payload.lng,'turno:',payload.en_turno);
+    };
+    const onErr=e=>console.error('[GPS] error:',e.code,e.message);
+    // Posición inmediata
+    navigator.geolocation.getCurrentPosition(enviarUbi,onErr,opts);
+    // watchPosition: dispara al moverse
+    const watchId=navigator.geolocation.watchPosition(enviarUbi,onErr,opts);
+    // Intervalo 20s de respaldo (watchPosition puede pausarse en background Android)
+    const intervalId=setInterval(()=>{
+      navigator.geolocation.getCurrentPosition(enviarUbi,onErr,opts);
+    },20000);
+    gpsRef.current={watchId,intervalId};
   };
 
   const suscribirRealtime=delId=>{
@@ -1325,7 +1347,12 @@ function App(){
   };
 
   const cerrarSesion=async()=>{
-    if(gpsRef.current)clearInterval(gpsRef.current);
+    if(gpsRef.current){
+      if(typeof gpsRef.current === 'object'){
+        if(gpsRef.current.watchId!=null) navigator.geolocation.clearWatch(gpsRef.current.watchId);
+        if(gpsRef.current.intervalId!=null) clearInterval(gpsRef.current.intervalId);
+      } else { clearInterval(gpsRef.current); }
+    }
     if(rtRef.current)sb.removeChannel(rtRef.current);
     if(delivery) await sb.from('ubicaciones_delivery').update({en_turno:false,updated_at:new Date().toISOString()}).eq('delivery_id',delivery.id).catch(()=>{});
     await sb.auth.signOut();
