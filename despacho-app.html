@@ -172,7 +172,7 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
 .dep-footer{padding:10px 14px;display:flex;gap:7px;align-items:center;}
 
 /* ─── CHAT ─────────────────────────────────────────────────── */
-.chat-layout{display:grid;grid-template-columns:220px 1fr;height:calc(100vh - 56px);background:var(--g2);border:1px solid var(--g4);border-radius:10px;overflow:hidden;}
+.chat-layout{display:grid;grid-template-columns:220px 1fr;height:100%;background:var(--g2);border:1px solid var(--g4);border-radius:0;overflow:hidden;}
 .chat-list{border-right:1px solid var(--g4);overflow-y:auto;display:flex;flex-direction:column;}
 .chat-item{padding:10px 12px;border-bottom:1px solid var(--g3);cursor:pointer;display:flex;gap:8px;align-items:center;}
 .chat-item:hover,.chat-item.sel{background:var(--g3);}
@@ -297,10 +297,26 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
   .form-grid.c3{grid-template-columns:1fr 1fr;}
 
   /* ── Chat ── */
-  .chat-layout{grid-template-columns:1fr;height:calc(100vh - 52px);}
-  .chat-list{display:none;position:absolute;inset:0;z-index:10;background:var(--g2);}
-  .chat-layout.chat-sel .chat-list{display:flex;flex-direction:column;}
-  .chat-layout.chat-sel .chat-main{display:none;}
+  .chat-layout{
+    grid-template-columns:1fr;
+    height:100%;
+    position:relative;
+  }
+  /* Por defecto en móvil: mostrar lista de riders */
+  .chat-list{
+    display:flex !important;
+    flex-direction:column;
+    position:absolute;
+    inset:0;
+    z-index:5;
+    background:var(--g2);
+    border-right:none;
+  }
+  /* Cuando se selecciona un rider: mostrar chat, ocultar lista */
+  .chat-layout.chat-sel .chat-list{display:none !important;}
+  .chat-layout.chat-sel .chat-main{display:flex !important;}
+  /* Por defecto: ocultar chat-main hasta seleccionar rider */
+  .chat-main{display:none;}
   .chat-back-btn{display:flex !important;}
 
   /* ── Kanban ── */
@@ -411,8 +427,7 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
   .panel-footer{flex-wrap:wrap;}
   .panel-footer .btn{flex:1;min-width:120px;justify-content:center;}
 
-  /* Chat: ocupar toda la pantalla */
-  .chat-layout{height:calc(100vh - 56px) !important;}
+  /* Chat: ocupar toda la pantalla - manejado arriba */
 
   /* Tabla: scroll horizontal */
   #view-pedidos .card{overflow:hidden;}
@@ -1040,7 +1055,7 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
       </div>
 
       <!-- ═══ CHAT ══════════════════════════════════════════════ -->
-      <div class="view" id="view-chat" style="height:calc(100vh - 52px);overflow:hidden;padding:4px;display:flex;flex-direction:column;">
+      <div class="view" id="view-chat" style="height:calc(100vh - 52px);overflow:hidden;padding:0;display:flex;flex-direction:column;">
         <div class="chat-layout" id="chat-layout">
           <div class="chat-list" id="chat-contacts">
             <div style="padding:10px 12px;font-size:10px;color:var(--td);letter-spacing:2px;text-transform:uppercase;border-bottom:1px solid var(--g4);">Repartidores</div>
@@ -3570,7 +3585,11 @@ function nav(v, pushHistory=true) {
   if(v === 'turnos') renderTurnos();
   if(v === 'comprobantes') cargarComprobantes();
   if(v === 'historial') { /* noop, user clicks Buscar */ }
-  if(v === 'chat') { if(!S.riders.length) cargarRiders().then(renderChatContacts); else renderChatContacts(); }
+  if(v === 'chat') {
+    // En móvil: resetear a vista de lista (quitar chat-sel)
+    document.getElementById('chat-layout')?.classList.remove('chat-sel');
+    if(!S.riders.length) cargarRiders().then(renderChatContacts); else renderChatContacts();
+  }
   if(v === 'nuevo') { wizGo(0); actualizarResumen(); }
   closeSB();
 }
