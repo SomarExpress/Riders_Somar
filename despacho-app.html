@@ -3512,7 +3512,7 @@ async function validarTransferencia(pedidoId, aprobado) {
 // ════════════════════════════════════════════════════════════
 const TITLES = { inicio:'Dashboard',pedidos:'Pedidos',kanban:'Kanban — Vista de Pedidos',config:'Configuración del Sistema',nuevo:'Nuevo Pedido',mapa:'Mapa en Vivo',riders:'Riders',solicitudes:'Solicitudes de Riders',depositos:'Depósitos',liquidaciones:'Liquidaciones a Riders',turnos:'Gestión de Turnos',comprobantes:'Comprobantes de Pago',historial:'Historial',chat:'Chat' };
 
-function nav(v) {
+function nav(v, pushHistory=true) {
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
   const view = document.getElementById('view-'+v);
@@ -3521,6 +3521,10 @@ function nav(v) {
     if(el.getAttribute('onclick')?.includes("'"+v+"'")) el.classList.add('active');
   });
   document.getElementById('tb-title').textContent = TITLES[v] || v;
+  // History API — agregar entrada para que el botón Atrás funcione
+  if(pushHistory) {
+    history.pushState({ vista: v }, '', '#' + v);
+  }
   // Acciones por vista
   if(v === 'mapa') {
     if(!S.mapInit) { setTimeout(initMap, 80); }
@@ -3625,6 +3629,15 @@ async function instalarPWA() {
   console.log('[PWA] Usuario:', outcome);
   _deferredPrompt = null;
 }
+
+// ─── BOTÓN ATRÁS ─────────────────────────────────────────────
+window.addEventListener('popstate', e => {
+  const vista = e.state?.vista;
+  if(S.panelPedidoId) { cerrarPanel(); history.pushState({vista:'inicio'},'','#inicio'); return; }
+  if(document.getElementById('sidebar').classList.contains('open')) { closeSB(); history.pushState({vista:'inicio'},'','#inicio'); return; }
+  if(vista && document.getElementById('view-'+vista)) nav(vista, false);
+  else nav('inicio', false);
+});
 </script>
 </body>
 </html>
