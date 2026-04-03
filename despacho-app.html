@@ -350,6 +350,10 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
         Liquidaciones
         <span class="nav-badge" id="badge-liq" style="display:none">0</span>
       </div>
+      <div class="nav-item" onclick="nav('turnos')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Turnos
+      </div>
       <div class="nav-item" onclick="nav('historial')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
         Historial
@@ -462,6 +466,17 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
                 <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid var(--g4);">
                   <span style="font-size:12px;font-weight:800">Total Somar</span>
                   <span class="mono" style="color:var(--or);font-weight:900;font-size:15px" id="fin-margen">L. 0.00</span>
+                </div>
+                <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--g4);">
+                  <div style="font-size:10px;color:var(--td);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Por método de pago</div>
+                  <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                    <span style="font-size:12px;color:var(--td)">💵 Efectivo</span>
+                    <span class="mono" style="color:var(--tx)" id="fin-efectivo">L. 0.00</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;">
+                    <span style="font-size:12px;color:var(--td)">📲 Transferencia</span>
+                    <span class="mono" style="color:var(--az)" id="fin-transfer">L. 0.00</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -758,6 +773,26 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
         <div id="liq-lista"><div class="empty">Cargando...</div></div>
       </div>
 
+      <!-- ═══ TURNOS ═══════════════════════════════════════════ -->
+      <div class="view" id="view-turnos">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:900px;">
+          <!-- Configurar turnos -->
+          <div class="card">
+            <div class="card-hdr"><div class="card-title">⚙️ Turnos Configurados</div>
+              <button class="btn btn-primary btn-sm" onclick="abrirCrearTurno()">+ Nuevo</button></div>
+            <div id="turnos-config-lista" style="padding:10px">Cargando...</div>
+          </div>
+          <!-- Reservaciones del día -->
+          <div class="card">
+            <div class="card-hdr">
+              <div class="card-title">📅 Reservaciones</div>
+              <input type="date" id="turnos-fecha" class="fi" style="width:140px;font-size:12px;padding:5px 8px" onchange="renderTurnos()">
+            </div>
+            <div id="turnos-reservaciones-lista" style="padding:10px">Selecciona una fecha</div>
+          </div>
+        </div>
+      </div>
+
       <!-- ═══ HISTORIAL ════════════════════════════════════════ -->
       <div class="view" id="view-historial">
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
@@ -862,6 +897,7 @@ const S = {
   cuponData: null,
   config: {}, // configuración global del sistema
   panelPedidoId: null, panelTsEstadoActivo: null,
+  notifs: [], showNotifs: false,
   stepVals: { 'sv-prod': 0, 'sv-envio': 50, 'sv-propina': 0 },
 };
 
@@ -1002,7 +1038,7 @@ async function init() {
   const _hEl = document.getElementById('dash-hasta');
   if(_dEl) _dEl.value = _hoy;
   if(_hEl) _hEl.value = _hoy;
-  await Promise.all([ cargarMetricas(), cargarRiders(), cargarConfig() ]);
+  await Promise.all([ cargarMetricas(), cargarRiders(), cargarConfig(), cargarNotifsDespacho() ]);
   // Badge liquidaciones pendientes
   sb.from('liquidaciones_delivery').select('id',{count:'exact'}).eq('estatus','PENDIENTE').then(({count})=>{ if(count>0){const b=document.getElementById('badge-liq');if(b){b.textContent=count;b.style.display='inline';}} });
   cargarComerciosDL();
@@ -1170,23 +1206,27 @@ async function cargarMetricas() {
   const fin   = data.filter(p => p.estatus === 'FINALIZADO').length;
   const proc  = data.filter(p => !['FINALIZADO','CANCELADO','PENDIENTE','PENDIENTE'].includes(p.estatus)).length;
   const sa    = data.filter(p => ['PENDIENTE'].includes(p.estatus)).length;
-  const finalizados = data.filter(p => p.estatus === 'FINALIZADO');
-  const ing      = finalizados.reduce((s,p) => s + parseFloat(p.tarifa_envio||0), 0);
-  const drv      = finalizados.reduce((s,p) => s + parseFloat(p.ingreso_delivery||0), 0);
-  const comEnvio = finalizados.reduce((s,p) => s + parseFloat(p.ingreso_somar||0) - parseFloat(p.base_app||0), 0);
-  const comCom   = finalizados.reduce((s,p) => s + parseFloat(p.base_app||0), 0);
-  const somar    = finalizados.reduce((s,p) => s + parseFloat(p.ingreso_somar||0), 0);
+  const finalizados   = data.filter(p => p.estatus === 'FINALIZADO');
+  const ing           = finalizados.reduce((s,p) => s + parseFloat(p.tarifa_envio||0), 0);
+  const drv           = finalizados.reduce((s,p) => s + parseFloat(p.ingreso_delivery||0), 0);
+  const comEnvio      = finalizados.reduce((s,p) => s + parseFloat(p.ingreso_somar||0) - parseFloat(p.base_app||0), 0);
+  const comCom        = finalizados.reduce((s,p) => s + parseFloat(p.base_app||0), 0);
+  const somar         = finalizados.reduce((s,p) => s + parseFloat(p.ingreso_somar||0), 0);
+  const totalEfectivo = finalizados.filter(p=>p.metodo_pago==='EFECTIVO').reduce((s,p)=>s+parseFloat(p.monto_cobrar||0),0);
+  const totalTransfer = finalizados.filter(p=>p.metodo_pago==='TRANSFERENCIA').reduce((s,p)=>s+parseFloat(p.monto_cobrar||0),0);
   document.getElementById('m-total').textContent = total;
   document.getElementById('m-fin').textContent   = fin;
   document.getElementById('m-proc').textContent  = proc;
   document.getElementById('m-sa').textContent    = sa;
   document.getElementById('m-tsub').textContent  = `↑ hoy`;
   document.getElementById('m-fsub').textContent  = total > 0 ? `${Math.round(fin/total*100)}% tasa éxito` : '—';
-  document.getElementById('fin-ing').textContent      = `L. ${ing.toFixed(2)}`;
-  document.getElementById('fin-drv').textContent      = `- L. ${drv.toFixed(2)}`;
-  document.getElementById('fin-com-envio').textContent = `L. ${comEnvio.toFixed(2)}`;
-  document.getElementById('fin-com-com').textContent   = `L. ${comCom.toFixed(2)}`;
-  document.getElementById('fin-margen').textContent    = `L. ${somar.toFixed(2)}`;
+  document.getElementById('fin-ing').textContent       = `L. ${ing.toFixed(2)}`;
+  document.getElementById('fin-drv').textContent       = `- L. ${drv.toFixed(2)}`;
+  document.getElementById('fin-com-envio').textContent  = `L. ${comEnvio.toFixed(2)}`;
+  document.getElementById('fin-com-com').textContent    = `L. ${comCom.toFixed(2)}`;
+  document.getElementById('fin-margen').textContent     = `L. ${somar.toFixed(2)}`;
+  if(document.getElementById('fin-efectivo')) document.getElementById('fin-efectivo').textContent = `L. ${totalEfectivo.toFixed(2)}`;
+  if(document.getElementById('fin-transfer')) document.getElementById('fin-transfer').textContent = `L. ${totalTransfer.toFixed(2)}`;
   document.getElementById('badge-activos').textContent = proc + sa;
   renderListaActivos();
 }
@@ -1913,7 +1953,7 @@ async function renderChatMsgs(dId) {
     const mine = m.remitente === 'DESPACHO';
     const agente = m.remitente_nombre || (mine ? 'Despacho' : null);
     const color = mine ? colorAgente(agente) : '#ccc';
-    const hora = new Date(m.created_at).toLocaleTimeString('es-HN',{timeZone:'America/Tegucigalpa',...{{hour:'2-digit',minute:'2-digit',timeZone:'America/Tegucigalpa'});
+    const hora = new Date(m.created_at).toLocaleTimeString('es-HN',{timeZone:'America/Tegucigalpa',hour:'2-digit',minute:'2-digit'});
     const imgHtml = m.imagen_url
       ? `<div style="margin-top:${m.mensaje?'6px':'0'}"><img src="${m.imagen_url}" onclick="window.open('${m.imagen_url}')" style="max-width:220px;max-height:200px;border-radius:10px;display:block;cursor:pointer;object-fit:cover" loading="lazy"/></div>`
       : '';
@@ -2593,6 +2633,56 @@ function _postPedidoChange() {
 // ════════════════════════════════════════════════════════════
 // CONFIGURACIÓN DEL SISTEMA
 // ════════════════════════════════════════════════════════════
+async function cargarNotifsDespacho() {
+  const { data } = await sb.from('notificaciones_despacho')
+    .select('*').order('created_at', { ascending: false }).limit(30);
+  if(data) S.notifs = data;
+  renderBadgeNotifs();
+}
+
+function renderBadgeNotifs() {
+  const badge = document.getElementById('notif-badge');
+  const unread = S.notifs.filter(n => !n.leida).length;
+  if(badge) { badge.textContent = unread; badge.style.display = unread > 0 ? 'flex' : 'none'; }
+}
+
+function toggleNotifs() {
+  S.showNotifs = !S.showNotifs;
+  renderNotifsPanel();
+}
+
+function renderNotifsPanel() {
+  const panel = document.getElementById('notifs-panel');
+  if(!panel) return;
+  panel.style.display = S.showNotifs ? 'flex' : 'none';
+  if(!S.showNotifs) return;
+  const unread = S.notifs.filter(n=>!n.leida);
+  panel.innerHTML = `
+    <div style="padding:12px 14px;border-bottom:1px solid var(--g4);display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-size:13px;font-weight:700">🔔 Notificaciones</div>
+      <button onclick="limpiarNotifs()" style="background:none;border:none;color:var(--or);font-size:11px;font-weight:700;cursor:pointer">Limpiar todas</button>
+    </div>
+    <div style="overflow-y:auto;flex:1;max-height:400px;">
+      ${S.notifs.length===0?'<div style="padding:20px;text-align:center;font-size:12px;color:var(--td)">Sin notificaciones</div>':
+        S.notifs.map(n=>`<div style="padding:10px 14px;border-bottom:1px solid var(--g3);background:${n.leida?'transparent':'rgba(255,140,0,.04)'}; display:flex;gap:10px;align-items:flex-start;">
+          <div style="font-size:18px;flex-shrink:0">${n.icono||'🔔'}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;font-weight:700;margin-bottom:2px">${n.titulo}</div>
+            ${n.cuerpo?`<div style="font-size:11px;color:var(--td)">${n.cuerpo}</div>`:''}
+            <div style="font-size:10px;color:var(--td);margin-top:3px">${fmtFecha(n.created_at)}</div>
+          </div>
+          ${!n.leida?'<div style="width:8px;height:8px;border-radius:50%;background:var(--or);flex-shrink:0;margin-top:4px"></div>':''}
+        </div>`).join('')}
+    </div>`;
+}
+
+async function limpiarNotifs() {
+  await sb.from('notificaciones_despacho').update({leida:true}).eq('leida',false);
+  S.notifs = S.notifs.map(n=>({...n,leida:true}));
+  renderBadgeNotifs();
+  renderNotifsPanel();
+}
+
 async function cargarConfig() {
   const { data, error } = await sb.from('configuracion').select('*').order('clave');
   if(error) { console.error('[config]', error.message); return; }
@@ -2738,10 +2828,119 @@ function filtLiq(btn, estatus) {
   cargarLiquidaciones(estatus);
 }
 
+
+// ════════════════════════════════════════════════════════════
+// GESTIÓN DE TURNOS
+// ════════════════════════════════════════════════════════════
+async function renderTurnos() {
+  const hoy = new Date().toISOString().split('T')[0];
+  const fechaEl = document.getElementById('turnos-fecha');
+  if(fechaEl && !fechaEl.value) fechaEl.value = new Date(Date.now() + 86400000).toISOString().split('T')[0]; // mañana por defecto
+  const fecha = fechaEl?.value || hoy;
+
+  // Cargar turnos configurados
+  const { data: turnos } = await sb.from('turnos_config').select('*').eq('activo', true).order('hora_inicio');
+  const listaEl = document.getElementById('turnos-config-lista');
+  if(!turnos?.length) { listaEl.innerHTML = '<div class="empty">Sin turnos configurados</div>'; }
+  else {
+    listaEl.innerHTML = turnos.map(t => `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--g4);border-radius:10px;margin-bottom:6px;">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700">${t.nombre}</div>
+          <div style="font-size:11px;color:var(--td)">${t.hora_inicio.slice(0,5)} – ${t.hora_fin.slice(0,5)} · Máx ${t.max_riders} riders</div>
+          <div style="font-size:10px;color:var(--td);margin-top:2px">${(t.dias||[]).join(' ')}</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="asignarTurnoManual('${t.id}','${t.nombre}')">+ Asignar</button>
+        <button class="btn btn-ghost btn-sm" onclick="eliminarTurno('${t.id}')" style="color:var(--rojo)">✕</button>
+      </div>`).join('');
+  }
+
+  // Cargar reservaciones para la fecha seleccionada
+  const resEl = document.getElementById('turnos-reservaciones-lista');
+  const { data: reservas } = await sb.from('reservaciones_turno')
+    .select('*, turno:turno_id(nombre,hora_inicio,hora_fin), delivery:delivery_id(nombre,celular)')
+    .eq('fecha', fecha).order('turno_id');
+  
+  if(!reservas?.length) { resEl.innerHTML = '<div class="empty">Sin reservaciones para esta fecha</div>'; return; }
+  
+  resEl.innerHTML = reservas.map(r => {
+    const turno = r.turno;
+    const rider = Array.isArray(r.delivery) ? r.delivery[0] : r.delivery;
+    const colores = {RESERVADO:'var(--am)',CONFIRMADO:'var(--verde)',CANCELADO:'var(--rojo)',COMPLETADO:'var(--td)'};
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--g4);border-radius:10px;margin-bottom:6px;">
+      <div style="flex:1">
+        <div style="font-size:12px;font-weight:700">${rider?.nombre||'—'}</div>
+        <div style="font-size:11px;color:var(--td)">${turno?.nombre||'—'} · ${turno?.hora_inicio?.slice(0,5)||''} – ${turno?.hora_fin?.slice(0,5)||''}</div>
+        ${r.asignado_por?`<div style="font-size:10px;color:var(--td)">Asignado por: ${r.asignado_por}</div>`:''}
+      </div>
+      <span style="font-size:11px;font-weight:700;color:${colores[r.estatus]||'var(--td)'}">${r.estatus}</span>
+      ${r.estatus==='RESERVADO'?`<button class="btn btn-primary btn-sm" onclick="confirmarReserva('${r.id}')">Confirmar</button>`:''}
+      ${r.estatus!=='CANCELADO'&&r.estatus!=='COMPLETADO'?`<button class="btn btn-ghost btn-sm" onclick="cancelarReserva('${r.id}')" style="color:var(--rojo)">Cancelar</button>`:''}
+    </div>`;
+  }).join('');
+}
+
+async function abrirCrearTurno() {
+  const nombre   = prompt('Nombre del turno (ej: Mañana, Tarde, Noche):');
+  if(!nombre) return;
+  const inicio   = prompt('Hora de inicio (HH:MM):');
+  const fin      = prompt('Hora de fin (HH:MM):');
+  const maxR     = parseInt(prompt('Máximo de riders:', S.config.max_riders_turno || '2') || '2');
+  if(!inicio || !fin) return;
+  const { error } = await sb.from('turnos_config').insert({
+    nombre, hora_inicio: inicio, hora_fin: fin, max_riders: maxR
+  });
+  if(error) { toast('Error: ' + error.message, 'danger'); return; }
+  toast('✅ Turno creado');
+  renderTurnos();
+}
+
+async function eliminarTurno(id) {
+  if(!confirm('¿Eliminar este turno?')) return;
+  await sb.from('turnos_config').update({activo:false}).eq('id', id);
+  toast('Turno eliminado');
+  renderTurnos();
+}
+
+async function asignarTurnoManual(turnoId, turnoNombre) {
+  if(!S.riders?.length) { toast('No hay riders disponibles', 'danger'); return; }
+  const fecha = document.getElementById('turnos-fecha')?.value || new Date(Date.now()+86400000).toISOString().split('T')[0];
+  const opciones = S.riders.map((r,i) => `${i+1}. ${r.nombre}`).join('
+');
+  const sel = prompt(`Asignar turno "${turnoNombre}" (${fecha})
+
+Selecciona el número del rider:
+${opciones}`);
+  if(!sel) return;
+  const idx = parseInt(sel) - 1;
+  if(isNaN(idx) || idx < 0 || idx >= S.riders.length) { toast('Opción inválida', 'danger'); return; }
+  const rider = S.riders[idx];
+  const agente = document.getElementById('u-name')?.textContent || 'Despacho';
+  const { error } = await sb.from('reservaciones_turno').upsert({
+    turno_id: turnoId, delivery_id: rider.id, fecha,
+    estatus: 'CONFIRMADO', asignado_por: agente
+  }, { onConflict: 'turno_id,delivery_id,fecha' });
+  if(error) { toast('Error: ' + error.message, 'danger'); return; }
+  toast(`✅ ${rider.nombre} asignado al turno ${turnoNombre}`);
+  renderTurnos();
+}
+
+async function confirmarReserva(id) {
+  await sb.from('reservaciones_turno').update({estatus:'CONFIRMADO'}).eq('id',id);
+  toast('✅ Reservación confirmada');
+  renderTurnos();
+}
+
+async function cancelarReserva(id) {
+  await sb.from('reservaciones_turno').update({estatus:'CANCELADO'}).eq('id',id);
+  toast('Reservación cancelada');
+  renderTurnos();
+}
+
 // ════════════════════════════════════════════════════════════
 // NAVEGACIÓN
 // ════════════════════════════════════════════════════════════
-const TITLES = { inicio:'Dashboard',pedidos:'Pedidos',kanban:'Kanban — Vista de Pedidos',config:'Configuración del Sistema',nuevo:'Nuevo Pedido',mapa:'Mapa en Vivo',riders:'Riders',solicitudes:'Solicitudes de Riders',depositos:'Depósitos',liquidaciones:'Liquidaciones a Riders',historial:'Historial',chat:'Chat' };
+const TITLES = { inicio:'Dashboard',pedidos:'Pedidos',kanban:'Kanban — Vista de Pedidos',config:'Configuración del Sistema',nuevo:'Nuevo Pedido',mapa:'Mapa en Vivo',riders:'Riders',solicitudes:'Solicitudes de Riders',depositos:'Depósitos',liquidaciones:'Liquidaciones a Riders',turnos:'Gestión de Turnos',historial:'Historial',chat:'Chat' };
 
 function nav(v) {
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
@@ -2773,6 +2972,7 @@ function nav(v) {
   if(v === 'solicitudes') cargarSolicitudes(S.solFiltro || 'PENDIENTE');
   if(v === 'depositos') cargarDepositos('PENDIENTE');
   if(v === 'liquidaciones') cargarLiquidaciones();
+  if(v === 'turnos') renderTurnos();
   if(v === 'historial') { /* noop, user clicks Buscar */ }
   if(v === 'chat') { if(!S.riders.length) cargarRiders().then(renderChatContacts); else renderChatContacts(); }
   if(v === 'nuevo') { wizGo(0); actualizarResumen(); }
