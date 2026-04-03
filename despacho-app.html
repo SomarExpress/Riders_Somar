@@ -48,8 +48,8 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
 
 /* ─── MAIN ─────────────────────────────────────────────────── */
 #main{flex:1;overflow:hidden;display:flex;flex-direction:column;min-width:0;}
-#topbar{height:52px;background:var(--g1);border-bottom:1px solid var(--g4);display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0;}
-.tb-menu{display:none;background:none;border:none;color:var(--tx);font-size:22px;padding:4px;cursor:pointer;}
+#topbar{height:52px;background:var(--g1);border-bottom:1px solid var(--g4);display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0;position:relative;z-index:10;}
+.tb-menu{display:none;background:none;border:none;color:var(--tx);font-size:24px;padding:8px;cursor:pointer;}
 .tb-title{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:800;letter-spacing:.5px;flex:1;}
 .tb-clock{font-family:'Space Mono',monospace;font-size:11px;color:var(--td);}
 .rt-dot{width:8px;height:8px;border-radius:50%;background:var(--verde);box-shadow:0 0 6px var(--verde);flex-shrink:0;}
@@ -257,11 +257,21 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
 /* ─── RESPONSIVE ───────────────────────────────────────────── */
 @media(max-width:768px){
   /* ── Layout base ── */
-  #sidebar{position:fixed;top:0;left:0;bottom:0;transform:translateX(-100%);z-index:200;}
+  /* Sidebar: en móvil es overlay, NO ocupa espacio en el layout */
+  #sidebar{
+    position:fixed;top:0;left:0;bottom:0;
+    width:260px !important;
+    transform:translateX(-110%);
+    z-index:300;
+    box-shadow:4px 0 20px rgba(0,0,0,.5);
+  }
   #sidebar.open{transform:translateX(0);}
-  .sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:199;}
+  .sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:299;}
   .sb-overlay.open{display:block;}
-  .tb-menu{display:block;}
+  /* El main ocupa todo el ancho disponible */
+  #main{width:100% !important;margin-left:0 !important;}
+  /* Mostrar botón hamburguesa */
+  .tb-menu{display:flex !important;align-items:center;justify-content:center;}
   #content{padding:10px;}
 
   /* ── Dashboard ── */
@@ -313,6 +323,11 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
   #fecha-hoy{display:none;}
   #rt-status{gap:3px;}
   .tb-clock{font-size:10px;}
+  /* App layout en móvil */
+  #app{overflow:hidden;}
+  #topbar{padding:0 12px;}
+  #content{padding:10px 8px;}
+
 }
 
 @media(max-width:480px){
@@ -429,10 +444,9 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
 </div>
 
 <!-- OVERLAY MOBILE SIDEBAR -->
-<div class="sb-overlay" id="sb-overlay" onclick="closeSB()"></div>
-
 <div id="app">
   <!-- SIDEBAR -->
+  <div class="sb-overlay" id="sb-overlay" onclick="closeSB()"></div>
   <div id="sidebar">
     <div class="sb-logo">
       <img src="https://res.cloudinary.com/drkaxsziu/image/upload/v1767871213/Somar_Express_2048_x_2048_px_18_x_18_in__20250623_221102_0000_o0bv7a.png" style="width:34px;height:34px;border-radius:8px;">
