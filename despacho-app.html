@@ -180,6 +180,7 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
 .bubble.theirs{background:var(--g4);align-self:flex-start;border-bottom-left-radius:2px;}
 .bubble img{max-width:200px;border-radius:8px;display:block;cursor:pointer;margin-top:4px;}
 .chat-inp-area{padding:10px 12px;border-top:1px solid var(--g4);display:flex;gap:8px;flex-shrink:0;}
+.chat-msgs{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-height:0;scroll-behavior:smooth;}
 .chat-inp{flex:1;background:var(--g3);border:1px solid var(--g4);border-radius:20px;padding:8px 12px;color:var(--tx);font-family:'Barlow',sans-serif;font-size:13px;outline:none;}
 .chat-inp:focus{border-color:var(--or);}
 
@@ -826,7 +827,7 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
             <div style="padding:12px 14px;border-bottom:1px solid var(--g4);display:flex;align-items:center;gap:10px;" id="chat-hdr">
               <span style="color:var(--td);font-size:13px;">Selecciona un repartidor</span>
             </div>
-            <div class="chat-msgs" id="chat-msgs" style="flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-height:0;">
+            <div class="chat-msgs" id="chat-msgs">
               <div style="text-align:center;font-size:12px;color:var(--td);padding:20px;">Selecciona un repartidor para chatear</div>
             </div>
             <div class="chat-inp-area" id="chat-inp-area" style="display:none;flex-direction:column;gap:6px;">
@@ -1028,16 +1029,19 @@ sb.auth.getSession().then(({ data: { session } }) => {
 async function init() {
   clockTick();
   setInterval(clockTick, 1000);
-  const hoy = new Date();
-  const hace30 = new Date(); hace30.setDate(hoy.getDate() - 30);
-  document.getElementById('hist-hasta').value = hoy.toISOString().split('T')[0];
-  document.getElementById('hist-desde').value = hace30.toISOString().split('T')[0];
+  // Fecha en zona horaria de Honduras
+  const _ahoraHN = new Date(new Date().toLocaleString('en-US', {timeZone:'America/Tegucigalpa'}));
+  const _hoyHN = _ahoraHN.toISOString().split('T')[0];
+  const _hace30HN = new Date(_ahoraHN); _hace30HN.setDate(_ahoraHN.getDate() - 30);
+  const _hace30Str = _hace30HN.toISOString().split('T')[0];
+  document.getElementById('hist-hasta').value = _hoyHN;
+  document.getElementById('hist-desde').value = _hace30Str;
   // Inicializar fechas del dashboard en 'hoy'
-  const _hoy = new Date().toISOString().split('T')[0];
+  const _hoyHN2 = new Date(new Date().toLocaleString('en-US', {timeZone:'America/Tegucigalpa'})).toISOString().split('T')[0];
   const _dEl = document.getElementById('dash-desde');
   const _hEl = document.getElementById('dash-hasta');
-  if(_dEl) _dEl.value = _hoy;
-  if(_hEl) _hEl.value = _hoy;
+  if(_dEl) _dEl.value = _hoyHN2;
+  if(_hEl) _hEl.value = _hoyHN2;
   await Promise.all([ cargarMetricas(), cargarRiders(), cargarConfig(), cargarNotifsDespacho() ]);
   // Badge liquidaciones pendientes
   sb.from('liquidaciones_delivery').select('id',{count:'exact'}).eq('estatus','PENDIENTE').then(({count})=>{ if(count>0){const b=document.getElementById('badge-liq');if(b){b.textContent=count;b.style.display='inline';}} });
@@ -1046,7 +1050,10 @@ async function init() {
 }
 
 function clockTick() {
-  document.getElementById('clock').textContent = new Date().toLocaleTimeString('es-HN', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('es-HN', {
+    hour:'2-digit', minute:'2-digit', second:'2-digit',
+    timeZone:'America/Tegucigalpa'
+  });
   tickTimers();
 }
 
@@ -1183,18 +1190,18 @@ function onPedidoChange(payload) {
 // MÉTRICAS
 // ════════════════════════════════════════════════════════════
 function resetFiltroFecha() {
-  const hoy = new Date().toISOString().split('T')[0];
+  const hoyHN = new Date(new Date().toLocaleString('en-US', {timeZone:'America/Tegucigalpa'})).toISOString().split('T')[0];
   const dEl = document.getElementById('dash-desde');
   const hEl = document.getElementById('dash-hasta');
-  if(dEl) dEl.value = hoy;
-  if(hEl) hEl.value = hoy;
+  if(dEl) dEl.value = hoyHN;
+  if(hEl) hEl.value = hoyHN;
   cargarMetricas();
 }
 
 async function cargarMetricas() {
-  const hoy = new Date().toISOString().split('T')[0];
-  const desde = document.getElementById('dash-desde')?.value || hoy;
-  const hasta = document.getElementById('dash-hasta')?.value || hoy;
+  const hoyHN = new Date(new Date().toLocaleString('en-US', {timeZone:'America/Tegucigalpa'})).toISOString().split('T')[0];
+  const desde = document.getElementById('dash-desde')?.value || hoyHN;
+  const hasta = document.getElementById('dash-hasta')?.value || hoyHN;
   const { data } = await sb.from('pedidos')
     .select('*')
     .gte('created_at', desde + 'T00:00:00')
@@ -1636,8 +1643,10 @@ function renderRidersGrid(filtro='todos') {
   if(!riders.length) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1">No hay riders</div>'; return; }
   grid.innerHTML = riders.map(d => {
     const act = S.pedidos.filter(p => p.delivery_id === d.id && FILTROS_ACTIVOS.includes(p.estatus)).length;
-    const statCol = d.en_turno ? (act > 0 ? 'var(--or)' : 'var(--verde)') : 'var(--td)';
-    const statTxt = d.en_turno ? (act > 0 ? '🟠 Ocupado' : '🟢 Disponible') : '⚫ Desconectado';
+
+    const pausado  = d._ubi?.pausado === true;
+    const statTxt = d.en_turno ? (pausado ? '⏸ Pausado' : act > 0 ? '🟠 Ocupado' : '🟢 Disponible') : '⚫ Desconectado';
+    const statCol = d.en_turno ? (pausado ? '#F59E0B' : act > 0 ? 'var(--or)' : 'var(--verde)') : 'var(--td)';
     const saldoColor = parseFloat(d.saldo_billetera||0) >= 100 ? 'var(--verde)' : 'var(--rojo)';
     const ubi = d._ubi;
     const tieneGps = ubi && !(parseFloat(ubi.lat)===0 && parseFloat(ubi.lng)===0);
@@ -1966,7 +1975,8 @@ async function renderChatMsgs(dId) {
       <div style="font-size:10px;color:var(--td);margin-top:2px;padding:0 4px">${hora}</div>
     </div>`;
   }).join('');
-  el.scrollTop = el.scrollHeight;
+  // Scroll al último mensaje (como WhatsApp)
+  requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
 }
 
 async function enviarMsg() {
@@ -2154,7 +2164,8 @@ function actualizarMarkersRiders() {
     const lat = sinGps ? 15.6133 : parseFloat(ubi.lat);
     const lng = sinGps ? -87.9480 : parseFloat(ubi.lng);
     const act = S.pedidos.filter(p => p.delivery_id === d.id && FILTROS_ACTIVOS.includes(p.estatus)).length;
-    const color = sinGps ? '#555' : (act > 0 ? '#FF8C00' : '#22c55e');
+    const pausadoM = d._ubi?.pausado === true;
+    const color = sinGps ? '#555' : (pausadoM ? '#F59E0B' : act > 0 ? '#FF8C00' : '#22c55e');
     const label = inic(d.nombre);
     const icon = L.divIcon({
       html: `<div style="width:36px;height:36px;border-radius:50%;background:${color};border:${sinGps?'2px dashed #888':'3px solid #fff'};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:${sinGps?'#aaa':'#000'};box-shadow:0 2px 8px rgba(0,0,0,.5)">${label}</div>`,
@@ -2165,7 +2176,7 @@ function actualizarMarkersRiders() {
       S.markersRiders[d.id].setIcon(icon);
     } else {
       const m = L.marker([lat, lng], { icon }).addTo(S.mapRiders);
-      m.bindPopup(`<b>${d.nombre}</b><br>${sinGps?'GPS pendiente':act+' activo(s)'}<br>L.${parseFloat(d.saldo_billetera||0).toFixed(0)}`);
+      m.bindPopup(`<b>${d.nombre}</b><br>${sinGps?'GPS pendiente':(pausadoM?'⏸ Pausado':act+' activo(s)')}<br>L.${parseFloat(d.saldo_billetera||0).toFixed(0)}`);
       S.markersRiders[d.id] = m;
     }
   });
