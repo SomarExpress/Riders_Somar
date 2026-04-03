@@ -838,7 +838,7 @@ function TabGuaca({historial, saldo, movimientos, onIrDepositos, delivery}){
         // RECARGA = delivery pone dinero a su wallet = salida (rojo)
         const esIngreso = m.tipo==='LIQUIDACION';
         const color = esIngreso ? '#22C55E' : '#EF4444';
-        const fecha = new Date(m.ts).toLocaleDateString('es-HN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+        const fecha = new Date(m.ts).toLocaleDateString('es-HN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'America/Tegucigalpa'});
         return(
           <div key={m.id} style={{background:'#1A1A1A',borderRadius:13,padding:'12px 14px',margin:'0 12px 6px',display:'flex',justifyContent:'space-between',alignItems:'flex-start',borderLeft:`3px solid ${color}`}}>
             <div style={{flex:1,minWidth:0}}>
@@ -879,7 +879,7 @@ function TabGuaca({historial, saldo, movimientos, onIrDepositos, delivery}){
             {openDia[dia]&&info.items.map((p,i)=>(
               <div key={i} style={{padding:'8px 14px',display:'flex',justifyContent:'space-between',borderTop:'1px solid #222',fontSize:13}}>
                 <span style={{fontFamily:'monospace',fontSize:12,color:'#888'}}>{p.no}</span>
-                <span style={{fontWeight:700,color:'#22C55E'}}>L. {p.gan.toFixed(2)}</span>
+                <span style={{fontWeight:700,color:'#22C55E'}}>L. {parseFloat(p._g||p.ingreso_delivery||p.gan||0).toFixed(2)}</span>
               </div>
             ))}
           </div>
@@ -898,7 +898,7 @@ function TabGuaca({historial, saldo, movimientos, onIrDepositos, delivery}){
                 <div style={{fontSize:12,color:'#ccc',flex:1,marginRight:8}}>{l.descripcion||'Liquidación pendiente'}</div>
                 <div style={{fontSize:16,fontWeight:900,color:'#3B82F6',flexShrink:0}}>L. {parseFloat(l.monto_liquidar).toFixed(2)}</div>
               </div>
-              <div style={{fontSize:10,color:'#666',marginTop:3}}>⏳ {new Date(l.creado_at).toLocaleDateString('es-HN',{day:'2-digit',month:'short'})}</div>
+              <div style={{fontSize:10,color:'#666',marginTop:3}}>⏳ {new Date(l.creado_at).toLocaleDateString('es-HN',{day:'2-digit',month:'short',timeZone:'America/Tegucigalpa'})}</div>
             </div>
           ))}
         </div>
@@ -962,7 +962,7 @@ function DepForm({onEnviar, onConfirm}){
                 <div style={{fontSize:12,color:'#ccc',flex:1,marginRight:8}}>{l.descripcion||'Liquidación pendiente'}</div>
                 <div style={{fontSize:17,fontWeight:900,color:'#3B82F6',flexShrink:0}}>L. {parseFloat(l.monto_liquidar).toFixed(2)}</div>
               </div>
-              <div style={{fontSize:10,color:'#666',marginTop:3}}>⏳ {new Date(l.creado_at).toLocaleDateString('es-HN',{day:'2-digit',month:'short'})}</div>
+              <div style={{fontSize:10,color:'#666',marginTop:3}}>⏳ {new Date(l.creado_at).toLocaleDateString('es-HN',{day:'2-digit',month:'short',timeZone:'America/Tegucigalpa'})}</div>
             </div>
           ))}
         </div>
@@ -1176,7 +1176,7 @@ function TabChat({delivery}){
           const COLORES=['#FF8C00','#3B82F6','#8B5CF6','#EC4899','#14B8A6','#F59E0B'];
           const colorIdx=agente?Math.abs(agente.split('').reduce((a,c)=>a+c.charCodeAt(0),0))%COLORES.length:0;
           const aColor=COLORES[colorIdx];
-          const hora=new Date(m.created_at).toLocaleTimeString('es-HN',{hour:'2-digit',minute:'2-digit'});
+          const hora=new Date(m.created_at).toLocaleTimeString('es-HN',{hour:'2-digit',minute:'2-digit',timeZone:'America/Tegucigalpa'});
           return(
             <div key={m.id} style={{display:'flex',justifyContent:mio?'flex-end':'flex-start',marginBottom:4}}>
               {!mio&&<div style={{width:28,height:28,background:aColor,borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800,flexShrink:0,marginRight:6,alignSelf:'flex-end',color:'#fff'}}>
@@ -1735,17 +1735,28 @@ function TabZona({delivery}){
     });
     mapInstanceRef.current = map;
 
-    // GPS del rider
+    // GPS del rider - tiempo real con watchPosition
     if(navigator.geolocation){
-      navigator.geolocation.getCurrentPosition(pos=>{
+      const iconRider = window.L.divIcon({html:`<div style="width:36px;height:36px;border-radius:50%;background:#FF8C00;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,.5)">🛵</div>`,iconSize:[36,36],iconAnchor:[18,18],className:''});
+      let primeraVez = true;
+      const actualizarPosicion = pos => {
         const lat=pos.coords.latitude, lng=pos.coords.longitude;
         setGpsPos({lat,lng});
         const dentro = ZONAS.find(z=>haversineKm(lat,lng,z.lat,z.lng)<=radioKm);
         setDentroZona(dentro||null);
-        const icon = window.L.divIcon({html:`<div style="width:36px;height:36px;border-radius:50%;background:#FF8C00;border:3px solid #fff;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(0,0,0,.5)">🛵</div>`,iconSize:[36,36],iconAnchor:[18,18],className:''});
-        markersRef.current.rider = window.L.marker([lat,lng],{icon}).addTo(map).bindPopup('📍 Tu posición');
-        map.flyTo([lat,lng],14,{animate:true,duration:1});
-      },()=>{},{enableHighAccuracy:true,timeout:10000});
+        if(!markersRef.current.rider){
+          markersRef.current.rider = window.L.marker([lat,lng],{icon:iconRider}).addTo(map).bindPopup('📍 Tu posición');
+        } else {
+          markersRef.current.rider.setLatLng([lat,lng]);
+        }
+        if(primeraVez){ map.flyTo([lat,lng],14,{animate:true,duration:1}); primeraVez=false; }
+      };
+      navigator.geolocation.getCurrentPosition(actualizarPosicion,()=>{},{enableHighAccuracy:true,timeout:10000});
+      // watchPosition para actualización en tiempo real
+      const wId = navigator.geolocation.watchPosition(actualizarPosicion,e=>{
+        if(e.code!==3) console.warn('[mapa-zona] GPS:',e.message);
+      },{enableHighAccuracy:true,timeout:15000,maximumAge:5000});
+      markersRef.current._watchId = wId;
     }
   },[]);
 
@@ -1977,7 +1988,7 @@ function TabDepositos({delivery, depositos, setDepositos, onConfirm, toast}){
       {depositos.length===0&&<div style={{textAlign:'center',padding:'30px',color:'#888'}}>Sin depósitos aún</div>}
       {depositos.map(d=>{
         const [c,bg]=cc[d.estatus||d.est]||['#888','rgba(136,136,136,.15)'];
-        const fecha=new Date(d.creado_at||d.ts||Date.now()).toLocaleDateString('es-HN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+        const fecha=new Date(d.creado_at||d.ts||Date.now()).toLocaleDateString('es-HN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'America/Tegucigalpa'});
         return(
           <div key={d.id} style={{background:'#1A1A1A',borderRadius:13,padding:'13px 14px',margin:'0 12px 8px',borderLeft:'4px solid '+c}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
