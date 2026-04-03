@@ -2511,55 +2511,67 @@ async function guardarPedido() {
   const tarifaDinVal = document.getElementById('f-tarifa-din')?.value || 'NORMAL';
   const tarifaMod = tarifaModos[tarifaDinVal] || 1;
 
-  // Campos confirmados en schema. Si hay error 404, un campo no existe.
-  const pedBase = {
-    canal:          'DESPACHO',
-    tipo:           S.tipoPedido,
-    estatus:        'PENDIENTE',
-    metodo_pago:    S.metodoPago,
-    subtotal:       prod,
-    tarifa_envio:   envio,
-    propina:        prop,
-    total:          total,
-    monto_cobrar:   total,
-    ingreso_delivery: ingDelivery,
-    ingreso_somar:  parseFloat((envio * 0.3).toFixed(2)),
-    quien_paga:     document.getElementById('f-quien-paga')?.value || 'DESTINATARIO',
+  // INSERT usando schema REAL confirmado de la tabla pedidos
+  const pctCom  = parseFloat(document.getElementById('f-pct-comision')?.value || 0);
+  const baseApp = parseFloat((prod * pctCom / 100).toFixed(2));
+
+  const nuevoPed = {
+    // Identificación y canal
+    canal:                    'DESPACHO',
+    agente:                   document.getElementById('u-name')?.textContent || 'Despacho',
+    tipo:                     S.tipoPedido,
+    estatus:                  'PENDIENTE',
+    metodo_pago:              S.metodoPago,
+
+    // Cliente
+    nombre_cliente:           cli,
+    celular_cliente:          document.getElementById('f-cli-tel')?.value?.trim() || null,
+
+    // Comercio / recolecta
+    nombre_comercio:          document.getElementById('f-comercio')?.value?.trim() || null,
+    ciudad_origen:            document.getElementById('f-ciudad')?.value?.trim() || 'CHOLOMA',
+    direccion_recogida:       document.getElementById('f-dir-rec')?.value?.trim() || null,
+    ubicacion_recogida_gps:   document.getElementById('f-gps-rec')?.value?.trim() || null,
+    ya_encargado:             !!document.getElementById('f-encargado')?.value?.trim(),
+    datos_encargo:            document.getElementById('f-encargado')?.value?.trim() || null,
+    descripcion_paquete:      document.getElementById('f-descripcion')?.value?.trim() || null,
+
+    // Entrega / destinatario
+    nombre_destinatario:      cli,
+    telefono_destinatario:    document.getElementById('f-cli-tel')?.value?.trim() || null,
+    ciudad_destino:           document.getElementById('f-ciudad')?.value?.trim() || 'CHOLOMA',
+    direccion_entrega:        document.getElementById('f-dir-ent')?.value?.trim() || null,
+    ubicacion_entrega_gps:    gpsEnt || null,
+
+    // Montos
+    subtotal:                 prod,
+    tarifa_envio:             envio,
+    tarifa_dinamica:          tarifaMod,
+    propina:                  prop,
+    descuento:                S.cuponData ? parseFloat(S.cuponData.descuento) : 0,
+    cupon_id:                 S.cuponData?.cupon_id || null,
+    total:                    total,
+    monto_cobrar:             total,
+    pct_comision:             pctCom,
+    base_app:                 baseApp,
+    ingreso_delivery:         ingDelivery,
+    ingreso_somar:            parseFloat((envio * 0.3 + baseApp).toFixed(2)),
+
+    // Pago
+    quien_paga:               document.getElementById('f-quien-paga')?.value || 'DESTINATARIO',
+    recibira_efectivo:        parseFloat(document.getElementById('f-paga-con')?.value || 0) > 0,
+    monto_recibido_efectivo:  parseFloat(document.getElementById('f-paga-con')?.value || 0) || null,
+    monto_pagado_en_comercio: parseFloat(document.getElementById('f-monto-estab')?.value || 0) || null,
+
+    // Observaciones
+    observaciones:            document.getElementById('f-obs')?.value?.trim() || null,
+    notas_especiales:         null,
   };
-  // Campos opcionales — se agregan solo si tienen valor
-  const v = (id) => document.getElementById(id)?.value?.trim() || null;
-  const n = (id, def=0) => parseFloat(document.getElementById(id)?.value || def) || null;
-  const opcionales = {
-    nombre_cliente:         cli,
-    nombre_destinatario:    cli,
-    celular_cliente:        v('f-cli-tel'),
-    telefono_destinatario:  v('f-cli-tel'),
-    nombre_comercio:        v('f-comercio'),
-    ciudad_destino:         v('f-ciudad') || 'CHOLOMA',
-    direccion_recogida:     v('f-dir-rec'),
-    ubicacion_recogida_gps: v('f-gps-rec'),
-    direccion_entrega:      v('f-dir-ent'),
-    ubicacion_entrega_gps:  gpsEnt || null,
-    datos_encargo:          v('f-encargado'),
-    descripcion_paquete:    v('f-descripcion'),
-    observaciones:          v('f-obs'),
-    pct_comision:           parseFloat(document.getElementById('f-pct-comision')?.value || 0),
-    descuento:              S.cuponData ? parseFloat(S.cuponData.descuento) : 0,
-    cupon_id:               S.cuponData?.cupon_id || null,
-    recibira_efectivo:      parseFloat(document.getElementById('f-paga-con')?.value || 0) > 0,
-    monto_recibido_efectivo: n('f-paga-con') || null,
-  };
-  // Limpiar nulls de opcionales para no enviar campos vacíos
-  Object.keys(opcionales).forEach(k => { if(opcionales[k] === null) delete opcionales[k]; });
-  const nuevoPed = { ...pedBase, ...opcionales };
+
+  // Limpiar nulls — Supabase los acepta pero algunos campos NOT NULL pueden fallar
+  Object.keys(nuevoPed).forEach(k => { if(nuevoPed[k] === null || nuevoPed[k] === '') delete nuevoPed[k]; });
 
   let { data, error } = await sb.from('pedidos').insert(nuevoPed).select().single();
-  if(error && (error.code === '404' || error.message?.includes('column') || error.message?.includes('does not exist'))) {
-    // Fallback: insertar solo campos base garantizados
-    console.warn('[pedido] fallback campos base:', error.message);
-    const res2 = await sb.from('pedidos').insert(pedBase).select().single();
-    data = res2.data; error = res2.error;
-  }
   btn.textContent = '💾 Guardar Pedido'; btn.disabled = false;
   if(error) { toast('Error: ' + error.message, 'danger'); return; }
   toast(`✅ Pedido ${data.no_orden||'creado'} · Buscando repartidor...`, 'success');
