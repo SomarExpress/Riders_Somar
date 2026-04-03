@@ -1,4 +1,4 @@
-const CACHE = 'somar-delivery-v1.0.0';
+const CACHE = 'somar-delivery-v1.0.1';
 const STATIC = ['./delivery-app.html', './manifest-delivery.json'];
 
 self.addEventListener('install', e => {
