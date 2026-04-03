@@ -1,8 +1,8 @@
 {
-  "name": "Delivery SE",
-  "short_name": "Somar Delivery",
+  "name": "Rider SE",
+  "short_name": "Somar Rider",
   "description": "App para repartidores de Somar Express",
-  "start_url": "./delivery-app.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0F0F0F",
