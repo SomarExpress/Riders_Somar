@@ -264,7 +264,12 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
     transform:translateX(-110%);
     z-index:300;
     box-shadow:4px 0 20px rgba(0,0,0,.5);
+    /* En móvil el sidebar es overlay — no ocupa espacio en el flex layout */
+    flex-shrink:0;
   }
+  /* El sidebar NO ocupa espacio en el flex flow en móvil */
+  #app{display:block;}
+  #main{display:flex;flex-direction:column;height:100vh;overflow:hidden;}
   #sidebar.open{transform:translateX(0);}
   .sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:299;}
   .sb-overlay.open{display:block;}
