@@ -2905,26 +2905,37 @@ async function eliminarTurno(id) {
 async function asignarTurnoManual(turnoId, turnoNombre) {
   if(!S.riders?.length) { toast('No hay riders disponibles', 'danger'); return; }
   const fecha = document.getElementById('turnos-fecha')?.value || new Date(Date.now()+86400000).toISOString().split('T')[0];
-  const opciones = S.riders.map((r,i) => `${i+1}. ${r.nombre}`).join('
-');
-  const sel = prompt(`Asignar turno "${turnoNombre}" (${fecha})
-
-Selecciona el número del rider:
-${opciones}`);
-  if(!sel) return;
-  const idx = parseInt(sel) - 1;
-  if(isNaN(idx) || idx < 0 || idx >= S.riders.length) { toast('Opción inválida', 'danger'); return; }
-  const rider = S.riders[idx];
-  const agente = document.getElementById('u-name')?.textContent || 'Despacho';
-  const { error } = await sb.from('reservaciones_turno').upsert({
-    turno_id: turnoId, delivery_id: rider.id, fecha,
-    estatus: 'CONFIRMADO', asignado_por: agente
-  }, { onConflict: 'turno_id,delivery_id,fecha' });
-  if(error) { toast('Error: ' + error.message, 'danger'); return; }
-  toast(`✅ ${rider.nombre} asignado al turno ${turnoNombre}`);
-  renderTurnos();
+  // Mostrar modal de selección en lugar de prompt con saltos de línea
+  const opciones = S.riders.map((r,i) => `<option value="${i}">${r.nombre}</option>`).join('');
+  const div = document.createElement('div');
+  div.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  div.innerHTML = `<div style="background:var(--g1);border:1px solid var(--g4);border-radius:16px;padding:24px;min-width:300px;max-width:400px;">
+    <div style="font-size:14px;font-weight:700;margin-bottom:4px">Asignar turno: ${turnoNombre}</div>
+    <div style="font-size:12px;color:var(--td);margin-bottom:16px">Fecha: ${fecha}</div>
+    <select id="_turno_rider_sel" style="width:100%;background:var(--g3);border:1px solid var(--g5);border-radius:8px;padding:10px;color:var(--tx);font-size:14px;margin-bottom:14px">
+      ${opciones}
+    </select>
+    <div style="display:flex;gap:8px">
+      <button onclick="this.closest('div[style*=fixed]').remove()" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--g5);background:none;color:var(--td);cursor:pointer">Cancelar</button>
+      <button id="_turno_confirmar_btn" style="flex:2;padding:10px;border-radius:8px;border:none;background:var(--or);color:#000;font-weight:700;cursor:pointer">Confirmar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(div);
+  document.getElementById('_turno_confirmar_btn').onclick = async () => {
+    const idx = parseInt(document.getElementById('_turno_rider_sel').value);
+    div.remove();
+    const rider = S.riders[idx];
+    if(!rider) return;
+    const agente = document.getElementById('u-name')?.textContent || 'Despacho';
+    const { error } = await sb.from('reservaciones_turno').upsert({
+      turno_id: turnoId, delivery_id: rider.id, fecha,
+      estatus: 'CONFIRMADO', asignado_por: agente
+    }, { onConflict: 'turno_id,delivery_id,fecha' });
+    if(error) { toast('Error: ' + error.message, 'danger'); return; }
+    toast('✅ ' + rider.nombre + ' asignado al turno ' + turnoNombre);
+    renderTurnos();
+  };
 }
-
 async function confirmarReserva(id) {
   await sb.from('reservaciones_turno').update({estatus:'CONFIRMADO'}).eq('id',id);
   toast('✅ Reservación confirmada');
