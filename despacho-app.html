@@ -488,9 +488,6 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
             </div>
           </div>
         </div>
-      </div>
-
-
         <!-- SECCIÓN TIEMPOS PROMEDIO - debajo del grid del dashboard -->
         <div class="card" style="grid-column:1/-1;margin-top:4px">
           <div class="card-hdr"><div class="card-title">⏱ Tiempos Promedio del Período</div></div>
@@ -529,6 +526,10 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
             </div>
           </div>
         </div>
+      
+      </div>
+
+
       <!-- ═══ KANBAN ══════════════════════════════════════════ -->
       <div class="view" id="view-kanban" style="padding:0;">
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;height:calc(100vh - 52px);overflow:hidden;">
@@ -1623,32 +1624,36 @@ function renderPanel(p) {
     ${['FINALIZADO','CANCELADO'].includes(p.estatus) ? (() => {
       const calcM = (t1, t2) => t1 && t2 ? Math.round((new Date(t2)-new Date(t1))/60000) : null;
       const fmtM  = m => m === null ? '—' : m < 60 ? m+'m' : Math.floor(m/60)+'h '+( m%60)+'m';
-      const tAsig  = calcM(p.created_at, p.hora_asignado);
-      const tEspera = calcM(p.hora_asignado, p.hora_aceptado);
-      const tViaje1 = calcM(p.hora_aceptado, p.hora_en_establecimiento);
+      const tAsig     = calcM(p.created_at, p.hora_asignado);
+      const tEspera   = calcM(p.hora_asignado, p.hora_aceptado);
+      // Tiempo total del delivery: desde que acepta hasta que entrega (traslado al comercio + espera + traslado al cliente)
+      const tDelivery = calcM(p.hora_aceptado, p.hora_finalizado);
+      // Desglose interno del delivery
+      const tViaje1   = calcM(p.hora_aceptado, p.hora_en_establecimiento);
       const tComercio = calcM(p.hora_en_establecimiento, p.hora_en_camino);
-      const tViaje2 = calcM(p.hora_en_camino, p.hora_finalizado);
-      const tTotal  = calcM(p.created_at, p.hora_finalizado);
+      const tViaje2   = calcM(p.hora_en_camino, p.hora_finalizado);
+      const tTotal    = calcM(p.created_at, p.hora_finalizado);
       return `<div style="background:var(--g2);border-radius:12px;overflow:hidden;margin-bottom:14px;">
         <div style="padding:10px 14px;border-bottom:1px solid var(--g3);font-size:10px;font-weight:700;color:var(--td);text-transform:uppercase;letter-spacing:.06em">
           ⏱ Desglose de Tiempos
         </div>
         ${[
-          ['Asignación', 'Creado → Rider asignado', tAsig, 'var(--az)'],
-          ['Espera rider', 'Asignado → Aceptado', tEspera, '#8B5CF6'],
-          ['Traslado a comercio', 'Aceptado → Llegó al estab.', tViaje1, '#F97316'],
-          ['Tiempo en comercio', 'En estab. → Salió en camino', tComercio, '#F59E0B'],
-          ['Traslado al cliente', 'En camino → Entregado', tViaje2, 'var(--verde)'],
-        ].map(([lbl, sub, val, col]) => `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid var(--g3)">
+          ['Asignación', 'Pedido creado → rider asignado', tAsig, 'var(--az)'],
+          ['Espera rider', 'Asignado → rider acepta', tEspera, '#8B5CF6'],
+          ['⏩ Tiempo del Delivery', 'Aceptado → entregado al cliente', tDelivery, '#FF8C00'],
+        ].map(([lbl, sub, val, col]) => `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid var(--g3);${lbl.startsWith('⏩')?'background:rgba(255,140,0,.04)':''}">
           <div>
-            <div style="font-size:12px;font-weight:600">${lbl}</div>
+            <div style="font-size:12px;font-weight:${lbl.startsWith('⏩')?'800':'600'}">${lbl}</div>
             <div style="font-size:10px;color:var(--td)">${sub}</div>
+            ${lbl.startsWith('⏩') ? `<div style="font-size:10px;color:var(--td);margin-top:3px">
+              🏍 → comercio: ${fmtM(tViaje1)} &nbsp;|&nbsp; 🏪 estab.: ${fmtM(tComercio)} &nbsp;|&nbsp; 🏍 → cliente: ${fmtM(tViaje2)}
+            </div>` : ''}
           </div>
-          <div class="mono" style="font-size:14px;font-weight:800;color:${col}">${fmtM(val)}</div>
+          <div class="mono" style="font-size:${lbl.startsWith('⏩')?'16':'14'}px;font-weight:800;color:${col}">${fmtM(val)}</div>
         </div>`).join('')}
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(255,140,0,.06)">
-          <div style="font-size:13px;font-weight:800">Total</div>
-          <div class="mono" style="font-size:18px;font-weight:900;color:var(--or)">${fmtM(tTotal)}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(255,140,0,.08);border-top:2px solid rgba(255,140,0,.3)">
+          <div style="font-size:13px;font-weight:800">⏱ Total del Pedido</div>
+          <div class="mono" style="font-size:20px;font-weight:900;color:var(--or)">${fmtM(tTotal)}</div>
         </div>
       </div>`;
     })() : ''}
