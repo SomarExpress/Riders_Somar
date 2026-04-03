@@ -2519,7 +2519,7 @@ async function guardarPedido() {
     tipo:                    S.tipoPedido,
     nombre_comercio:         document.getElementById('f-comercio')?.value || null,
     ciudad_destino:          document.getElementById('f-ciudad')?.value || 'CHOLOMA',
-    ciudad_origen:           document.getElementById('f-ciudad')?.value || 'CHOLOMA',
+    // ciudad_origen removido — no existe en schema
     nombre_destinatario:     cli,
     telefono_destinatario:   document.getElementById('f-cli-tel')?.value || null,
     nombre_cliente:          cli,
@@ -2527,14 +2527,14 @@ async function guardarPedido() {
     direccion_recogida:      document.getElementById('f-dir-rec')?.value || null,
     ubicacion_recogida_gps:  document.getElementById('f-gps-rec')?.value || null,
     datos_encargo:           document.getElementById('f-encargado')?.value || null,
-    ya_encargado:            !!document.getElementById('f-encargado')?.value,
-    monto_pagado_en_comercio:parseFloat(document.getElementById('f-monto-estab')?.value || 0) || null,
+    // ya_encargado removido — no existe en schema
+    // monto_pagado_en_comercio removido — no existe en schema
     descripcion_paquete:     document.getElementById('f-descripcion')?.value || null,
     direccion_entrega:       document.getElementById('f-dir-ent')?.value || null,
     ubicacion_entrega_gps:   gpsEnt || null,
     observaciones:           document.getElementById('f-obs')?.value || null,
     metodo_pago:             S.metodoPago,
-    tarifa_dinamica:         tarifaMod,
+    // tarifa_dinamica removido — no existe en schema
     subtotal:                prod,
     tarifa_envio:            envio,
     propina:                 prop,
@@ -2546,7 +2546,7 @@ async function guardarPedido() {
     quien_paga:              document.getElementById('f-quien-paga')?.value || 'DESTINATARIO',
     recibira_efectivo:       parseFloat(document.getElementById('f-paga-con')?.value || 0) > 0,
     monto_recibido_efectivo: parseFloat(document.getElementById('f-paga-con')?.value || 0) || null,
-    agente:                  'DESPACHO',
+    // agente removido — no existe en schema
   };
   const { data, error } = await sb.from('pedidos').insert(nuevoPed).select().single();
   btn.textContent = '💾 Guardar Pedido'; btn.disabled = false;
