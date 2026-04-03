@@ -49,6 +49,10 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
 /* ─── MAIN ─────────────────────────────────────────────────── */
 #main{flex:1;overflow:hidden;display:flex;flex-direction:column;min-width:0;}
 #topbar{height:52px;background:var(--g1);border-bottom:1px solid var(--g4);display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0;position:relative;z-index:10;}
+.tb-refresh{background:none;border:none;color:var(--td);font-size:18px;padding:6px;cursor:pointer;border-radius:8px;transition:transform .3s,color .2s;flex-shrink:0;}
+.tb-refresh:hover{color:var(--or);}
+.tb-refresh.spinning{animation:spin .6s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
 .tb-menu{display:none;background:none;border:none;color:var(--tx);font-size:24px;padding:8px;cursor:pointer;}
 .tb-title{font-family:'Barlow Condensed',sans-serif;font-size:19px;font-weight:800;letter-spacing:.5px;flex:1;}
 .tb-clock{font-family:'Space Mono',monospace;font-size:11px;color:var(--td);}
@@ -553,7 +557,8 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
         <span id="fecha-hoy" style="font-size:11px;color:var(--td);font-weight:600"></span>
       </div>
       <div class="tb-clock" id="clock">--:--</div>
-      <button class="btn btn-primary btn-sm" onclick="nav('nuevo')">
+      <button class="tb-refresh" id="tb-refresh-btn" onclick="refreshApp()" title="Actualizar datos">⟳</button>
+        <button class="btn btn-primary btn-sm" onclick="nav('nuevo')">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Nuevo
       </button>
@@ -3511,6 +3516,22 @@ async function validarTransferencia(pedidoId, aprobado) {
 // NAVEGACIÓN
 // ════════════════════════════════════════════════════════════
 const TITLES = { inicio:'Dashboard',pedidos:'Pedidos',kanban:'Kanban — Vista de Pedidos',config:'Configuración del Sistema',nuevo:'Nuevo Pedido',mapa:'Mapa en Vivo',riders:'Riders',solicitudes:'Solicitudes de Riders',depositos:'Depósitos',liquidaciones:'Liquidaciones a Riders',turnos:'Gestión de Turnos',comprobantes:'Comprobantes de Pago',historial:'Historial',chat:'Chat' };
+
+async function refreshApp() {
+  const btn = document.getElementById('tb-refresh-btn');
+  if(btn) btn.classList.add('spinning');
+  try {
+    await Promise.all([ cargarMetricas(), cargarRiders() ]);
+    // Refrescar la vista activa
+    const vActiva = document.querySelector('.view.active')?.id?.replace('view-','');
+    if(vActiva) nav(vActiva, false);
+    toast('✅ Datos actualizados', 'success');
+  } catch(e) {
+    toast('Error al actualizar', 'danger');
+  } finally {
+    if(btn) btn.classList.remove('spinning');
+  }
+}
 
 function nav(v, pushHistory=true) {
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
