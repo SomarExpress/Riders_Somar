@@ -1,48 +1,71 @@
-const CACHE = 'somar-delivery-v1.0.2';
-const STATIC = ['./delivery-app.html', './manifest-delivery.json'];
+// SERVICE WORKER — Somar Rider PWA
+// Repo: somarexpress/Riders_Somar
+const CACHE = 'somar-rider-v2';
+const STATIC = ['./index.html', './manifest-delivery.json'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC).catch(()=>{})).then(()=>self.skipWaiting()));
+  e.waitUntil(
+    caches.open(CACHE)
+      .then(c => Promise.allSettled(STATIC.map(url => c.add(url).catch(() => {}))))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
+  e.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
+  );
 });
 
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  if (url.origin !== location.origin) { e.respondWith(fetch(e.request).catch(()=>new Response('',{status:503}))); return; }
-  e.respondWith(fetch(e.request).then(r=>{
-    if(r&&r.status===200){const c=r.clone();caches.open(CACHE).then(ca=>ca.put(e.request,c));}
-    return r;
-  }).catch(()=>caches.match(e.request).then(r=>r||new Response('',{status:503}))));
+  // Supabase y Cloudinary: siempre red
+  if (url.hostname.includes('supabase.co') || url.hostname.includes('cloudinary.com')) return;
+  // Network First para el HTML principal
+  if (url.pathname.endsWith('index.html') || url.pathname.endsWith('/')) {
+    e.respondWith(
+      fetch(e.request)
+        .then(r => { caches.open(CACHE).then(c => c.put(e.request, r.clone())); return r; })
+        .catch(() => caches.match('./index.html'))
+    );
+    return;
+  }
+  // Cache First para el resto
+  e.respondWith(
+    caches.match(e.request).then(cached => cached ||
+      fetch(e.request).then(r => {
+        if (r && r.status === 200) caches.open(CACHE).then(c => c.put(e.request, r.clone()));
+        return r;
+      }).catch(() => new Response('', { status: 503 }))
+    )
+  );
 });
 
-// Push notifications
 self.addEventListener('push', e => {
   const data = e.data ? e.data.json() : {};
-  const options = {
+  e.waitUntil(self.registration.showNotification(data.title || 'Somar Express', {
     body:    data.body    || 'Tienes un nuevo pedido',
     icon:    'https://res.cloudinary.com/drkaxsziu/image/upload/v1767871213/Somar_Express_2048_x_2048_px_18_x_18_in__20250623_221102_0000_o0bv7a.png',
     badge:   'https://res.cloudinary.com/drkaxsziu/image/upload/v1767871213/Somar_Express_2048_x_2048_px_18_x_18_in__20250623_221102_0000_o0bv7a.png',
     vibrate: [200, 100, 200, 100, 200],
-    tag:     data.tag     || 'somar-delivery',
-    data:    data.data    || {},
-    actions: data.actions || [],
-    requireInteraction: data.requireInteraction || false,
-  };
-  e.waitUntil(self.registration.showNotification(data.title || 'Somar Express', options));
+    tag:     data.tag || 'somar-rider',
+    requireInteraction: true,
+  }));
 });
 
 self.addEventListener('notificationclick', e => {
   e.notification.close();
-  e.waitUntil(clients.matchAll({type:'window'}).then(cs=>{
-    const c = cs.find(x=>x.url.includes('delivery-app'));
-    if(c) return c.focus();
-    return clients.openWindow('./delivery-app.html');
-  }));
+  e.waitUntil(
+    clients.matchAll({ type: 'window' }).then(cs => {
+      const c = cs.find(x => x.url.includes('index.html') || x.url.endsWith('/Riders_Somar/'));
+      if (c) return c.focus();
+      return clients.openWindow('./index.html');
+    })
+  );
 });
 
 self.addEventListener('message', e => {
-  if(e.data==='SKIP_WAITING') self.skipWaiting();
+  if (e.data === 'SKIP_WAITING') self.skipWaiting();
 });
