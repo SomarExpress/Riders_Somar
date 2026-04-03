@@ -1779,9 +1779,9 @@ function TabTurnos({delivery, toast}){
     const turno = turnos.find(t=>t.id===turnoId);
     const max = turno?.max_riders || 2;
     if(count >= max){ toast('⚠️ Este turno ya está lleno para esa fecha'); return; }
-    // Verificar si ya tiene reserva ese día
-    const yaTiene = reservas.find(r=>r.fecha===fecha&&r.estatus!=='CANCELADO');
-    if(yaTiene){ toast('⚠️ Ya tienes un turno reservado para ese día'); return; }
+    // Verificar si ya tiene ese turno específico ese día (no bloquear otros turnos)
+    const yaTieneTurno = reservas.find(r=>r.turno_id===turnoId&&r.fecha===fecha&&r.estatus!=='CANCELADO');
+    if(yaTieneTurno){ toast('⚠️ Ya tienes este turno reservado para esa fecha'); return; }
     const {error} = await sb.from('reservaciones_turno').insert({
       turno_id:turnoId, delivery_id:delivery.id, fecha, estatus:'RESERVADO'
     });
