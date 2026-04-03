@@ -1312,6 +1312,8 @@ function App(){
   const _reg=useRef(false);
   const toastRef=useRef(null);
   const turnoRef=useRef(false); // siempre actualizado, sin stale closure
+  const wakeLockRef=useRef(null);  // Screen Wake Lock
+  const gpsIntervalBgRef=useRef(null); // Intervalo agresivo de background
 
   // ─── BOTÓN ATRÁS — History API ────────────────────────────
   useEffect(()=>{
@@ -1394,6 +1396,10 @@ function App(){
     suscribirRealtime(del.id);
     cargarConfigSistema();
     cargarNotificacionesGlobal(del.id, setNotifs);
+    // Pedir permiso de notificaciones (necesario para notif de turno)
+    if('Notification' in window && Notification.permission==='default'){
+      Notification.requestPermission().then(p=>console.log('[Notif] Permiso:',p));
+    }
   };
 
   const buildTiempos=p=>{
@@ -1428,6 +1434,7 @@ function App(){
     }
     const opts={enableHighAccuracy:true,timeout:15000,maximumAge:10000};
     const optsRapido={enableHighAccuracy:false,timeout:8000,maximumAge:30000};
+
     const enviarUbi=async(pos)=>{
       const payload={
         delivery_id:delId,
@@ -1439,26 +1446,70 @@ function App(){
       };
       const {error}=await sb.from('ubicaciones_delivery').upsert(payload,{onConflict:'delivery_id'});
       if(error) console.error('[GPS] upsert error:',error.message);
-      else console.log('[GPS] OK',payload.lat,payload.lng,'turno:',payload.en_turno);
+      else console.log('[GPS] OK',payload.lat,payload.lng);
     };
     const onErr=e=>{
-      // Código 3 = timeout — normal en Android, watchPosition reintenta solo
-      if(e.code === 3) console.log('[GPS] timeout (normal, reintentando...)');
-      else console.error('[GPS] error:', e.code, e.message);
+      if(e.code===3) console.log('[GPS] timeout — reintentando...');
+      else console.error('[GPS] error:',e.code,e.message);
     };
+
     // Posición inmediata
     navigator.geolocation.getCurrentPosition(enviarUbi,onErr,opts);
-    // watchPosition: dispara al moverse
+    // watchPosition — actualiza al moverse
     const watchId=navigator.geolocation.watchPosition(enviarUbi,onErr,opts);
-    // Intervalo 20s de respaldo (watchPosition puede pausarse en background Android)
-    // Usa opciones menos exigentes para evitar timeouts frecuentes
+    // Intervalo 15s de respaldo (watchPosition se pausa en background)
     const intervalId=setInterval(()=>{
       navigator.geolocation.getCurrentPosition(enviarUbi,e=>{
-        // Timeout en intervalo es normal — no loguear como error
-        if(e.code !== 3) console.warn('[GPS] intervalo error:', e.code, e.message);
-      }, optsRapido);
-    },20000);
-    gpsRef.current={watchId,intervalId};
+        if(e.code!==3) console.warn('[GPS] intervalo:',e.code,e.message);
+      },optsRapido);
+    },15000);
+    gpsRef.current={watchId,intervalId,_delId:delId};
+
+    // ── WAKE LOCK: mantener pantalla activa ──────────────────
+    activarWakeLock();
+
+    // ── Listener: cuando la app vuelve al foreground, reactiva ──
+    document.addEventListener('visibilitychange', onVisibilityChange);
+  };
+
+  const activarWakeLock=async()=>{
+    if(!('wakeLock' in navigator)) return;
+    try {
+      wakeLockRef.current = await navigator.wakeLock.request('screen');
+      wakeLockRef.current.addEventListener('release',()=>{
+        console.log('[WakeLock] Liberado');
+        wakeLockRef.current=null;
+      });
+      console.log('[WakeLock] Activo — pantalla encendida');
+    } catch(e) {
+      console.warn('[WakeLock] No disponible:',e.message);
+    }
+  };
+
+  const onVisibilityChange=()=>{
+    if(document.visibilityState==='visible'){
+      // App volvió al foreground
+      console.log('[GPS] App en foreground — reactivando...');
+      // Reactivar wake lock si se perdió
+      if(!wakeLockRef.current) activarWakeLock();
+      // Forzar lectura inmediata del GPS
+      if(gpsRef.current){
+        navigator.geolocation.getCurrentPosition(
+          async pos=>{
+            const payload={
+              delivery_id:gpsRef.current._delId,
+              lat:pos.coords.latitude,lng:pos.coords.longitude,
+              precision_m:Math.round(pos.coords.accuracy||0),
+              en_turno:turnoRef.current,
+              updated_at:new Date().toISOString()
+            };
+            await sb.from('ubicaciones_delivery').upsert(payload,{onConflict:'delivery_id'});
+          },
+          ()=>{},
+          {enableHighAccuracy:true,timeout:10000,maximumAge:0}
+        );
+      }
+    }
   };
 
   const suscribirRealtime=delId=>{
@@ -1525,6 +1576,46 @@ function App(){
       await sb.from('ubicaciones_delivery').insert({ delivery_id:delivery.id, en_turno:val, pausado:false, lat:0, lng:0, updated_at:new Date().toISOString() });
     }
     toast(val?'✅ Turno activado':'⏹ Turno desactivado');
+    // Notificación persistente para mantener GPS activo en background
+    if(val) mostrarNotifTurno();
+    else cerrarNotifTurno();
+  };
+
+  const mostrarNotifTurno=async()=>{
+    if(!('Notification' in window)) return;
+    if(Notification.permission==='default'){
+      await Notification.requestPermission();
+    }
+    if(Notification.permission!=='granted') return;
+    // Registrar SW y mostrar notificación sticky
+    if('serviceWorker' in navigator){
+      const reg = await navigator.serviceWorker.ready;
+      // Cerrar notif anterior si existe
+      const notifs = await reg.getNotifications({tag:'turno-activo'});
+      notifs.forEach(n=>n.close());
+      // Mostrar nueva notificación sticky
+      reg.showNotification('🛵 Turno Activo — Somar Express', {
+        body: 'GPS enviando ubicación · Mantén esta notificación activa',
+        icon: 'https://res.cloudinary.com/drkaxsziu/image/upload/v1767871213/Somar_Express_2048_x_2048_px_18_x_18_in__20250623_221102_0000_o0bv7a.png',
+        badge: 'https://res.cloudinary.com/drkaxsziu/image/upload/v1767871213/Somar_Express_2048_x_2048_px_18_x_18_in__20250623_221102_0000_o0bv7a.png',
+        tag: 'turno-activo',
+        requireInteraction: true,  // No desaparece sola
+        silent: true,              // Sin sonido
+        renotify: false,
+      });
+      console.log('[Notif] Notificación de turno activa');
+    }
+  };
+
+  const cerrarNotifTurno=async()=>{
+    if('serviceWorker' in navigator){
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const notifs = await reg.getNotifications({tag:'turno-activo'});
+        notifs.forEach(n=>n.close());
+        console.log('[Notif] Notificación de turno cerrada');
+      } catch(e){}
+    }
   };
 
   const refreshDelivery=async()=>{
@@ -1600,6 +1691,10 @@ function App(){
         if(gpsRef.current.intervalId!=null) clearInterval(gpsRef.current.intervalId);
       } else { clearInterval(gpsRef.current); }
     }
+    // Liberar Wake Lock al cerrar sesión
+    if(wakeLockRef.current){ try{ wakeLockRef.current.release(); }catch(e){} wakeLockRef.current=null; }
+    // Quitar listener de visibilidad
+    document.removeEventListener('visibilitychange', onVisibilityChange);
     if(rtRef.current)sb.removeChannel(rtRef.current);
     if(delivery) { try { await sb.from('ubicaciones_delivery').update({en_turno:false,updated_at:new Date().toISOString()}).eq('delivery_id',delivery.id); } catch(e){} }
     await sb.auth.signOut();
