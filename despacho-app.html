@@ -256,26 +256,158 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
 
 /* ─── RESPONSIVE ───────────────────────────────────────────── */
 @media(max-width:768px){
+  /* ── Layout base ── */
   #sidebar{position:fixed;top:0;left:0;bottom:0;transform:translateX(-100%);z-index:200;}
   #sidebar.open{transform:translateX(0);}
   .sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:199;}
   .sb-overlay.open{display:block;}
   .tb-menu{display:block;}
+  #content{padding:10px;}
+
+  /* ── Dashboard ── */
   .metrics{grid-template-columns:1fr 1fr;}
   .dash-grid{grid-template-columns:1fr;}
-  .drv-grid{grid-template-columns:1fr 1fr;}
+  .t-grid-4{grid-template-columns:1fr 1fr !important;}
+  .t-grid-2{grid-template-columns:1fr !important;}
+
+  /* ── Riders ── */
+  .drv-grid{grid-template-columns:1fr;}
+
+  /* ── Wizard nuevo pedido ── */
   .form-grid{grid-template-columns:1fr;}
   .form-grid.c3{grid-template-columns:1fr 1fr;}
-  .chat-layout{grid-template-columns:1fr;}
-  .chat-list{display:none;}
-  .chat-layout.chat-sel .chat-list{display:flex;}
+
+  /* ── Chat ── */
+  .chat-layout{grid-template-columns:1fr;height:calc(100vh - 52px);}
+  .chat-list{display:none;position:absolute;inset:0;z-index:10;background:var(--g2);}
+  .chat-layout.chat-sel .chat-list{display:flex;flex-direction:column;}
   .chat-layout.chat-sel .chat-main{display:none;}
-  .modal{padding:16px;}
+  .chat-back-btn{display:flex !important;}
+
+  /* ── Kanban ── */
+  #view-kanban > div{grid-template-columns:1fr !important;height:auto !important;}
+  #kb-pend,#kb-proc,#kb-fin{max-height:60vh;}
+
+  /* ── Panel lateral pedido ── */
+  #panel-pedido{width:100% !important;max-width:100% !important;}
+
+  /* ── Tablas ── */
+  .tbl-wrap{overflow-x:auto;}
+  table{min-width:600px;}
+
+  /* ── Liquidaciones / Comprobantes ── */
+  #liq-lista .dep-card,#comp-lista > div{max-width:100%;}
+  #comp-lista{grid-template-columns:1fr !important;}
+
+  /* ── Turnos ── */
+  #view-turnos > div{grid-template-columns:1fr !important;}
+
+  /* ── Modal ── */
+  .modal{padding:16px;margin:8px;}
+
+  /* ── Tiempos dashboard ── */
+  .tiempo-grid{grid-template-columns:1fr 1fr !important;}
+  .tiempo-riders-grid{grid-template-columns:1fr !important;}
+
+  /* ── Topbar ── */
+  #fecha-hoy{display:none;}
+  #rt-status{gap:3px;}
+  .tb-clock{font-size:10px;}
+}
+
+@media(max-width:480px){
+  .metrics{grid-template-columns:1fr 1fr;}
+  .t-grid-4{grid-template-columns:1fr 1fr !important;}
+  .drv-grid{grid-template-columns:1fr;}
+  .form-grid.c3{grid-template-columns:1fr;}
+  #fecha-hoy{display:none;}
 }
 @media(max-width:480px){
   .metrics{grid-template-columns:1fr 1fr;}
   .metric-val{font-size:28px;}
   .drv-grid{grid-template-columns:1fr;}
+}
+
+/* ════ RESPONSIVE ADICIONAL ══════════════════════════════ */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:8px;}
+.kanban-col-header{padding:12px 14px;border-bottom:1px solid var(--g4);}
+
+/* En móvil: kanban como acordeón vertical */
+@media(max-width:768px){
+  .kanban-grid{
+    grid-template-columns:1fr !important;
+    height:auto !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+  }
+  .kanban-grid > div{
+    border-right:none !important;
+    border-bottom:1px solid var(--g4);
+    max-height:50vh;
+    display:flex;
+    flex-direction:column;
+  }
+  #kb-pend,#kb-proc,#kb-fin{
+    max-height:280px;
+    overflow-y:auto;
+  }
+
+  /* Panel detalle full width en móvil */
+  #panel-pedido{
+    width:100vw !important;
+    max-width:100vw !important;
+    right:-100vw !important;
+  }
+  #panel-pedido.open{right:0 !important;}
+
+  /* Dashboard: cards de tiempos en 2 columnas */
+  .tiempo-grid{grid-template-columns:1fr 1fr !important;}
+  .tiempo-riders-grid{grid-template-columns:1fr !important;}
+
+  /* Topbar compacto */
+  .tb-title{font-size:14px;}
+  #fecha-hoy{display:none;}
+
+  /* Finanzas en columna */
+  .fin-grid-2{grid-template-columns:1fr !important;}
+
+  /* Cards de riders en 1 columna */
+  .drv-grid{grid-template-columns:1fr !important;}
+
+  /* Comprobantes en 1 columna */
+  #comp-lista{grid-template-columns:1fr !important;}
+
+  /* Turnos en 1 columna */
+  #view-turnos > div{grid-template-columns:1fr !important;}
+
+  /* Configuración */
+  #view-config > div{max-width:100% !important;}
+
+  /* Botones en panel */
+  .panel-footer{flex-wrap:wrap;}
+  .panel-footer .btn{flex:1;min-width:120px;justify-content:center;}
+
+  /* Chat: ocupar toda la pantalla */
+  .chat-layout{height:calc(100vh - 56px) !important;}
+
+  /* Tabla: scroll horizontal */
+  #view-pedidos .card{overflow:hidden;}
+  .tbl-wrap{overflow-x:auto;}
+  table.tbl{min-width:580px;}
+
+  /* Métricas: 2 columnas en móvil */
+  .metrics{grid-template-columns:1fr 1fr !important;}
+
+  /* Evitar overflow en cards */
+  .card{overflow:hidden;}
+  .dep-card{max-width:100%;}
+}
+
+@media(max-width:400px){
+  .tiempo-grid{grid-template-columns:1fr !important;}
+  .metrics{grid-template-columns:1fr 1fr !important;}
+  #content{padding:8px !important;}
+  .metric-val{font-size:24px !important;}
 }
 </style>
 </head>
@@ -492,7 +624,7 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
         <div class="card" style="grid-column:1/-1;margin-top:4px">
           <div class="card-hdr"><div class="card-title">⏱ Tiempos Promedio del Período</div></div>
           <div style="padding:14px">
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+            <div class="tiempo-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
               <div style="background:var(--g3);border-radius:12px;padding:12px;text-align:center">
                 <div style="font-size:10px;color:var(--td);font-weight:700;text-transform:uppercase;margin-bottom:6px">Total Pedido</div>
                 <div class="mono" style="font-size:22px;font-weight:900;color:var(--or)" id="t-total">—</div>
@@ -514,7 +646,7 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
                 <div style="font-size:10px;color:var(--td);margin-top:3px">en camino → entrega</div>
               </div>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+            <div class="tiempo-riders-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
               <div>
                 <div style="font-size:11px;font-weight:700;color:var(--td);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">🏪 Comercios más lentos</div>
                 <div id="t-comercios"><div style="font-size:12px;color:var(--td)">Sin datos suficientes</div></div>
@@ -532,7 +664,7 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
 
       <!-- ═══ KANBAN ══════════════════════════════════════════ -->
       <div class="view" id="view-kanban" style="padding:0;">
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;height:calc(100vh - 52px);overflow:hidden;">
+        <div class="kanban-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;height:calc(100vh - 52px);overflow:hidden;">
           <!-- PENDIENTES -->
           <div style="border-right:1px solid var(--g4);display:flex;flex-direction:column;background:var(--g1);">
             <div style="padding:12px 14px;border-bottom:1px solid var(--g4);background:rgba(245,158,11,.08);">
@@ -881,7 +1013,7 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
             <div style="padding:10px 12px;font-size:10px;color:var(--td);letter-spacing:2px;text-transform:uppercase;border-bottom:1px solid var(--g4);">Repartidores</div>
           </div>
           <div class="chat-main" id="chat-main-area">
-            <div style="padding:12px 14px;border-bottom:1px solid var(--g4);display:flex;align-items:center;gap:10px;" id="chat-hdr">
+            <div style="padding:12px 14px;border-bottom:1px solid var(--g4);display:flex;align-items:center;gap:10px;" id="chat-hdr"><button class="chat-back-btn" onclick="document.getElementById('chat-layout').classList.remove('chat-sel')" style="display:none;background:none;border:none;color:var(--td);font-size:20px;padding:0 6px 0 0;cursor:pointer">←</button>
               <span style="color:var(--td);font-size:13px;">Selecciona un repartidor</span>
             </div>
             <div class="chat-msgs" id="chat-msgs">
