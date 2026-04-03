@@ -1321,8 +1321,8 @@ function App(){
     const handleBack = (e) => {
       const state = e.state;
       // Si hay una VistaPedido abierta → volver a la lista
-      if(viendoPedido || detalle) {
-        setDetalle(null); setViendoPedido(null);
+      if(detalle) {
+        setDetalle(null);
         history.pushState({tab:tab, pedidoId:null}, '', '#'+tab);
         return;
       }
@@ -1342,7 +1342,7 @@ function App(){
 
     window.addEventListener('popstate', handleBack);
     return () => window.removeEventListener('popstate', handleBack);
-  }, [tab, viendoPedido, detalle, sideOpen]);
+  }, [tab, detalle, sideOpen]);
 
   // ─── Agregar entrada al historial cuando cambia el tab ──
   const setTabConHistorial = (nuevoTab) => {
