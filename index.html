@@ -1527,6 +1527,17 @@ function App(){
     toast(val?'✅ Turno activado':'⏹ Turno desactivado');
   };
 
+  const refreshDelivery=async()=>{
+    const btn = document.getElementById('refresh-del-btn');
+    if(btn) { btn.style.transform='rotate(360deg)'; btn.style.transition='transform .5s'; }
+    try {
+      await cargarDatos(delivery.id);
+      await cargarNotificacionesGlobal(delivery.id, setNotifs);
+      toast('✅ Actualizado');
+    } catch(e) { toast('Error al actualizar'); }
+    setTimeout(()=>{ if(btn){ btn.style.transform=''; btn.style.transition=''; } }, 600);
+  };
+
   const pausarTurno=async()=>{
     const nuevoPausado = !pausado;
     setPausado(nuevoPausado);
@@ -1680,6 +1691,7 @@ function App(){
             {pausado?'▶ Reanudar':'⏸ Pausar'}
           </button>
         )}
+        <button onClick={refreshDelivery} style={{background:'none',border:'none',color:'#888',fontSize:20,padding:4,cursor:'pointer',marginLeft:4,transition:'transform .3s'}} id="refresh-del-btn" title="Actualizar">⟳</button>
         <button onClick={()=>setShowNotifs(s=>!s)} style={{position:'relative',background:'none',border:'none',color:'#888',fontSize:20,padding:4,cursor:'pointer',marginLeft:4}}>
           🔔
           {notifs.filter(n=>!n.leida).length>0&&(
