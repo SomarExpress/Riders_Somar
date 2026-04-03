@@ -168,7 +168,7 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
 .dep-footer{padding:10px 14px;display:flex;gap:7px;align-items:center;}
 
 /* ─── CHAT ─────────────────────────────────────────────────── */
-.chat-layout{display:grid;grid-template-columns:240px 1fr;height:calc(100vh - 84px);background:var(--g2);border:1px solid var(--g4);border-radius:10px;overflow:hidden;}
+.chat-layout{display:grid;grid-template-columns:220px 1fr;height:calc(100vh - 104px);min-height:400px;background:var(--g2);border:1px solid var(--g4);border-radius:10px;overflow:hidden;}
 .chat-list{border-right:1px solid var(--g4);overflow-y:auto;display:flex;flex-direction:column;}
 .chat-item{padding:10px 12px;border-bottom:1px solid var(--g3);cursor:pointer;display:flex;gap:8px;align-items:center;}
 .chat-item:hover,.chat-item.sel{background:var(--g3);}
@@ -443,17 +443,25 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
             <div class="card">
               <div class="card-hdr"><div class="card-title">Finanzas del Día</div></div>
               <div style="padding:12px;">
-                <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
                   <span style="font-size:12px;color:var(--td)">Ingresos Envíos</span>
                   <span class="mono" style="color:var(--verde)" id="fin-ing">L. 0.00</span>
                 </div>
-                <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
-                  <span style="font-size:12px;color:var(--td)">Pago Delivery (70%)</span>
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                  <span style="font-size:12px;color:var(--td)">Pago Riders (70%)</span>
                   <span class="mono" style="color:var(--rojo)" id="fin-drv">- L. 0.00</span>
                 </div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                  <span style="font-size:12px;color:var(--td)">Comisión Envíos (30%)</span>
+                  <span class="mono" style="color:var(--or)" id="fin-com-envio">L. 0.00</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                  <span style="font-size:12px;color:var(--td)">Comisión Comercios</span>
+                  <span class="mono" style="color:var(--or)" id="fin-com-com">L. 0.00</span>
+                </div>
                 <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid var(--g4);">
-                  <span style="font-size:12px;font-weight:700">Margen Somar</span>
-                  <span class="mono" style="color:var(--or);font-weight:700" id="fin-margen">L. 0.00</span>
+                  <span style="font-size:12px;font-weight:800">Total Somar</span>
+                  <span class="mono" style="color:var(--or);font-weight:900;font-size:15px" id="fin-margen">L. 0.00</span>
                 </div>
               </div>
             </div>
@@ -774,7 +782,7 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
       </div>
 
       <!-- ═══ CHAT ══════════════════════════════════════════════ -->
-      <div class="view" id="view-chat">
+      <div class="view" id="view-chat" style="height:calc(100vh - 52px);overflow:hidden;padding:0;">
         <div class="chat-layout" id="chat-layout">
           <div class="chat-list" id="chat-contacts">
             <div style="padding:10px 12px;font-size:10px;color:var(--td);letter-spacing:2px;text-transform:uppercase;border-bottom:1px solid var(--g4);">Repartidores</div>
@@ -783,7 +791,7 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
             <div style="padding:12px 14px;border-bottom:1px solid var(--g4);display:flex;align-items:center;gap:10px;" id="chat-hdr">
               <span style="color:var(--td);font-size:13px;">Selecciona un repartidor</span>
             </div>
-            <div class="chat-msgs" id="chat-msgs" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;">
+            <div class="chat-msgs" id="chat-msgs" style="flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-height:0;">
               <div style="text-align:center;font-size:12px;color:var(--td);padding:20px;">Selecciona un repartidor para chatear</div>
             </div>
             <div class="chat-inp-area" id="chat-inp-area" style="display:none;flex-direction:column;gap:6px;">
@@ -1162,18 +1170,23 @@ async function cargarMetricas() {
   const fin   = data.filter(p => p.estatus === 'FINALIZADO').length;
   const proc  = data.filter(p => !['FINALIZADO','CANCELADO','PENDIENTE','PENDIENTE'].includes(p.estatus)).length;
   const sa    = data.filter(p => ['PENDIENTE'].includes(p.estatus)).length;
-  const ing   = data.filter(p => p.estatus === 'FINALIZADO').reduce((s,p) => s + parseFloat(p.tarifa_envio||0), 0);
-  const drv   = data.filter(p => p.estatus === 'FINALIZADO').reduce((s,p) => s + parseFloat(p.ingreso_delivery||0), 0);
-  const somar = data.filter(p => p.estatus === 'FINALIZADO').reduce((s,p) => s + parseFloat(p.ingreso_somar||0), 0);
+  const finalizados = data.filter(p => p.estatus === 'FINALIZADO');
+  const ing      = finalizados.reduce((s,p) => s + parseFloat(p.tarifa_envio||0), 0);
+  const drv      = finalizados.reduce((s,p) => s + parseFloat(p.ingreso_delivery||0), 0);
+  const comEnvio = finalizados.reduce((s,p) => s + parseFloat(p.ingreso_somar||0) - parseFloat(p.base_app||0), 0);
+  const comCom   = finalizados.reduce((s,p) => s + parseFloat(p.base_app||0), 0);
+  const somar    = finalizados.reduce((s,p) => s + parseFloat(p.ingreso_somar||0), 0);
   document.getElementById('m-total').textContent = total;
   document.getElementById('m-fin').textContent   = fin;
   document.getElementById('m-proc').textContent  = proc;
   document.getElementById('m-sa').textContent    = sa;
   document.getElementById('m-tsub').textContent  = `↑ hoy`;
   document.getElementById('m-fsub').textContent  = total > 0 ? `${Math.round(fin/total*100)}% tasa éxito` : '—';
-  document.getElementById('fin-ing').textContent    = `L. ${ing.toFixed(2)}`;
-  document.getElementById('fin-drv').textContent    = `- L. ${drv.toFixed(2)}`;
-  document.getElementById('fin-margen').textContent = `L. ${somar.toFixed(2)}`;
+  document.getElementById('fin-ing').textContent      = `L. ${ing.toFixed(2)}`;
+  document.getElementById('fin-drv').textContent      = `- L. ${drv.toFixed(2)}`;
+  document.getElementById('fin-com-envio').textContent = `L. ${comEnvio.toFixed(2)}`;
+  document.getElementById('fin-com-com').textContent   = `L. ${comCom.toFixed(2)}`;
+  document.getElementById('fin-margen').textContent    = `L. ${somar.toFixed(2)}`;
   document.getElementById('badge-activos').textContent = proc + sa;
   renderListaActivos();
 }
@@ -1900,7 +1913,7 @@ async function renderChatMsgs(dId) {
     const mine = m.remitente === 'DESPACHO';
     const agente = m.remitente_nombre || (mine ? 'Despacho' : null);
     const color = mine ? colorAgente(agente) : '#ccc';
-    const hora = new Date(m.created_at).toLocaleTimeString('es-HN',{hour:'2-digit',minute:'2-digit'});
+    const hora = new Date(m.created_at).toLocaleTimeString('es-HN',{timeZone:'America/Tegucigalpa',...{{hour:'2-digit',minute:'2-digit',timeZone:'America/Tegucigalpa'});
     const imgHtml = m.imagen_url
       ? `<div style="margin-top:${m.mensaje?'6px':'0'}"><img src="${m.imagen_url}" onclick="window.open('${m.imagen_url}')" style="max-width:220px;max-height:200px;border-radius:10px;display:block;cursor:pointer;object-fit:cover" loading="lazy"/></div>`
       : '';
@@ -2512,7 +2525,7 @@ function abrirAsignarRider(dId) {
 // KANBAN
 // ════════════════════════════════════════════════════════════
 function renderKanban() {
-  const pend = S.pedidos.filter(p => p.estatus === 'PENDIENTE');
+  const pend = S.pedidos.filter(p => p.estatus === 'PENDIENTE' || (p.estatus === 'ASIGNADO' && !p.delivery_id));
   const proc = S.pedidos.filter(p => ['ASIGNADO','ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO'].includes(p.estatus));
   const fin  = S.pedidos.filter(p => p.estatus === 'FINALIZADO');
   const canc = S.pedidos.filter(p => p.estatus === 'CANCELADO');
@@ -2777,7 +2790,7 @@ function chipEst(e) {
   return `<span class="chip chip-${e||'PENDIENTE'}"><span class="dot"></span>${labels[e]||e||'—'}</span>`;
 }
 function inic(n) { if(!n) return '?'; const w=n.trim().split(' '); return (w[0][0]+(w[1]?w[1][0]:'')).toUpperCase(); }
-function fmtFecha(iso) { if(!iso) return '—'; const d=new Date(iso); return d.toLocaleDateString('es-HN',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('es-HN',{hour:'2-digit',minute:'2-digit'}); }
+function fmtFecha(iso) { if(!iso) return '—'; const d=new Date(iso); return d.toLocaleDateString('es-HN',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('es-HN',{hour:'2-digit',minute:'2-digit',timeZone:'America/Tegucigalpa'}); }
 function badgeInc(id) { const el=document.getElementById(id); if(el) el.textContent = parseInt(el.textContent||0)+1; }
 function closeModal(id) {
   if(id === 'modal-pedido') { cerrarPanel(); return; }
