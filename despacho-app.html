@@ -168,13 +168,13 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
 .dep-footer{padding:10px 14px;display:flex;gap:7px;align-items:center;}
 
 /* ─── CHAT ─────────────────────────────────────────────────── */
-.chat-layout{display:grid;grid-template-columns:220px 1fr;height:calc(100vh - 104px);min-height:400px;background:var(--g2);border:1px solid var(--g4);border-radius:10px;overflow:hidden;}
+.chat-layout{display:grid;grid-template-columns:220px 1fr;height:calc(100vh - 56px);background:var(--g2);border:1px solid var(--g4);border-radius:10px;overflow:hidden;}
 .chat-list{border-right:1px solid var(--g4);overflow-y:auto;display:flex;flex-direction:column;}
 .chat-item{padding:10px 12px;border-bottom:1px solid var(--g3);cursor:pointer;display:flex;gap:8px;align-items:center;}
 .chat-item:hover,.chat-item.sel{background:var(--g3);}
 .ch-av{width:34px;height:34px;border-radius:50%;background:var(--g4);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
-.chat-main{display:flex;flex-direction:column;}
-.chat-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;}
+.chat-main{display:flex;flex-direction:column;overflow:hidden;min-height:0;height:100%;}
+.chat-msgs{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-height:0;}
 .bubble{max-width:72%;padding:8px 12px;border-radius:10px;font-size:13px;line-height:1.5;border:1px solid transparent;}
 .bubble.mine{background:rgba(255,140,0,.15);border-color:rgba(255,140,0,.3);color:#F0F0F0;align-self:flex-end;border-bottom-right-radius:2px;}
 .bubble.theirs{background:var(--g4);align-self:flex-start;border-bottom-left-radius:2px;}
@@ -354,6 +354,11 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
       <div class="nav-item" onclick="nav('turnos')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         Turnos
+      </div>
+      <div class="nav-item" onclick="nav('comprobantes')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        Comprobantes
+        <span class="nav-badge" id="badge-comp" style="display:none">0</span>
       </div>
       <div class="nav-item" onclick="nav('historial')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -794,6 +799,18 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
         </div>
       </div>
 
+      <!-- ═══ COMPROBANTES ══════════════════════════════════════ -->
+      <div class="view" id="view-comprobantes">
+        <div class="filter-bar">
+          <button class="fbtn active" onclick="filtComp(this,'PENDIENTE')">Pendientes</button>
+          <button class="fbtn" onclick="filtComp(this,'APROBADO')">Aprobados</button>
+          <button class="fbtn" onclick="filtComp(this,'RECHAZADO')">Rechazados</button>
+        </div>
+        <div id="comp-lista" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;padding-top:8px">
+          <div class="empty">Cargando...</div>
+        </div>
+      </div>
+
       <!-- ═══ HISTORIAL ════════════════════════════════════════ -->
       <div class="view" id="view-historial">
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
@@ -818,7 +835,7 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
       </div>
 
       <!-- ═══ CHAT ══════════════════════════════════════════════ -->
-      <div class="view" id="view-chat" style="height:calc(100vh - 52px);overflow:hidden;padding:0;">
+      <div class="view" id="view-chat" style="height:calc(100vh - 52px);overflow:hidden;padding:4px;display:flex;flex-direction:column;">
         <div class="chat-layout" id="chat-layout">
           <div class="chat-list" id="chat-contacts">
             <div style="padding:10px 12px;font-size:10px;color:var(--td);letter-spacing:2px;text-transform:uppercase;border-bottom:1px solid var(--g4);">Repartidores</div>
@@ -1042,6 +1059,8 @@ async function init() {
   if(_dEl) _dEl.value = _hoyHN2;
   if(_hEl) _hEl.value = _hoyHN2;
   await Promise.all([ cargarMetricas(), cargarRiders(), cargarConfig(), cargarNotifsDespacho() ]);
+  // Badge comprobantes pendientes
+  sb.from('pedidos').select('id',{count:'exact',head:true}).in('metodo_pago',['TRANSFERENCIA','TARJETA']).eq('estatus','FINALIZADO').is('transferencia_validada_por',null).then(({count})=>{ const b=document.getElementById('badge-comp');if(b&&count>0){b.textContent=count;b.style.display='inline';} });
   // Badge liquidaciones pendientes
   sb.from('liquidaciones_delivery').select('id',{count:'exact'}).eq('estatus','PENDIENTE').then(({count})=>{ if(count>0){const b=document.getElementById('badge-liq');if(b){b.textContent=count;b.style.display='inline';}} });
   cargarComerciosDL();
@@ -1072,6 +1091,14 @@ function tickTimers() {
   document.querySelectorAll('[data-ts]').forEach(el => {
     const ts = parseInt(el.dataset.ts);
     if(!ts) return;
+    // Si el pedido está finalizado/cancelado, mostrar tiempo fijo sin actualizar
+    if(el.dataset.fin) {
+      const msFin = parseInt(el.dataset.fin) - ts;
+      const mf = Math.floor(msFin/60000);
+      el.textContent = mf > 60 ? `${Math.floor(mf/60)}h${mf%60}m` : `${mf}m`;
+      el.className = 'timer-badge';
+      return;
+    }
     const ms = ahora - ts;
     const m = Math.floor(ms/60000), s = Math.floor((ms%60000)/1000);
     const txt = m > 60 ? `${Math.floor(m/60)}h${m%60}m` : m > 0 ? `${m}m${s}s` : `${s}s`;
@@ -1085,13 +1112,14 @@ function tickTimers() {
 function tickPanelTimer(ahora) {
   const p = S.pedidos.find(x => x.id === S.panelPedidoId);
   if(!p) return;
+  // No actualizar timer si pedido está terminado
+  if(['FINALIZADO','CANCELADO'].includes(p.estatus)) return;
   const tsInicio = p.hora_asignado || p.created_at;
   if(!tsInicio) return;
   const ms = ahora - new Date(tsInicio).getTime();
   const m = Math.floor(ms/60000), s = Math.floor((ms%60000)/1000);
   const el = document.getElementById('panel-timer-total');
   if(el) el.textContent = m > 60 ? `${Math.floor(m/60)}h ${m%60}m` : m > 0 ? `${m}m ${s}s` : `${s}s`;
-  // Actualizar duración del estado activo en el timeline
   const durEl = document.getElementById('tl-dur-activo');
   if(durEl && S.panelTsEstadoActivo) {
     const msEst = ahora - S.panelTsEstadoActivo;
@@ -1322,9 +1350,11 @@ function renderTablaPedidos() {
       <td class="mono" style="color:var(--or)">L.${parseFloat(p.tarifa_envio||0).toFixed(0)}</td>
       <td>${chipEst(p.estatus)}</td>
       <td style="font-size:11px">
-        ${p.hora_asignado && !['FINALIZADO','CANCELADO'].includes(p.estatus)
-          ? `<span class="timer-badge" data-ts="${new Date(p.hora_asignado).getTime()}">—</span>`
-          : p.hora_finalizado ? fmtFecha(p.hora_finalizado) : '—'}
+        ${p.hora_asignado
+          ? ['FINALIZADO','CANCELADO'].includes(p.estatus)
+            ? `<span class="timer-badge" data-ts="${new Date(p.hora_asignado).getTime()}" data-fin="${new Date(p.hora_finalizado||p.created_at).getTime()}">—</span>`
+            : `<span class="timer-badge" data-ts="${new Date(p.hora_asignado).getTime()}">—</span>`
+          : '—'}
       </td>
       <td onclick="event.stopPropagation()">
         ${['PENDIENTE'].includes(p.estatus)
@@ -2858,11 +2888,22 @@ async function cargarLiquidaciones(estatus='PENDIENTE') {
       <div style="font-size:12px;color:var(--td);padding:8px 0;border-top:1px solid var(--g3);margin-top:8px">${l.descripcion||'—'}</div>
       ${estatus === 'PENDIENTE' ? `
         <div class="dep-footer" style="flex-direction:column;gap:8px;align-items:stretch">
-          <div style="font-size:11px;color:var(--td)">Sube el comprobante de transferencia:</div>
-          <div style="display:flex;gap:8px">
-            <input type="text" placeholder="URL del comprobante" id="comp-${l.id}"
-              style="flex:1;background:var(--g3);border:1px solid var(--g5);border-radius:6px;padding:7px 10px;color:var(--tx);font-size:12px;">
-            <button class="btn btn-success btn-sm" onclick="liquidar('${l.id}')">✓ Liquidar</button>
+          <div style="font-size:11px;color:var(--td)">Adjunta el comprobante de pago:</div>
+          <div id="comp-prev-${l.id}" style="display:none;margin-bottom:4px">
+            <img id="comp-img-${l.id}" style="height:80px;border-radius:8px;object-fit:cover">
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <label style="flex:1;display:flex;align-items:center;gap:6px;background:var(--g3);border:1px dashed var(--g5);border-radius:8px;padding:8px 12px;cursor:pointer;font-size:12px;color:var(--td)">
+              📎 <span id="comp-lbl-${l.id}">Seleccionar imagen...</span>
+              <input type="file" accept="image/*" id="comp-file-${l.id}" style="display:none"
+                onchange="(function(e,id){
+                  const f=e.target.files[0];if(!f)return;
+                  document.getElementById('comp-lbl-'+id).textContent=f.name;
+                  const prev=document.getElementById('comp-prev-'+id);
+                  if(prev){prev.style.display='block';document.getElementById('comp-img-'+id).src=URL.createObjectURL(f);}
+                })(event,'${l.id}')">
+            </label>
+            <button class="btn btn-success btn-sm" id="btn-liq-${l.id}" onclick="liquidar('${l.id}')">✓ Liquidar</button>
           </div>
         </div>
       ` : `
@@ -2876,17 +2917,39 @@ async function cargarLiquidaciones(estatus='PENDIENTE') {
 }
 
 async function liquidar(liqId) {
-  const compEl = document.getElementById('comp-' + liqId);
-  const comp = compEl?.value?.trim() || '';
-  if(!comp) { toast('Ingresa la URL del comprobante', 'danger'); return; }
+  const fileEl = document.getElementById('comp-file-' + liqId);
+  const file = fileEl?.files?.[0];
+  if(!file) { toast('Selecciona el comprobante de pago', 'danger'); return; }
+
+  const btn = document.getElementById('btn-liq-' + liqId);
+  if(btn) { btn.disabled = true; btn.textContent = '⏳ Subiendo...'; }
+
+  // Subir imagen a Cloudinary
+  let comp_url = '';
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('upload_preset', 'somar_riders');
+    fd.append('folder', 'comprobantes');
+    const r = await fetch('https://api.cloudinary.com/v1_1/drkaxsziu/image/upload', { method:'POST', body:fd });
+    const d = await r.json();
+    comp_url = d.secure_url;
+  } catch(e) {
+    toast('Error subiendo imagen: ' + e.message, 'danger');
+    if(btn) { btn.disabled = false; btn.textContent = '✓ Liquidar'; }
+    return;
+  }
+
   const { data, error } = await sb.rpc('liquidar_pedido', {
     p_liq_id: liqId,
-    p_comprobante: comp,
+    p_comprobante: comp_url,
     p_notas: '',
     p_liquidado_por: document.getElementById('u-name')?.textContent || 'Despacho'
   });
   if(error || !data?.success) {
-    toast('Error: ' + (error?.message || data?.msg), 'danger'); return;
+    toast('Error: ' + (error?.message || data?.msg), 'danger');
+    if(btn) { btn.disabled = false; btn.textContent = '✓ Liquidar'; }
+    return;
   }
   toast('✅ Liquidación registrada — rider notificado', 'success');
   cargarLiquidaciones('PENDIENTE');
@@ -3018,10 +3081,124 @@ async function cancelarReserva(id) {
   renderTurnos();
 }
 
+
+// ════════════════════════════════════════════════════════════
+// COMPROBANTES DE PAGO (transferencia / tarjeta)
+// ════════════════════════════════════════════════════════════
+async function cargarComprobantes(estatus='PENDIENTE') {
+  const el = document.getElementById('comp-lista');
+  el.innerHTML = '<div class="empty">Cargando...</div>';
+
+  // Pedidos con metodo_pago TRANSFERENCIA o TARJETA, finalizados, sin validar
+  let query = sb.from('pedidos')
+    .select('id,no_orden,nombre_cliente,nombre_comercio,subtotal,tarifa_envio,total,monto_cobrar,metodo_pago,imagen_transferencia,transferencia_validada_por,delivery_id,estatus,created_at')
+    .in('metodo_pago', ['TRANSFERENCIA','TARJETA'])
+    .eq('estatus', 'FINALIZADO')
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if(estatus === 'PENDIENTE') query = query.is('transferencia_validada_por', null);
+  else if(estatus === 'APROBADO') query = query.not('transferencia_validada_por', 'is', null);
+
+  const { data, error } = await query;
+  if(error) { el.innerHTML = '<div class="empty">Error: ' + error.message + '</div>'; return; }
+
+  // Badge
+  const badge = document.getElementById('badge-comp');
+  if(estatus === 'PENDIENTE' && badge) {
+    badge.textContent = data?.length || 0;
+    badge.style.display = data?.length ? 'inline' : 'none';
+  }
+
+  if(!data?.length) { el.innerHTML = '<div class="empty" style="grid-column:1/-1">Sin comprobantes ' + estatus.toLowerCase() + 's</div>'; return; }
+
+  el.innerHTML = data.map(p => {
+    const rider = S.riders.find(r => r.id === p.delivery_id);
+    const fL = v => 'L. ' + parseFloat(v||0).toFixed(2);
+    const aprobado = !!p.transferencia_validada_por;
+    return `<div style="background:var(--g2);border:1px solid ${aprobado?'rgba(34,197,94,.3)':'var(--g4)'};border-radius:14px;overflow:hidden;">
+      <!-- Header -->
+      <div style="padding:12px 14px;border-bottom:1px solid var(--g4);display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div class="mono" style="font-size:12px;color:var(--or);font-weight:700">${p.no_orden||'—'}</div>
+          <div style="font-size:13px;font-weight:700;margin-top:2px">${p.nombre_cliente||'—'}</div>
+          <div style="font-size:11px;color:var(--td)">${p.nombre_comercio||'—'} · ${p.metodo_pago}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:18px;font-weight:900;color:var(--or)">${fL(p.monto_cobrar)}</div>
+          <div style="font-size:10px;color:var(--td)">${fmtFecha(p.created_at)}</div>
+        </div>
+      </div>
+      <!-- Desglose -->
+      <div style="padding:10px 14px;border-bottom:1px solid var(--g4);display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:12px">
+        <div><div style="color:var(--td)">Producto</div><div style="font-weight:700">${fL(p.subtotal)}</div></div>
+        <div><div style="color:var(--td)">Envío</div><div style="font-weight:700">${fL(p.tarifa_envio)}</div></div>
+        <div><div style="color:var(--td)">Rider</div><div style="font-weight:700">${rider?.nombre?.split(' ')[0]||'—'}</div></div>
+      </div>
+      <!-- Comprobante -->
+      <div style="padding:12px 14px">
+        ${p.imagen_transferencia
+          ? `<img src="${p.imagen_transferencia}" onclick="window.open('${p.imagen_transferencia}')"
+              style="width:100%;max-height:200px;object-fit:contain;border-radius:10px;cursor:pointer;background:#111;margin-bottom:10px">`
+          : `<div style="background:var(--g3);border:1px dashed var(--g5);border-radius:10px;padding:20px;text-align:center;font-size:12px;color:var(--td);margin-bottom:10px">
+              📎 Sin comprobante adjunto
+              <br><label style="color:var(--or);cursor:pointer;margin-top:6px;display:inline-block">
+                Subir ahora
+                <input type="file" accept="image/*" style="display:none" onchange="subirComprobante('${p.id}',event)">
+              </label>
+            </div>`
+        }
+        ${aprobado
+          ? `<div style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:8px;padding:8px 12px;font-size:12px;color:#22C55E">
+              ✅ Validado por ${p.transferencia_validada_por}
+            </div>`
+          : `<div style="display:flex;gap:8px">
+              <button class="btn btn-success" style="flex:1;justify-content:center" onclick="validarTransferencia('${p.id}',true)">✅ Aprobar</button>
+              <button class="btn btn-danger" style="flex:1;justify-content:center" onclick="validarTransferencia('${p.id}',false)">❌ Rechazar</button>
+            </div>`
+        }
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filtComp(btn, estatus) {
+  document.querySelectorAll('#view-comprobantes .filter-bar .fbtn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  cargarComprobantes(estatus);
+}
+
+async function subirComprobante(pedidoId, event) {
+  const file = event.target.files[0];
+  if(!file) return;
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('upload_preset', 'somar_riders');
+    fd.append('folder', 'comprobantes');
+    const r = await fetch('https://api.cloudinary.com/v1_1/drkaxsziu/image/upload', { method:'POST', body:fd });
+    const d = await r.json();
+    await sb.from('pedidos').update({ imagen_transferencia: d.secure_url }).eq('id', pedidoId);
+    toast('✅ Comprobante subido');
+    cargarComprobantes();
+  } catch(e) { toast('Error: ' + e.message, 'danger'); }
+}
+
+async function validarTransferencia(pedidoId, aprobado) {
+  const agente = document.getElementById('u-name')?.textContent || 'Despacho';
+  const { error } = await sb.from('pedidos').update({
+    transferencia_validada_por: aprobado ? agente : 'RECHAZADO_' + agente,
+    mt_aprobacion_trans: new Date().toISOString(),
+  }).eq('id', pedidoId);
+  if(error) { toast('Error: ' + error.message, 'danger'); return; }
+  toast(aprobado ? '✅ Transferencia aprobada' : '❌ Transferencia rechazada');
+  cargarComprobantes('PENDIENTE');
+}
+
 // ════════════════════════════════════════════════════════════
 // NAVEGACIÓN
 // ════════════════════════════════════════════════════════════
-const TITLES = { inicio:'Dashboard',pedidos:'Pedidos',kanban:'Kanban — Vista de Pedidos',config:'Configuración del Sistema',nuevo:'Nuevo Pedido',mapa:'Mapa en Vivo',riders:'Riders',solicitudes:'Solicitudes de Riders',depositos:'Depósitos',liquidaciones:'Liquidaciones a Riders',turnos:'Gestión de Turnos',historial:'Historial',chat:'Chat' };
+const TITLES = { inicio:'Dashboard',pedidos:'Pedidos',kanban:'Kanban — Vista de Pedidos',config:'Configuración del Sistema',nuevo:'Nuevo Pedido',mapa:'Mapa en Vivo',riders:'Riders',solicitudes:'Solicitudes de Riders',depositos:'Depósitos',liquidaciones:'Liquidaciones a Riders',turnos:'Gestión de Turnos',comprobantes:'Comprobantes de Pago',historial:'Historial',chat:'Chat' };
 
 function nav(v) {
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
@@ -3054,6 +3231,7 @@ function nav(v) {
   if(v === 'depositos') cargarDepositos('PENDIENTE');
   if(v === 'liquidaciones') cargarLiquidaciones();
   if(v === 'turnos') renderTurnos();
+  if(v === 'comprobantes') cargarComprobantes();
   if(v === 'historial') { /* noop, user clicks Buscar */ }
   if(v === 'chat') { if(!S.riders.length) cargarRiders().then(renderChatContacts); else renderChatContacts(); }
   if(v === 'nuevo') { wizGo(0); actualizarResumen(); }
