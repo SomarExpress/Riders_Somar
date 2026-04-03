@@ -490,6 +490,45 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
         </div>
       </div>
 
+
+        <!-- SECCIÓN TIEMPOS PROMEDIO - debajo del grid del dashboard -->
+        <div class="card" style="grid-column:1/-1;margin-top:4px">
+          <div class="card-hdr"><div class="card-title">⏱ Tiempos Promedio del Período</div></div>
+          <div style="padding:14px">
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+              <div style="background:var(--g3);border-radius:12px;padding:12px;text-align:center">
+                <div style="font-size:10px;color:var(--td);font-weight:700;text-transform:uppercase;margin-bottom:6px">Total Pedido</div>
+                <div class="mono" style="font-size:22px;font-weight:900;color:var(--or)" id="t-total">—</div>
+                <div style="font-size:10px;color:var(--td);margin-top:3px">creación → entrega</div>
+              </div>
+              <div style="background:var(--g3);border-radius:12px;padding:12px;text-align:center">
+                <div style="font-size:10px;color:var(--td);font-weight:700;text-transform:uppercase;margin-bottom:6px">Asignación</div>
+                <div class="mono" style="font-size:22px;font-weight:900;color:var(--az)" id="t-asig">—</div>
+                <div style="font-size:10px;color:var(--td);margin-top:3px">creado → rider toma</div>
+              </div>
+              <div style="background:var(--g3);border-radius:12px;padding:12px;text-align:center">
+                <div style="font-size:10px;color:var(--td);font-weight:700;text-transform:uppercase;margin-bottom:6px">En Comercio</div>
+                <div class="mono" style="font-size:22px;font-weight:900;color:#a855f7" id="t-com">—</div>
+                <div style="font-size:10px;color:var(--td);margin-top:3px">llegada → salida estab.</div>
+              </div>
+              <div style="background:var(--g3);border-radius:12px;padding:12px;text-align:center">
+                <div style="font-size:10px;color:var(--td);font-weight:700;text-transform:uppercase;margin-bottom:6px">Traslado</div>
+                <div class="mono" style="font-size:22px;font-weight:900;color:var(--verde)" id="t-trasl">—</div>
+                <div style="font-size:10px;color:var(--td);margin-top:3px">en camino → entrega</div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--td);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">🏪 Comercios más lentos</div>
+                <div id="t-comercios"><div style="font-size:12px;color:var(--td)">Sin datos suficientes</div></div>
+              </div>
+              <div>
+                <div style="font-size:11px;font-weight:700;color:var(--td);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">🛵 Riders más rápidos</div>
+                <div id="t-riders"><div style="font-size:12px;color:var(--td)">Sin datos suficientes</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
       <!-- ═══ KANBAN ══════════════════════════════════════════ -->
       <div class="view" id="view-kanban" style="padding:0;">
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;height:calc(100vh - 52px);overflow:hidden;">
@@ -1299,6 +1338,81 @@ async function cargarMetricas() {
   if(document.getElementById('fin-efectivo')) document.getElementById('fin-efectivo').textContent = `L. ${totalEfectivo.toFixed(2)}`;
   if(document.getElementById('fin-transfer')) document.getElementById('fin-transfer').textContent = `L. ${totalTransfer.toFixed(2)}`;
   document.getElementById('badge-activos').textContent = proc + sa;
+
+  // ── Cálculo de tiempos ────────────────────────────────────────────────────
+  const finOK = finalizados.filter(p => p.hora_finalizado && p.created_at);
+
+  const calcMin = (t1, t2) => t1 && t2 ? (new Date(t2)-new Date(t1))/60000 : null;
+
+  // Tiempo total del pedido (creación → finalizado)
+  const tiemposTotales = finOK.map(p => calcMin(p.created_at, p.hora_finalizado)).filter(v=>v!==null && v>0 && v<300);
+  const promTotal = tiemposTotales.length ? (tiemposTotales.reduce((a,b)=>a+b,0)/tiemposTotales.length) : 0;
+
+  // Tiempo asignación (creado → hora_asignado)
+  const tiemposAsig = finOK.map(p => calcMin(p.created_at, p.hora_asignado)).filter(v=>v!==null && v>=0 && v<120);
+  const promAsig = tiemposAsig.length ? (tiemposAsig.reduce((a,b)=>a+b,0)/tiemposAsig.length) : 0;
+
+  // Tiempo en comercio (hora_aceptado → hora_en_camino)
+  const tiemposCom = finOK.map(p => calcMin(p.hora_en_establecimiento||p.hora_aceptado, p.hora_en_camino)).filter(v=>v!==null && v>=0 && v<120);
+  const promCom = tiemposCom.length ? (tiemposCom.reduce((a,b)=>a+b,0)/tiemposCom.length) : 0;
+
+  // Tiempo traslado (hora_en_camino → hora_finalizado)
+  const tiemposTras = finOK.map(p => calcMin(p.hora_en_camino, p.hora_finalizado)).filter(v=>v!==null && v>=0 && v<180);
+  const promTras = tiemposTras.length ? (tiemposTras.reduce((a,b)=>a+b,0)/tiemposTras.length) : 0;
+
+  // Promedio por comercio (top 3)
+  const porComercio = {};
+  finOK.forEach(p => {
+    const com = p.nombre_comercio || 'Sin nombre';
+    const t = calcMin(p.created_at, p.hora_finalizado);
+    if(t > 0 && t < 300) {
+      if(!porComercio[com]) porComercio[com] = [];
+      porComercio[com].push(t);
+    }
+  });
+  const promsComercio = Object.entries(porComercio)
+    .map(([nom, ts]) => ({ nom, prom: ts.reduce((a,b)=>a+b,0)/ts.length, cnt: ts.length }))
+    .filter(x => x.cnt >= 1)
+    .sort((a,b) => b.prom - a.prom)
+    .slice(0, 5);
+
+  // Promedio por rider (top deliveries)
+  const porRider = {};
+  finOK.forEach(p => {
+    if(!p.delivery_id) return;
+    const rid = S.riders.find(r=>r.id===p.delivery_id);
+    const nom = rid?.nombre || 'Rider ' + p.delivery_id;
+    const t = calcMin(p.created_at, p.hora_finalizado);
+    if(t > 0 && t < 300) {
+      if(!porRider[nom]) porRider[nom] = [];
+      porRider[nom].push(t);
+    }
+  });
+  const promsRider = Object.entries(porRider)
+    .map(([nom, ts]) => ({ nom, prom: ts.reduce((a,b)=>a+b,0)/ts.length, cnt: ts.length }))
+    .filter(x => x.cnt >= 1)
+    .sort((a,b) => a.prom - b.prom)
+    .slice(0, 5);
+
+  const fmtMin = m => m < 60 ? `${Math.round(m)}m` : `${Math.floor(m/60)}h ${Math.round(m%60)}m`;
+
+  // Actualizar UI de tiempos
+  if(document.getElementById('t-total'))  document.getElementById('t-total').textContent  = promTotal ? fmtMin(promTotal) : '—';
+  if(document.getElementById('t-asig'))   document.getElementById('t-asig').textContent   = promAsig  ? fmtMin(promAsig)  : '—';
+  if(document.getElementById('t-com'))    document.getElementById('t-com').textContent    = promCom   ? fmtMin(promCom)   : '—';
+  if(document.getElementById('t-trasl'))  document.getElementById('t-trasl').textContent  = promTras  ? fmtMin(promTras)  : '—';
+
+  // Top comercios y riders
+  const tcEl = document.getElementById('t-comercios');
+  if(tcEl) tcEl.innerHTML = promsComercio.length
+    ? promsComercio.map(x=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--g4);font-size:12px"><span style="color:var(--td);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${x.nom}</span><span class="mono" style="color:var(--or);flex-shrink:0">${fmtMin(x.prom)} <span style="color:var(--td)">(${x.cnt})</span></span></div>`).join('')
+    : '<div style="font-size:12px;color:var(--td)">Sin datos</div>';
+
+  const trEl = document.getElementById('t-riders');
+  if(trEl) trEl.innerHTML = promsRider.length
+    ? promsRider.map(x=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--g4);font-size:12px"><span style="color:var(--td);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${x.nom}</span><span class="mono" style="color:var(--verde);flex-shrink:0">${fmtMin(x.prom)} <span style="color:var(--td)">(${x.cnt})</span></span></div>`).join('')
+    : '<div style="font-size:12px;color:var(--td)">Sin datos</div>';
+
   renderListaActivos();
 }
 
@@ -1503,7 +1617,41 @@ function renderPanel(p) {
 
     <!-- Timeline -->
     <div style="font-size:10px;font-weight:700;color:var(--td);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;">Línea de tiempo</div>
-    <div class="tl" style="margin-bottom:18px;">${timelineHTML}</div>
+    <div class="tl" style="margin-bottom:14px;">${timelineHTML}</div>
+
+    <!-- Desglose de tiempos (solo si está finalizado) -->
+    ${['FINALIZADO','CANCELADO'].includes(p.estatus) ? (() => {
+      const calcM = (t1, t2) => t1 && t2 ? Math.round((new Date(t2)-new Date(t1))/60000) : null;
+      const fmtM  = m => m === null ? '—' : m < 60 ? m+'m' : Math.floor(m/60)+'h '+( m%60)+'m';
+      const tAsig  = calcM(p.created_at, p.hora_asignado);
+      const tEspera = calcM(p.hora_asignado, p.hora_aceptado);
+      const tViaje1 = calcM(p.hora_aceptado, p.hora_en_establecimiento);
+      const tComercio = calcM(p.hora_en_establecimiento, p.hora_en_camino);
+      const tViaje2 = calcM(p.hora_en_camino, p.hora_finalizado);
+      const tTotal  = calcM(p.created_at, p.hora_finalizado);
+      return `<div style="background:var(--g2);border-radius:12px;overflow:hidden;margin-bottom:14px;">
+        <div style="padding:10px 14px;border-bottom:1px solid var(--g3);font-size:10px;font-weight:700;color:var(--td);text-transform:uppercase;letter-spacing:.06em">
+          ⏱ Desglose de Tiempos
+        </div>
+        ${[
+          ['Asignación', 'Creado → Rider asignado', tAsig, 'var(--az)'],
+          ['Espera rider', 'Asignado → Aceptado', tEspera, '#8B5CF6'],
+          ['Traslado a comercio', 'Aceptado → Llegó al estab.', tViaje1, '#F97316'],
+          ['Tiempo en comercio', 'En estab. → Salió en camino', tComercio, '#F59E0B'],
+          ['Traslado al cliente', 'En camino → Entregado', tViaje2, 'var(--verde)'],
+        ].map(([lbl, sub, val, col]) => `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid var(--g3)">
+          <div>
+            <div style="font-size:12px;font-weight:600">${lbl}</div>
+            <div style="font-size:10px;color:var(--td)">${sub}</div>
+          </div>
+          <div class="mono" style="font-size:14px;font-weight:800;color:${col}">${fmtM(val)}</div>
+        </div>`).join('')}
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(255,140,0,.06)">
+          <div style="font-size:13px;font-weight:800">Total</div>
+          <div class="mono" style="font-size:18px;font-weight:900;color:var(--or)">${fmtM(tTotal)}</div>
+        </div>
+      </div>`;
+    })() : ''}
 
     <!-- Datos -->
     <div style="font-size:10px;font-weight:700;color:var(--td);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;">Detalles del pedido</div>
@@ -2115,7 +2263,7 @@ function initMapRiders() {
   if(!el || S.mapRidersInit) return;
   S.mapRidersInit = true;
   const map = L.map('map-riders', { zoomControl: true }).setView([15.6133, -87.9480], 13);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution:'© CartoDB', maxZoom:19 }).addTo(map);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap', maxZoom:19 }).addTo(map);
   S.mapRiders = map;
   S.zonaLayer = null;
   actualizarMarkersRiders();
@@ -2126,90 +2274,89 @@ async function actualizarZonaCaliente() {
   if(!S.mapRiders) return;
   if(S.zonaLayer) { S.mapRiders.removeLayer(S.zonaLayer); S.zonaLayer = null; }
 
-  // ── ZONAS CONFIGURADAS — coordenadas fijas por colonia/sector ──────────────
-  // Agregar o editar zonas aquí para ajustar la cobertura del mapa
   const ZONAS = [
     { nombre:'Choloma Centro',  ciudad:'CHOLOMA',        lat:15.609903, lng:-87.956312, radio:1500 },
     { nombre:'SPS Centro',      ciudad:'SAN PEDRO SULA', lat:15.500000, lng:-88.025100, radio:1800 },
   ];
 
-  // ── CONSULTAR PEDIDOS 30 DÍAS ───────────────────────────────────────────────
+  // Solo pedidos FINALIZADOS en los últimos 30 días
   const hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
   const { data: ped30, error } = await sb
     .from('pedidos')
-    .select('ciudad_destino')
-    .gte('created_at', hace30.toISOString())
-    .in('estatus', ['FINALIZADO','ENTREGANDO','PEDIDO_EN_CAMINO','EN_ESTABLECIMIENTO','ACEPTADO','ASIGNADO']);
+    .select('ciudad_destino,hora_finalizado')
+    .eq('estatus', 'FINALIZADO')
+    .gte('hora_finalizado', hace30.toISOString())
+    .not('hora_finalizado', 'is', null);
 
   if(error) { console.error('[zona caliente]', error.message); }
 
-  // Contar por ciudad
-  const conteo = {};
+  // Agrupar por día para calcular promedio solo en días con pedidos
+  const porDiaCiudad = {}; // { CHOLOMA: { '2026-04-01': 3, '2026-04-02': 5 } }
   (ped30 || []).forEach(p => {
     const ciudad = (p.ciudad_destino || 'CHOLOMA').toUpperCase().trim();
-    conteo[ciudad] = (conteo[ciudad] || 0) + 1;
+    const dia = (p.hora_finalizado || '').slice(0, 10);
+    if(!dia) return;
+    if(!porDiaCiudad[ciudad]) porDiaCiudad[ciudad] = {};
+    porDiaCiudad[ciudad][dia] = (porDiaCiudad[ciudad][dia] || 0) + 1;
   });
 
-  const totalPed = Object.values(conteo).reduce((a,b)=>a+b, 0);
-  const maxConteo = Math.max(1, ...Object.values(conteo));
+  // Calcular promedio SOLO de días con al menos 1 pedido (ignorar días con cero)
+  const promedio = {};
+  Object.entries(porDiaCiudad).forEach(([ciudad, dias]) => {
+    const diasConPedidos = Object.values(dias); // solo días con pedidos
+    const total = diasConPedidos.reduce((a,b) => a+b, 0);
+    promedio[ciudad] = parseFloat((total / diasConPedidos.length).toFixed(1));
+  });
 
-  // ── DIBUJAR ZONAS ────────────────────────────────────────────────────────────
+  const totalPed = Object.values(promedio).reduce((a,b) => a+b, 0);
+  const maxProm  = Math.max(1, ...Object.values(promedio));
+
   const group = L.layerGroup();
-
-  // Agrupar zonas por ciudad para calcular intensidad
   const ciudadesVistas = new Set();
 
   ZONAS.forEach(z => {
-    const cnt = conteo[z.ciudad] || 0;
-    const promDiario = parseFloat((cnt / 30).toFixed(1));
-    const intensidad = cnt / maxConteo; // 0-1 relativo al máximo
+    const prom = promedio[z.ciudad] || 0;
+    const intensidad = prom / maxProm;
+    const diasActivos = porDiaCiudad[z.ciudad] ? Object.keys(porDiaCiudad[z.ciudad]).length : 0;
+    const totalCiudad = porDiaCiudad[z.ciudad] ? Object.values(porDiaCiudad[z.ciudad]).reduce((a,b)=>a+b,0) : 0;
 
-    // Color según intensidad
-    const color = cnt === 0    ? '#444'
-                : intensidad > 0.7 ? '#EF4444'   // 🔴 muy activa
-                : intensidad > 0.4 ? '#F59E0B'   // 🟡 activa
-                :                    '#22C55E';  // 🟢 normal
+    const color = prom === 0    ? '#444'
+                : intensidad > 0.7 ? '#EF4444'
+                : intensidad > 0.4 ? '#F59E0B'
+                :                    '#22C55E';
 
-    const fillOpacity = cnt === 0 ? 0.04 : 0.07 + (intensidad * 0.2);
-    const radioAjustado = cnt === 0 ? z.radio * 0.6 : z.radio * (0.7 + intensidad * 0.6);
+    const fillOpacity = prom === 0 ? 0.04 : 0.07 + (intensidad * 0.22);
+    const radio = prom === 0 ? z.radio * 0.5 : z.radio * (0.6 + intensidad * 0.7);
 
-    // Círculo de zona
     L.circle([z.lat, z.lng], {
-      radius: radioAjustado,
-      color, fillColor: color,
-      fillOpacity, weight: cnt === 0 ? 1 : 2,
-      dashArray: cnt === 0 ? '4,6' : '5,3'
+      radius: radio, color, fillColor: color,
+      fillOpacity, weight: prom === 0 ? 1 : 2,
+      dashArray: prom === 0 ? '4,6' : '5,3'
     }).addTo(group).bindPopup(`
       <b>${z.nombre}</b><br>
-      ${cnt === 0
+      ${prom === 0
         ? '📭 Sin pedidos en 30 días'
-        : `📊 Promedio: <b>${promDiario}/día</b><br>
-           📦 Total 30d: <b>${cnt}</b> pedidos<br>
-           📍 ${totalPed > 0 ? Math.round(cnt/totalPed*100) : 0}% de la demanda<br>
+        : `📊 Promedio: <b>${prom}/día activo</b><br>
+           📅 Días con pedidos: <b>${diasActivos}</b> de 30<br>
+           📦 Total 30d: <b>${totalCiudad}</b> pedidos<br>
            ${intensidad>0.7?'🔴 Zona muy caliente':intensidad>0.4?'🟡 Zona activa':'🟢 Zona normal'}`
       }
     `);
 
-    // Badge solo para zonas con pedidos
-    if(cnt > 0 && !ciudadesVistas.has(z.ciudad)) {
+    if(prom > 0 && !ciudadesVistas.has(z.ciudad)) {
       ciudadesVistas.add(z.ciudad);
       L.marker([z.lat, z.lng], {
         icon: L.divIcon({
-          html: `<div style="
-            background:${color};color:#fff;border-radius:10px;
-            padding:3px 8px;font-size:10px;font-weight:800;
-            border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5);
-            white-space:nowrap;pointer-events:none;
-          ">${promDiario > 0 ? promDiario+'/día' : cnt+' ped'}</div>`,
+          html: `<div style="background:${color};color:#fff;border-radius:10px;padding:3px 8px;font-size:10px;font-weight:800;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.5);white-space:nowrap">${prom}/día</div>`,
           iconSize:[null,null], iconAnchor:[24,10], className:''
         })
-      }).addTo(group);
+      }).addTo(group).bindPopup(`<b>${z.nombre}</b>: ${prom} ped/día (prom. días activos)`);
     }
   });
 
   group.addTo(S.mapRiders);
   S.zonaLayer = group;
-  console.log('[zona caliente] 30d —', JSON.stringify(conteo), 'total:', totalPed);
+  console.log('[zona caliente] promedios días activos:', promedio);
 }
 
 
@@ -2277,7 +2424,7 @@ function enfocarRider(dId) {
 function initMap() {
   S.mapInit = true;
   const map = L.map('map-live').setView([15.6133, -87.9480], 13);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution:'© CartoDB', maxZoom:19 }).addTo(map);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution:'© OpenStreetMap', maxZoom:19 }).addTo(map);
   S.map = map;
   S.pedidoMarkers = {}; // marcadores de pedidos en el mapa
 
