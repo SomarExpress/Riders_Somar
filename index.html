@@ -1924,7 +1924,7 @@ function TabZona({delivery}){
     const el = document.getElementById('mapa-zona-rider');
     if(!el) return;
     const map = window.L.map('mapa-zona-rider', {zoomControl:true}).setView([15.6133,-87.9480],13);
-    window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB',maxZoom:19}).addTo(map);
+    window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap',maxZoom:19}).addTo(map);
     ZONAS.forEach(z=>{
       window.L.circle([z.lat,z.lng],{radius:z.radio,color:z.color,fillColor:z.color,fillOpacity:0.06,weight:2,dashArray:'6,4'}).addTo(map);
     });
