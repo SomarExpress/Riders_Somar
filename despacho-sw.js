@@ -1,7 +1,7 @@
 // ════════════════════════════════════════════════════════════
 // SERVICE WORKER — Somar Despacho PWA
 // ════════════════════════════════════════════════════════════
-const CACHE_NAME = 'somar-despacho-v1';
+const CACHE_NAME = 'somar-despacho-v1.1';
 
 // Recursos a cachear para uso offline
 const CACHE_URLS = [
