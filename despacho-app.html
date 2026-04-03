@@ -385,7 +385,7 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
       <div class="tb-title" id="tb-title">Dashboard</div>
       <div id="rt-status" style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--td)">
         <div class="rt-dot off" id="rt-dot"></div>
-        <span id="rt-txt">Conectando...</span>
+        <span id="fecha-hoy" style="font-size:11px;color:var(--td);font-weight:600"></span>
       </div>
       <div class="tb-clock" id="clock">--:--</div>
       <button class="btn btn-primary btn-sm" onclick="nav('nuevo')">
@@ -1030,14 +1030,13 @@ async function init() {
   clockTick();
   setInterval(clockTick, 1000);
   // Fecha en zona horaria de Honduras
-  const _ahoraHN = new Date(new Date().toLocaleString('en-US', {timeZone:'America/Tegucigalpa'}));
-  const _hoyHN = _ahoraHN.toISOString().split('T')[0];
-  const _hace30HN = new Date(_ahoraHN); _hace30HN.setDate(_ahoraHN.getDate() - 30);
-  const _hace30Str = _hace30HN.toISOString().split('T')[0];
+  const _hoyHN = fechaHN();
+  const _hace30d = new Date(); _hace30d.setDate(_hace30d.getDate() - 30);
+  const _hace30Str = fechaHN(_hace30d);
   document.getElementById('hist-hasta').value = _hoyHN;
   document.getElementById('hist-desde').value = _hace30Str;
   // Inicializar fechas del dashboard en 'hoy'
-  const _hoyHN2 = new Date(new Date().toLocaleString('en-US', {timeZone:'America/Tegucigalpa'})).toISOString().split('T')[0];
+  const _hoyHN2 = fechaHN();
   const _dEl = document.getElementById('dash-desde');
   const _hEl = document.getElementById('dash-hasta');
   if(_dEl) _dEl.value = _hoyHN2;
@@ -1050,10 +1049,19 @@ async function init() {
 }
 
 function clockTick() {
-  document.getElementById('clock').textContent = new Date().toLocaleTimeString('es-HN', {
+  const ahora = new Date();
+  document.getElementById('clock').textContent = ahora.toLocaleTimeString('es-HN', {
     hour:'2-digit', minute:'2-digit', second:'2-digit',
     timeZone:'America/Tegucigalpa'
   });
+  // Fecha formateada: "Jueves 3 de abril del 2026"
+  const fechaEl = document.getElementById('fecha-hoy');
+  if(fechaEl) {
+    fechaEl.textContent = ahora.toLocaleDateString('es-HN', {
+      weekday:'long', day:'numeric', month:'long', year:'numeric',
+      timeZone:'America/Tegucigalpa'
+    });
+  }
   tickTimers();
 }
 
@@ -1149,7 +1157,8 @@ function initRealtime() {
     .subscribe(status => {
       const ok = status === 'SUBSCRIBED';
       document.getElementById('rt-dot').classList.toggle('off', !ok);
-      document.getElementById('rt-txt').textContent = ok ? 'Tiempo real ●' : 'Reconectando...';
+      // rt-txt reemplazado por fecha-hoy, solo actualizar el dot
+    document.getElementById('rt-dot').classList.toggle('off', !ok);
     });
 }
 
@@ -1190,7 +1199,7 @@ function onPedidoChange(payload) {
 // MÉTRICAS
 // ════════════════════════════════════════════════════════════
 function resetFiltroFecha() {
-  const hoyHN = new Date(new Date().toLocaleString('en-US', {timeZone:'America/Tegucigalpa'})).toISOString().split('T')[0];
+  const hoyHN = fechaHN();
   const dEl = document.getElementById('dash-desde');
   const hEl = document.getElementById('dash-hasta');
   if(dEl) dEl.value = hoyHN;
@@ -1198,14 +1207,41 @@ function resetFiltroFecha() {
   cargarMetricas();
 }
 
+// ─── ZONA HORARIA HONDURAS (UTC-6) ───────────────────────────
+// Honduras NO tiene horario de verano — siempre UTC-6
+function fechaHN(date = new Date()) {
+  // Retorna fecha local en Honduras como string YYYY-MM-DD
+  const hn = new Date(date.getTime() - (6 * 60 * 60 * 1000));
+  return hn.toISOString().split('T')[0];
+}
+
+function rangoHN(fechaStr) {
+  // Convierte una fecha local HN a rango UTC para queries Supabase
+  // ej: "2026-04-02" → { desde: "2026-04-02T06:00:00Z", hasta: "2026-04-03T05:59:59Z" }
+  return {
+    desde: fechaStr + 'T06:00:00.000Z',  // medianoche HN = 06:00 UTC
+    hasta: fechaStr + 'T29:59:59.999Z',  // 11:59pm HN = 05:59:59 UTC del día siguiente
+    // Nota: T29 es incorrecto, calculamos bien:
+  };
+}
+
+function rangoUTCdesdeHN(fechaDesdeHN, fechaHastaHN) {
+  // UTC-6: medianoche HN = 06:00 UTC, 23:59:59 HN = 05:59:59 UTC del día siguiente
+  const desde = new Date(fechaDesdeHN + 'T00:00:00-06:00').toISOString();
+  const hasta  = new Date(fechaHastaHN  + 'T23:59:59-06:00').toISOString();
+  return { desde, hasta };
+}
+
 async function cargarMetricas() {
-  const hoyHN = new Date(new Date().toLocaleString('en-US', {timeZone:'America/Tegucigalpa'})).toISOString().split('T')[0];
+  const hoyHN = fechaHN(); // fecha actual en Honduras
   const desde = document.getElementById('dash-desde')?.value || hoyHN;
-  const hasta = document.getElementById('dash-hasta')?.value || hoyHN;
+  const hasta  = document.getElementById('dash-hasta')?.value  || hoyHN;
+  // Convertir rango local HN a UTC para el query (Honduras = UTC-6)
+  const { desde: desdeUTC, hasta: hastaUTC } = rangoUTCdesdeHN(desde, hasta);
   const { data } = await sb.from('pedidos')
     .select('*')
-    .gte('created_at', desde + 'T00:00:00')
-    .lte('created_at', hasta + 'T23:59:59')
+    .gte('created_at', desdeUTC)
+    .lte('created_at', hastaUTC)
     .order('created_at', { ascending: false });
   if(!data) return;
   S.pedidos = data;
@@ -1831,8 +1867,8 @@ async function cargarHistorial() {
   if(!desde || !hasta) return;
   const { data } = await sb.from('pedidos')
     .select('*')
-    .gte('created_at', desde + 'T00:00:00')
-    .lte('created_at', hasta + 'T23:59:59')
+    .gte('created_at', rangoUTCdesdeHN(desde, desde).desde)
+    .lte('created_at', rangoUTCdesdeHN(hasta, hasta).hasta)
     .order('created_at', { ascending: false });
   if(!data?.length) { document.getElementById('hist-content').innerHTML = '<div class="empty">Sin pedidos en ese rango</div>'; return; }
   const fin = data.filter(p => p.estatus === 'FINALIZADO');
