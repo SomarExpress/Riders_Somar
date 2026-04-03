@@ -430,6 +430,15 @@ input,select,textarea{font-family:'Barlow',sans-serif;}
   .metric-val{font-size:24px !important;}
 }
 </style>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest-despacho.json">
+  <meta name="theme-color" content="#FF8C00">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Somar Despacho">
+  <link rel="apple-touch-icon" href="https://res.cloudinary.com/drkaxsziu/image/upload/v1767871213/Somar_Express_2048_x_2048_px_18_x_18_in__20250623_221102_0000_o0bv7a.png">
 </head>
 <body>
 
@@ -3580,6 +3589,42 @@ function notif(titulo, cuerpo, urgente=false) {
 
 // Cerrar modals al hacer click fuera
 document.querySelectorAll('.modal-bg').forEach(bg => bg.addEventListener('click', e => { if(e.target === bg) bg.classList.remove('open'); }));
+</script>
+
+<script>
+// Registrar Service Worker para PWA
+if('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('despacho-sw.js')
+      .then(reg => console.log('[SW] Despacho registrado:', reg.scope))
+      .catch(err => console.log('[SW] Error:', err));
+  });
+}
+
+// Capturar evento de instalación para mostrar botón propio
+let _deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _deferredPrompt = e;
+  // Mostrar botón de instalación en la UI
+  const btn = document.getElementById('btn-instalar-pwa');
+  if(btn) btn.style.display = 'flex';
+});
+
+window.addEventListener('appinstalled', () => {
+  _deferredPrompt = null;
+  const btn = document.getElementById('btn-instalar-pwa');
+  if(btn) btn.style.display = 'none';
+  console.log('[PWA] Despacho instalado correctamente');
+});
+
+async function instalarPWA() {
+  if(!_deferredPrompt) return;
+  _deferredPrompt.prompt();
+  const { outcome } = await _deferredPrompt.userChoice;
+  console.log('[PWA] Usuario:', outcome);
+  _deferredPrompt = null;
+}
 </script>
 </body>
 </html>
