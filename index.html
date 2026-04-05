@@ -979,17 +979,22 @@ function TabGuaca({historial, saldo, movimientos, onIrDepositos, delivery}){
                 <div style={{fontSize:12,color:'var(--txt3)',marginTop:2}}>
                   {(d1Ef&&d2Ef)?`${rC} pedido${rC!==1?'s':''}  ·  ${d1Ef===d2Ef?d1Ef:`${d1Ef} → ${d2Ef}`}`:'Selecciona un período'}
                 </div>
+                {(d1Ef&&d2Ef&&rC>0)&&(
+                  <div style={{fontSize:11,color:'var(--txt3)',marginTop:4}}>
+                    Promedio por pedido: <span style={{color:'var(--green)',fontWeight:600}}>{fmtL(rT/rC)}</span>
+                  </div>
+                )}
               </div>
             </div>
             {/* Métricas del período — solo si hay datos */}
             {(d1Ef&&d2Ef&&rC>0)&&(
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
                 {[
-                  ['Propinas',       rPropina>0 ? fmtL(rPropina) : '—',    'Incluidas en ganancia'],
-                  ['Kilómetros',     rKm>0 ? `${rKm.toFixed(1)} km` : '—', `${rC} pedido${rC!==1?'s':''}`],
-                  ['Tiempo completo',fmtMin(promTotal),                      'Acepta → finaliza'],
-                  ['Sin espera',     fmtMin(promSinEsp),                     'Descuenta establec.'],
-                ].map(([lbl,val,sub])=>(
+                  rPropina>0      ? ['Propinas',        fmtL(rPropina),              'Incluidas en ganancia']  : null,
+                  rKm>0           ? ['Kilómetros',       `${rKm.toFixed(1)} km`,      `${rC} pedido${rC!==1?'s':''}`] : null,
+                  promTotal!==null? ['Tiempo completo',  fmtMin(promTotal),            'Acepta → finaliza']     : null,
+                  promSinEsp!==null?['Sin espera',       fmtMin(promSinEsp),           'Descuenta establec.']   : null,
+                ].filter(Boolean).map(([lbl,val,sub])=>(
                   <div key={lbl} style={{background:'var(--s3)',borderRadius:'var(--r-sm)',padding:'10px 12px'}}>
                     <div style={{fontSize:10,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:4}}>{lbl}</div>
                     <div style={{fontSize:16,fontWeight:700,color:'var(--txt)',letterSpacing:'-0.02em'}}>{val}</div>
