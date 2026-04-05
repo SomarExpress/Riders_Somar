@@ -1156,135 +1156,311 @@ function DepForm({onEnviar, onConfirm}){
 }
 
 function AuthScreen({onLogin}){
-  const [vista,setVista]=useState('login');
-  const [email,setEmail]=useState('');
-  const [pwd,setPwd]=useState('');
-  const [err,setErr]=useState('');
-  const [cargando,setCargando]=useState(false);
-  const [reg,setReg]=useState({nombre:'',celular:'',email:'',pwd:'',pwd2:''});
-  const [regErr,setRegErr]=useState('');
-  const [regCargando,setRegCargando]=useState(false);
-  const [duiFile,setDuiFile]=useState(null);
-  const [motoFile,setMotoFile]=useState(null);
-  const [duiPrev,setDuiPrev]=useState(null);
-  const [motoPrev,setMotoPrev]=useState(null);
+  const [vista,setVista]   = useState('login');
+  const [email,setEmail]   = useState('');
+  const [pwd,setPwd]       = useState('');
+  const [err,setErr]       = useState('');
+  const [cargando,setCargando] = useState(false);
   const _reg = useRef(false);
 
-  const inp = {width:'100%',background:'var(--s2)',border:'1.5px solid var(--brd)',borderRadius:'var(--r-sm)',padding:'14px 16px',color:'var(--txt)',fontSize:15,outline:'none',fontFamily:'Inter,system-ui,sans-serif',letterSpacing:'-0.01em',transition:'border-color .15s'};
+  // ── Campos del registro ───────────────────────────────────
+  const [reg,setReg] = useState({nombre:'',celular:'',email:'',pwd:'',pwd2:'',cuenta_bac:'',tiene_mochila:false});
+  const [regErr,setRegErr]       = useState('');
+  const [regCargando,setRegCargando] = useState(false);
+  const [paso,setPaso]           = useState(1); // 1=datos, 2=fotos, 3=extras
 
-  const login = async () => {
-    if(!email||!pwd) return setErr('Completa todos los campos');
-    setCargando(true); setErr('');
-    const {error} = await sb.auth.signInWithPassword({email, password:pwd});
-    if(error) setErr('Correo o contraseña incorrectos');
-    setCargando(false);
+  // Fotos
+  const [fotos,setFotos] = useState({dui:null,licencia:null,revision:null,vehiculo:null,mochila:null,perfil:null});
+  const [prevs,setPrevs] = useState({dui:null,licencia:null,revision:null,vehiculo:null,mochila:null,perfil:null});
+
+  const setFoto = (key,file) => {
+    setFotos(f=>({...f,[key]:file}));
+    const r=new FileReader(); r.onload=e=>setPrevs(p=>({...p,[key]:e.target.result})); r.readAsDataURL(file);
   };
 
+  const inp = {width:'100%',background:'var(--s2)',border:'1.5px solid var(--brd)',borderRadius:'var(--r-sm)',padding:'14px 16px',color:'var(--txt)',fontSize:15,outline:'none',fontFamily:'Inter,system-ui,sans-serif',letterSpacing:'-0.01em'};
+  const lbl = {fontSize:11,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.07em',display:'block',marginBottom:6};
+
+  // ── Subir foto a Supabase Storage ─────────────────────────
+  const upFoto = async (uid,file,nombre) => {
+    if(!file) return null;
+    const ext = file.name.split('.').pop()?.toLowerCase()||'jpg';
+    const path = `${uid}/${nombre}_${Date.now()}.${ext}`;
+    const {data,error} = await sb.storage.from('delivery-docs').upload(path,file,{cacheControl:'3600',upsert:true,contentType:file.type});
+    if(error){ console.warn('[foto]',nombre,error.message); return null; }
+    const {data:u} = await sb.storage.from('delivery-docs').createSignedUrl(data.path,60*60*24*365*10);
+    return u?.signedUrl||null;
+  };
+
+  // ── Validaciones por paso ─────────────────────────────────
+  const validarPaso1 = () => {
+    if(!reg.nombre.trim()) return 'El nombre es requerido';
+    if(!reg.celular.trim()) return 'El celular es requerido';
+    if(!reg.email.trim()) return 'El correo es requerido';
+    if(!reg.pwd) return 'La contraseña es requerida';
+    if(reg.pwd.length<8) return 'Contraseña mínimo 8 caracteres';
+    if(reg.pwd!==reg.pwd2) return 'Las contraseñas no coinciden';
+    return null;
+  };
+
+  const validarPaso2 = () => {
+    if(!fotos.perfil)   return 'Sube tu foto de perfil';
+    if(!fotos.dui)      return 'Sube la foto del DNI';
+    if(!fotos.licencia) return 'Sube la foto de la licencia';
+    if(!fotos.revision) return 'Sube la foto de la revisión del vehículo';
+    if(!fotos.vehiculo) return 'Sube la foto del vehículo';
+    return null;
+  };
+
+  const validarPaso3 = () => {
+    if(!reg.cuenta_bac.trim()) return 'El número de cuenta BAC es requerido';
+    if(reg.tiene_mochila && !fotos.mochila) return 'Sube la foto de tu mochila de delivery';
+    return null;
+  };
+
+  // ── Submit final ──────────────────────────────────────────
   const registro = async () => {
-    if(!reg.nombre||!reg.celular||!reg.email||!reg.pwd) return setRegErr('Completa todos los campos');
-    if(reg.pwd!==reg.pwd2) return setRegErr('Las contraseñas no coinciden');
-    if(reg.pwd.length<8) return setRegErr('Contraseña mínimo 8 caracteres');
-    if(!duiFile) return setRegErr('Sube la foto del DUI');
-    if(!motoFile) return setRegErr('Sube la foto del vehículo');
-    setRegCargando(true); setRegErr(''); _reg.current=true;
+    const e3 = validarPaso3();
+    if(e3){ setRegErr(e3); return; }
+    if(_reg.current) return;
+    _reg.current=true; setRegCargando(true); setRegErr('');
     try {
-      const {data:su,error:suErr}=await sb.auth.signUp({email:reg.email,password:reg.pwd});
-      if(suErr){setRegErr(suErr.message);return;}
-      const uid=su?.user?.id;
-      if(!uid){setRegErr('Error al crear cuenta');return;}
-      if(su.session?.access_token) await sb.auth.setSession({access_token:su.session.access_token,refresh_token:su.session.refresh_token});
-      // Subir fotos
-      let duiUrl=null, motoUrl=null;
-      try {
-        const up = async (f,n) => {
-          const ext=f.name.split('.').pop()?.toLowerCase()||'jpg';
-          const {data,error}=await sb.storage.from('delivery-docs').upload(`${uid}/${n}_${Date.now()}.${ext}`,f,{cacheControl:'3600',upsert:true,contentType:f.type});
-          if(error) return null;
-          const {data:u}=await sb.storage.from('delivery-docs').createSignedUrl(data.path,60*60*24*365*10);
-          return u?.signedUrl||null;
-        };
-        duiUrl=await up(duiFile,'dui'); motoUrl=await up(motoFile,'moto');
-      } catch(e){ console.warn('fotos:',e); }
-      // Insert aplicacion
-      const {data:{session:ses}}=await sb.auth.getSession();
+      // 1. Crear cuenta en Auth
+      const {data:su,error:suErr} = await sb.auth.signUp({email:reg.email,password:reg.pwd});
+      if(suErr){ setRegErr(suErr.message); return; }
+      const uid = su?.user?.id;
+      if(!uid){ setRegErr('Error al crear cuenta'); return; }
+      if(su.session?.access_token)
+        await sb.auth.setSession({access_token:su.session.access_token,refresh_token:su.session.refresh_token});
+
+      // 2. Subir fotos en paralelo
+      const [duiUrl,licUrl,revUrl,vehUrl,mochUrl,perfUrl] = await Promise.all([
+        upFoto(uid,fotos.dui,'dui'),
+        upFoto(uid,fotos.licencia,'licencia'),
+        upFoto(uid,fotos.revision,'revision'),
+        upFoto(uid,fotos.vehiculo,'vehiculo'),
+        upFoto(uid,fotos.mochila,'mochila'),
+        upFoto(uid,fotos.perfil,'perfil'),
+      ]);
+
+      // 3. Insertar solicitud
+      const {data:{session:ses}} = await sb.auth.getSession();
+      const body = {
+        nombre:       reg.nombre,
+        celular:      reg.celular,
+        correo:       reg.email,
+        identidad_delantera_url: duiUrl,
+        moto_propia_url:         vehUrl,
+        estatus:      'PENDIENTE',
+        notas:        `auth_uid:${uid} | licencia:${licUrl||'—'} | revision:${revUrl||'—'} | mochila_foto:${mochUrl||'—'} | perfil:${perfUrl||'—'} | cuenta_bac:${reg.cuenta_bac} | mochila:${reg.tiene_mochila?'SI':'NO'}`,
+      };
       const _res = await fetch(SUPA_URL+'/rest/v1/aplicaciones_delivery',{
         method:'POST',
-        headers:{'Content-Type':'application/json','apikey':SUPA_ANON,'Authorization':'Bearer '+(ses?.access_token||SUPA_ANON),'Prefer':'return=minimal'},
-        body:JSON.stringify({nombre:reg.nombre,celular:reg.celular,correo:reg.email,identidad_delantera_url:duiUrl,moto_propia_url:motoUrl,estatus:'PENDIENTE',notas:'auth_uid:'+uid}),
+        headers:{'Content-Type':'application/json','apikey':SUPA_ANON,
+          'Authorization':'Bearer '+(ses?.access_token||SUPA_ANON),'Prefer':'return=minimal'},
+        body: JSON.stringify(body),
       });
       if(!_res.ok){
-        const _errBody = await _res.json().catch(()=>({}));
-        const _errMsg = _errBody?.message || _errBody?.error || `Error ${_res.status}`;
-        console.error('[registro] insert aplicacion:', _errMsg, _errBody);
-        setRegErr('Error al enviar solicitud: '+_errMsg);
+        const _eb = await _res.json().catch(()=>({}));
+        setRegErr('Error al enviar solicitud: '+(_eb?.message||_eb?.error||_res.status));
         return;
       }
-      _reg.current=false;
       setVista('pendiente');
-    } finally { setRegCargando(false); _reg.current=false; }
+    } catch(e){ setRegErr('Error inesperado: '+e.message); }
+    finally { setRegCargando(false); _reg.current=false; }
   };
 
-  const prevFile=(f,setPv)=>{const r=new FileReader();r.onload=e=>setPv(e.target.result);r.readAsDataURL(f);};
+  // ── Foto upload card ──────────────────────────────────────
+  const FotoCard = ({id,label,fotoKey}) => (
+    <div style={{marginBottom:14}}>
+      <label style={lbl}>{label}</label>
+      <div onClick={()=>document.getElementById('rf_'+fotoKey).click()}
+        style={{background:'var(--s2)',border:`2px ${prevs[fotoKey]?'solid var(--green)':'dashed var(--brd2)'}`,
+          borderRadius:'var(--r-md)',overflow:'hidden',cursor:'pointer',minHeight:80,
+          display:'flex',alignItems:'center',justifyContent:'center',position:'relative'}}>
+        {prevs[fotoKey]
+          ? <img src={prevs[fotoKey]} style={{width:'100%',maxHeight:120,objectFit:'cover',display:'block'}}/>
+          : <div style={{textAlign:'center',padding:16}}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--txt3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{marginBottom:6,display:'block',margin:'0 auto 6px'}}><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              <div style={{fontSize:12,color:'var(--txt3)'}}>Toca para seleccionar</div>
+            </div>
+        }
+        {prevs[fotoKey]&&<div style={{position:'absolute',top:6,right:6,background:'var(--green)',borderRadius:20,padding:'2px 8px',fontSize:10,fontWeight:700,color:'#000'}}>✓</div>}
+      </div>
+      <input type="file" id={'rf_'+fotoKey} accept="image/*" capture="environment" style={{display:'none'}}
+        onChange={e=>{const f=e.target.files[0];if(f)setFoto(fotoKey,f);e.target.value='';}}/>
+    </div>
+  );
 
+  // ── Pantalla pendiente ────────────────────────────────────
   if(vista==='pendiente') return(
     <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',padding:20,background:'radial-gradient(ellipse at top,#1f0a00,#0F0F0F)'}}>
-      <div style={{background:'#1A1A1A',border:'1px solid #333',borderRadius:20,padding:28,width:'100%',maxWidth:400,textAlign:'center'}}>
-        <div style={{fontSize:52,marginBottom:16}}>⏳</div>
-        <h2 style={{fontSize:19,fontWeight:700,marginBottom:8}}>Solicitud Enviada</h2>
-        <p style={{color:'#888',fontSize:14,lineHeight:1.6}}>Tu cuenta está siendo revisada por Despacho.<br/><br/>Te notificaremos cuando sea aprobada.</p>
-        <button onClick={()=>sb.auth.signOut().then(()=>setVista('login'))} style={{marginTop:24,background:'none',border:'1px solid #333',borderRadius:10,padding:'10px 20px',color:'#888',fontSize:14,width:'100%'}}>Cerrar sesión</button>
-      </div>
-    </div>
-  );
-
-  if(vista==='registro') return(
-    <div style={{minHeight:'100vh',background:'radial-gradient(ellipse at top,#1f0a00,#0F0F0F)',padding:20,overflowY:'auto'}}>
-      <div style={{background:'#1A1A1A',border:'1px solid #333',borderRadius:20,padding:28,width:'100%',maxWidth:420,margin:'0 auto'}}>
-        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:18}}>
-          <button onClick={()=>setVista('login')} style={{background:'none',border:'none',color:'#888',fontSize:22}}>←</button>
-          <div><h2 style={{fontSize:17,fontWeight:700}}>Crear Cuenta</h2><p style={{color:'#888',fontSize:12}}>Despacho revisará tu solicitud</p></div>
+      <div style={{background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:20,padding:28,width:'100%',maxWidth:400,textAlign:'center'}}>
+        <div style={{width:64,height:64,borderRadius:20,background:'var(--amber-dim)',border:'1px solid var(--amber)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 20px'}}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
         </div>
-        {[['nombre','Nombre completo','text'],['celular','Celular (+504)','tel'],['email','Correo electrónico','email']].map(([k,ph,t])=>(
-          <div key={k} style={{marginBottom:12}}>
-            <input type={t} placeholder={ph} value={reg[k]} onChange={e=>setReg(r=>({...r,[k]:e.target.value}))} style={inp}/>
-          </div>
-        ))}
-        <div style={{marginBottom:12}}><input type="password" placeholder="Contraseña (mín. 8)" value={reg.pwd} onChange={e=>setReg(r=>({...r,pwd:e.target.value}))} style={inp}/></div>
-        <div style={{marginBottom:12}}><input type="password" placeholder="Confirmar contraseña" value={reg.pwd2} onChange={e=>setReg(r=>({...r,pwd2:e.target.value}))} style={inp}/></div>
-        {[['DUI','🪪',duiFile,setDuiFile,duiPrev,setDuiPrev],['Vehículo','🏍️',motoFile,setMotoFile,motoPrev,setMotoPrev]].map(([lbl,icon,f,setF,pv,setPv])=>(
-          <div key={lbl} style={{marginBottom:12}}>
-            <div style={{fontSize:11,color:'#888',fontWeight:700,textTransform:'uppercase',marginBottom:6}}>Foto del {lbl}</div>
-            <div onClick={()=>document.getElementById('reg_'+lbl).click()} style={{background:'#232323',border:`2px ${pv?'solid':'dashed'} ${pv?'#22C55E':'#444'}`,borderRadius:12,padding:pv?0:16,textAlign:'center',overflow:'hidden'}}>
-              {pv?<img src={pv} style={{width:'100%',maxHeight:100,objectFit:'cover',display:'block'}}/>:<><div style={{fontSize:24}}>{icon}</div><div style={{fontSize:12,color:'#888',marginTop:4}}>Toca para seleccionar</div></>}
-            </div>
-            <input type="file" id={'reg_'+lbl} accept="image/*" style={{display:'none'}} onChange={e=>{const file=e.target.files[0];if(file){setF(file);prevFile(file,setPv);}}}/>
-          </div>
-        ))}
-        {regErr&&<div style={{color:'#EF4444',fontSize:13,textAlign:'center',marginBottom:10}}>{regErr}</div>}
-        <button onClick={registro} disabled={regCargando} style={{width:'100%',padding:15,borderRadius:12,background:regCargando?'#444':'#FF8C00',color:regCargando?'#888':'#fff',fontSize:15,fontWeight:700}}>{regCargando?'Enviando...':'Enviar Solicitud'}</button>
+        <h2 style={{fontSize:19,fontWeight:700,marginBottom:8,letterSpacing:'-0.02em'}}>Solicitud Enviada</h2>
+        <p style={{color:'var(--txt2)',fontSize:14,lineHeight:1.7}}>Tu cuenta está siendo revisada por Despacho.<br/>Te notificaremos cuando sea aprobada.</p>
+        <button onClick={()=>sb.auth.signOut().then(()=>setVista('login'))}
+          style={{marginTop:24,background:'none',border:'1px solid var(--brd)',borderRadius:'var(--r-sm)',padding:'10px 20px',color:'var(--txt2)',fontSize:14,width:'100%'}}>
+          Cerrar sesión
+        </button>
       </div>
     </div>
   );
 
+  // ── Pantalla registro multi-paso ──────────────────────────
+  if(vista==='registro') return(
+    <div style={{minHeight:'100vh',background:'radial-gradient(ellipse at top,#1f0a00,#0F0F0F)',padding:'20px 16px',overflowY:'auto'}}>
+      <div style={{width:'100%',maxWidth:440,margin:'0 auto'}}>
+
+        {/* Header */}
+        <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:20,paddingTop:8}}>
+          <button onClick={()=>paso===1?setVista('login'):setPaso(p=>p-1)}
+            style={{background:'none',border:'none',color:'var(--txt2)',fontSize:22,padding:4,lineHeight:1}}>←</button>
+          <div style={{flex:1}}>
+            <div style={{fontSize:16,fontWeight:700,letterSpacing:'-0.02em'}}>Solicitar cuenta</div>
+            <div style={{fontSize:12,color:'var(--txt3)'}}>Paso {paso} de 3</div>
+          </div>
+          {/* Barra de progreso */}
+          <div style={{display:'flex',gap:4}}>
+            {[1,2,3].map(n=>(
+              <div key={n} style={{width:24,height:4,borderRadius:4,background:n<=paso?'var(--brand)':'var(--s3)',transition:'background .2s'}}/>
+            ))}
+          </div>
+        </div>
+
+        <div style={{background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:20,padding:24}}>
+
+          {/* ── PASO 1: Datos personales ── */}
+          {paso===1&&(
+            <div>
+              <div style={{fontSize:14,fontWeight:700,marginBottom:16,color:'var(--txt)'}}>Datos personales</div>
+              {[
+                ['nombre','Nombre completo','text','Ej: Juan Pérez'],
+                ['celular','Celular','tel','+504 9999-9999'],
+                ['email','Correo electrónico','email','correo@ejemplo.com'],
+              ].map(([k,lbl,t,ph])=>(
+                <div key={k} style={{marginBottom:12}}>
+                  <label style={{fontSize:11,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.07em',display:'block',marginBottom:6}}>{lbl}</label>
+                  <input type={t} placeholder={ph} value={reg[k]}
+                    onChange={e=>setReg(r=>({...r,[k]:e.target.value}))} style={inp}/>
+                </div>
+              ))}
+              <div style={{marginBottom:12}}>
+                <label style={{fontSize:11,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.07em',display:'block',marginBottom:6}}>Contraseña</label>
+                <input type="password" placeholder="Mínimo 8 caracteres" value={reg.pwd}
+                  onChange={e=>setReg(r=>({...r,pwd:e.target.value}))} style={inp}/>
+              </div>
+              <div style={{marginBottom:16}}>
+                <label style={{fontSize:11,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.07em',display:'block',marginBottom:6}}>Confirmar contraseña</label>
+                <input type="password" placeholder="Repite tu contraseña" value={reg.pwd2}
+                  onChange={e=>setReg(r=>({...r,pwd2:e.target.value}))} style={inp}/>
+              </div>
+              {regErr&&<div style={{color:'var(--red)',fontSize:13,marginBottom:12,padding:'8px 12px',background:'var(--red-dim)',borderRadius:'var(--r-sm)'}}>{regErr}</div>}
+              <button onClick={()=>{const e=validarPaso1();if(e){setRegErr(e);return;}setRegErr('');setPaso(2);}}
+                style={{width:'100%',padding:15,borderRadius:'var(--r-md)',background:'var(--brand)',color:'#000',fontSize:15,fontWeight:700}}>
+                Continuar →
+              </button>
+            </div>
+          )}
+
+          {/* ── PASO 2: Documentos y fotos ── */}
+          {paso===2&&(
+            <div>
+              <div style={{fontSize:14,fontWeight:700,marginBottom:4,color:'var(--txt)'}}>Documentos y fotos</div>
+              <div style={{fontSize:12,color:'var(--txt3)',marginBottom:16}}>Asegúrate de que las fotos sean legibles y claras</div>
+              <FotoCard fotoKey="perfil"   label="Foto de perfil (selfie)"/>
+              <FotoCard fotoKey="dui"      label="Foto del DNI (identidad)"/>
+              <FotoCard fotoKey="licencia" label="Foto de la licencia de conducir"/>
+              <FotoCard fotoKey="revision" label="Foto de la revisión del vehículo"/>
+              <FotoCard fotoKey="vehiculo" label="Foto del vehículo"/>
+              {regErr&&<div style={{color:'var(--red)',fontSize:13,marginBottom:12,padding:'8px 12px',background:'var(--red-dim)',borderRadius:'var(--r-sm)'}}>{regErr}</div>}
+              <button onClick={()=>{const e=validarPaso2();if(e){setRegErr(e);return;}setRegErr('');setPaso(3);}}
+                style={{width:'100%',padding:15,borderRadius:'var(--r-md)',background:'var(--brand)',color:'#000',fontSize:15,fontWeight:700}}>
+                Continuar →
+              </button>
+            </div>
+          )}
+
+          {/* ── PASO 3: Datos extras ── */}
+          {paso===3&&(
+            <div>
+              <div style={{fontSize:14,fontWeight:700,marginBottom:16,color:'var(--txt)'}}>Información adicional</div>
+              <div style={{marginBottom:16}}>
+                <label style={{fontSize:11,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.07em',display:'block',marginBottom:6}}>Número de cuenta BAC *</label>
+                <input type="tel" placeholder="Ej: 123456789" value={reg.cuenta_bac}
+                  onChange={e=>setReg(r=>({...r,cuenta_bac:e.target.value}))} style={inp}/>
+                <div style={{fontSize:11,color:'var(--txt3)',marginTop:5}}>Cuenta donde Somar realizará tus pagos</div>
+              </div>
+              <div style={{marginBottom:reg.tiene_mochila?12:20}}>
+                <label style={{fontSize:11,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.07em',display:'block',marginBottom:10}}>¿Tienes mochila de delivery?</label>
+                <div style={{display:'flex',gap:10}}>
+                  {[['SI',true],['NO',false]].map(([text,val])=>(
+                    <button key={text} onClick={()=>setReg(r=>({...r,tiene_mochila:val}))}
+                      style={{flex:1,padding:'12px 0',borderRadius:'var(--r-md)',fontWeight:700,fontSize:14,
+                        border:`1.5px solid ${reg.tiene_mochila===val?'var(--brand)':'var(--brd)'}`,
+                        background:reg.tiene_mochila===val?'var(--brand-dim)':'transparent',
+                        color:reg.tiene_mochila===val?'var(--brand)':'var(--txt3)'}}>
+                      {text}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {reg.tiene_mochila&&(
+                <div style={{marginBottom:20}}>
+                  <FotoCard fotoKey="mochila" label="Foto de tu mochila de delivery"/>
+                </div>
+              )}
+              {regErr&&<div style={{color:'var(--red)',fontSize:13,marginBottom:12,padding:'8px 12px',background:'var(--red-dim)',borderRadius:'var(--r-sm)'}}>{regErr}</div>}
+              <button onClick={registro} disabled={regCargando}
+                style={{width:'100%',padding:15,borderRadius:'var(--r-md)',
+                  background:regCargando?'var(--s3)':'var(--brand)',
+                  color:regCargando?'var(--txt3)':'#000',fontSize:15,fontWeight:700}}>
+                {regCargando?'Enviando solicitud...':'Enviar Solicitud'}
+              </button>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── Pantalla login ────────────────────────────────────────
   return(
     <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:20,background:'radial-gradient(ellipse at top,#1f0a00,#0F0F0F)'}}>
       <div style={{textAlign:'center',marginBottom:28}}>
-        <img src="https://res.cloudinary.com/drkaxsziu/image/upload/v1767871213/Somar_Express_2048_x_2048_px_18_x_18_in__20250623_221102_0000_o0bv7a.png" style={{width:72,height:72,borderRadius:18,marginBottom:12}}/>
-        <h1 style={{fontSize:22,fontWeight:700}}>Somar Express</h1>
-        <p style={{color:'#888',fontSize:14,marginTop:4}}>Portal Delivery</p>
+        <img src="https://res.cloudinary.com/drkaxsziu/image/upload/v1767871213/Somar_Express_2048_x_2048_px_18_x_18_in__20250623_221102_0000_o0bv7a.png"
+          style={{width:72,height:72,borderRadius:18,marginBottom:12}}/>
+        <h1 style={{fontSize:22,fontWeight:700,letterSpacing:'-0.03em'}}>Somar Express</h1>
+        <p style={{color:'var(--txt3)',fontSize:14,marginTop:4}}>Portal Delivery</p>
       </div>
-      <div style={{background:'#1A1A1A',border:'1px solid #333',borderRadius:20,padding:28,width:'100%',maxWidth:420}}>
-        <h2 style={{fontSize:18,fontWeight:700,marginBottom:4}}>Iniciar Sesión</h2>
-        <p style={{color:'#888',fontSize:13,marginBottom:20}}>Ingresa con tu cuenta de delivery</p>
-        <div style={{marginBottom:12}}><input type="email" placeholder="correo@ejemplo.com" value={email} onChange={e=>setEmail(e.target.value)} style={inp}/></div>
-        <div style={{marginBottom:16}}><input type="password" placeholder="Contraseña" value={pwd} onChange={e=>setPwd(e.target.value)} onKeyDown={e=>e.key==='Enter'&&login()} style={inp}/></div>
-        {err&&<div style={{color:'#EF4444',fontSize:13,textAlign:'center',marginBottom:10}}>{err}</div>}
-        <button onClick={login} disabled={cargando} style={{width:'100%',padding:15,borderRadius:12,background:cargando?'#444':'#FF8C00',color:cargando?'#888':'#fff',fontSize:16,fontWeight:700}}>{cargando?'Ingresando...':'Ingresar'}</button>
-        <button onClick={()=>setVista('registro')} style={{background:'none',border:'none',color:'#FF8C00',fontSize:14,fontWeight:600,width:'100%',padding:10,marginTop:4}}>¿Nuevo? Solicitar cuenta de delivery</button>
+      <div style={{background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:20,padding:28,width:'100%',maxWidth:420}}>
+        <h2 style={{fontSize:18,fontWeight:700,marginBottom:4,letterSpacing:'-0.02em'}}>Iniciar Sesión</h2>
+        <p style={{color:'var(--txt2)',fontSize:13,marginBottom:20}}>Ingresa con tu cuenta de delivery</p>
+        <div style={{marginBottom:12}}>
+          <input type="email" placeholder="correo@ejemplo.com" value={email}
+            onChange={e=>setEmail(e.target.value)} style={inp}/>
+        </div>
+        <div style={{marginBottom:16}}>
+          <input type="password" placeholder="Contraseña" value={pwd}
+            onChange={e=>setPwd(e.target.value)} onKeyDown={e=>e.key==='Enter'&&login()} style={inp}/>
+        </div>
+        {err&&<div style={{color:'var(--red)',fontSize:13,textAlign:'center',marginBottom:12,padding:'8px 12px',background:'var(--red-dim)',borderRadius:'var(--r-sm)'}}>{err}</div>}
+        <button onClick={login} disabled={cargando}
+          style={{width:'100%',padding:15,borderRadius:'var(--r-md)',background:cargando?'var(--s3)':'var(--brand)',color:cargando?'var(--txt3)':'#000',fontSize:16,fontWeight:700}}>
+          {cargando?'Ingresando...':'Ingresar'}
+        </button>
+        <button onClick={()=>{setPaso(1);setRegErr('');setVista('registro');}}
+          style={{background:'none',border:'none',color:'var(--brand)',fontSize:14,fontWeight:600,width:'100%',padding:10,marginTop:4}}>
+          ¿Nuevo? Solicitar cuenta de delivery
+        </button>
       </div>
     </div>
   );
 }
+
 
 // ─── CHAT ─────────────────────────────────────────────────
 function TabChat({delivery}){
