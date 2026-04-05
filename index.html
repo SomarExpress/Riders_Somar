@@ -1765,38 +1765,60 @@ function App(){
       {pe&&<PedidoEntrante pedido={pe} onAceptar={aceptarPE} onRechazar={rechazarPE}/>}
 
       {/* Header */}
-      <div style={{background:'#1A1A1A',borderBottom:'1px solid #333',padding:'10px 14px',display:'flex',alignItems:'center',justifyContent:'space-between',position:'sticky',top:0,zIndex:40}}>
-        <div style={{display:'flex',alignItems:'center',gap:10}}>
-          <button onClick={()=>setSideOpen(true)} style={{background:'none',border:'none',color:'#F0F0F0',fontSize:24,padding:4,lineHeight:1}}>☰</button>
-          <img style={{width:34,height:34,borderRadius:9}} src="https://res.cloudinary.com/drkaxsziu/image/upload/v1767871213/Somar_Express_2048_x_2048_px_18_x_18_in__20250623_221102_0000_o0bv7a.png"/>
-          <div>
-            <div style={{fontSize:14,fontWeight:700}}>{delivery?.nombre}</div>
-            <div style={{fontSize:11,color:'#888'}}>{activos.length} pedido{activos.length!==1?'s':''} activo{activos.length!==1?'s':''}</div>
-          </div>
-        </div>
-        <button onClick={()=>{
-          if(!turno&&saldo<MIN_SALDO){toast('⛔ Saldo insuficiente. Recarga para trabajar.');return;}
-          setSheet({msg:turno?'¿Pausar tu turno? Dejarás de recibir pedidos.':'¿Activar tu turno? Empezarás a recibir pedidos.',confirmLbl:turno?'Sí, pausar':'Sí, activar',color:turno?'#888':'#22C55E',onSi:()=>toggleTurno(!turno)});
-        }} style={{display:'flex',alignItems:'center',gap:6,padding:'8px 14px',borderRadius:20,border:'1.5px solid '+(turno?'#22C55E':'#555'),background:turno?'rgba(34,197,94,.1)':'#2C2C2C',color:turno?'#22C55E':'#888',fontSize:12,fontWeight:700}}>
-          <div style={{width:8,height:8,borderRadius:'50%',background:'currentColor',animation:turno?'pulse 1.5s infinite':'none'}}/>
-          {turno ? (pausado ? '⏸ Pausado' : '● Disponible') : saldo<MIN_SALDO ? '⛔ Sin saldo' : 'Fuera de turno'}
-        </button>
-        {turno&&(
-          <button onClick={pausarTurno} style={{marginLeft:6,background:pausado?'rgba(34,197,94,.2)':'rgba(245,158,11,.15)',border:`1px solid ${pausado?'#22C55E':'#F59E0B'}`,borderRadius:20,padding:'6px 10px',color:pausado?'#22C55E':'#F59E0B',fontSize:11,fontWeight:700,cursor:'pointer'}}>
-            {pausado?'▶ Reanudar':'⏸ Pausar'}
-          </button>
-        )}
-        <button onClick={refreshDelivery} style={{background:'none',border:'none',color:'#888',fontSize:20,padding:4,cursor:'pointer',marginLeft:4,transition:'transform .3s'}} id="refresh-del-btn" title="Actualizar">⟳</button>
-        <button onClick={()=>setShowNotifs(s=>!s)} style={{position:'relative',background:'none',border:'none',color:'#888',fontSize:20,padding:4,cursor:'pointer',marginLeft:4}}>
-          🔔
-          {notifs.filter(n=>!n.leida).length>0&&(
-            <div style={{position:'absolute',top:0,right:0,width:16,height:16,background:'#EF4444',borderRadius:'50%',fontSize:9,fontWeight:800,color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}>
-              {notifs.filter(n=>!n.leida).length}
-            </div>
-          )}
-        </button>
-      </div>
+      <div style={{background:'#111',borderBottom:'1px solid #2a2a2a',position:'sticky',top:0,zIndex:40}}>
 
+        {/* Fila 1: ☰ logo · nombre · iconos */}
+        <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px'}}>
+          {/* Izquierda: hamburguesa + logo + nombre */}
+          <button onClick={()=>setSideOpen(true)} style={{background:'none',border:'none',color:'#F0F0F0',fontSize:22,padding:'0 2px',lineHeight:1,flexShrink:0}}>☰</button>
+          <img style={{width:32,height:32,borderRadius:8,flexShrink:0}} src="https://res.cloudinary.com/drkaxsziu/image/upload/v1767871213/Somar_Express_2048_x_2048_px_18_x_18_in__20250623_221102_0000_o0bv7a.png"/>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:15,fontWeight:800,lineHeight:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{delivery?.nombre}</div>
+            <div style={{fontSize:11,color:'#666',marginTop:2}}>{activos.length} pedido{activos.length!==1?'s':''} activo{activos.length!==1?'s':''}</div>
+          </div>
+          {/* Derecha: refresh + notificaciones */}
+          <button onClick={refreshDelivery} id="refresh-del-btn" title="Actualizar"
+            style={{background:'none',border:'none',color:'#555',fontSize:19,padding:4,cursor:'pointer',flexShrink:0,transition:'transform .3s'}}>⟳</button>
+          <button onClick={()=>setShowNotifs(s=>!s)}
+            style={{position:'relative',background:'none',border:'none',color:'#555',fontSize:20,padding:4,cursor:'pointer',flexShrink:0}}>
+            🔔
+            {notifs.filter(n=>!n.leida).length>0&&(
+              <div style={{position:'absolute',top:0,right:0,width:16,height:16,background:'#EF4444',borderRadius:'50%',fontSize:9,fontWeight:800,color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                {notifs.filter(n=>!n.leida).length}
+              </div>
+            )}
+          </button>
+        </div>
+
+        {/* Fila 2: estado de turno */}
+        <div style={{display:'flex',alignItems:'center',gap:8,padding:'0 14px 10px'}}>
+          {/* Chip de estado — ocupa todo el ancho disponible */}
+          <button onClick={()=>{
+            if(!turno&&saldo<MIN_SALDO){toast('⛔ Saldo insuficiente. Recarga para trabajar.');return;}
+            setSheet({msg:turno?'¿Pausar tu turno? Dejarás de recibir pedidos.':'¿Activar tu turno? Empezarás a recibir pedidos.',confirmLbl:turno?'Sí, pausar':'Sí, activar',color:turno?'#888':'#22C55E',onSi:()=>toggleTurno(!turno)});
+          }} style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'9px 14px',borderRadius:24,
+            border:'1.5px solid '+(turno&&!pausado?'#22C55E':pausado?'#F59E0B':'#3a3a3a'),
+            background:turno&&!pausado?'rgba(34,197,94,.08)':pausado?'rgba(245,158,11,.08)':'#1e1e1e',
+            color:turno&&!pausado?'#22C55E':pausado?'#F59E0B':'#666',
+            fontSize:13,fontWeight:700,cursor:'pointer'}}>
+            <div style={{width:8,height:8,borderRadius:'50%',background:'currentColor',flexShrink:0,
+              animation:turno&&!pausado?'pulse 1.5s infinite':'none'}}/>
+            {turno ? (pausado ? '⏸  Pausado' : '●  Disponible') : saldo<MIN_SALDO ? '⛔  Sin saldo' : '○  Fuera de turno'}
+          </button>
+          {/* Botón Pausar/Reanudar — solo visible en turno */}
+          {turno&&(
+            <button onClick={pausarTurno} style={{flexShrink:0,
+              background:pausado?'rgba(34,197,94,.12)':'rgba(245,158,11,.1)',
+              border:`1.5px solid ${pausado?'#22C55E':'#F59E0B'}`,
+              borderRadius:24,padding:'9px 16px',
+              color:pausado?'#22C55E':'#F59E0B',
+              fontSize:13,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>
+              {pausado?'▶ Reanudar':'⏸ Pausar'}
+            </button>
+          )}
+        </div>
+
+      </div>
       {/* Panel notificaciones */}
       {showNotifs&&(
         <div style={{position:'fixed',inset:0,zIndex:150}} onClick={()=>setShowNotifs(false)}>
