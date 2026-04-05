@@ -1163,6 +1163,15 @@ function AuthScreen({onLogin}){
   const [cargando,setCargando] = useState(false);
   const _reg = useRef(false);
 
+  // ── Login ─────────────────────────────────────────────────
+  const login = async () => {
+    if(!email||!pwd) return setErr('Completa todos los campos');
+    setCargando(true); setErr('');
+    const {error} = await sb.auth.signInWithPassword({email, password:pwd});
+    if(error) setErr('Correo o contraseña incorrectos');
+    setCargando(false);
+  };
+
   // ── Campos del registro ───────────────────────────────────
   const [reg,setReg] = useState({nombre:'',celular:'',email:'',pwd:'',pwd2:'',cuenta_bac:'',tiene_mochila:false});
   const [regErr,setRegErr]       = useState('');
