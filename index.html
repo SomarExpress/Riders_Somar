@@ -1375,7 +1375,7 @@ function AuthScreen({onLogin}){
               <FotoCard fotoKey="revision" label="Foto de la revisión del vehículo"/>
               <FotoCard fotoKey="vehiculo" label="Foto del vehículo"/>
               {regErr&&<div style={{color:'var(--red)',fontSize:13,marginBottom:12,padding:'8px 12px',background:'var(--red-dim)',borderRadius:'var(--r-sm)'}}>{regErr}</div>}
-              <button onClick={()=>{const e=validarPaso2();if(e){setRegErr(e);return;}setRegErr('');setPaso(3);}}
+              <button onClick={()=>{const e=validarPaso1();if(e){setRegErr(e);return;}setRegErr('');setPaso(3);}}
                 style={{width:'100%',padding:15,borderRadius:'var(--r-md)',background:'var(--brand)',color:'#000',fontSize:15,fontWeight:700}}>
                 Continuar →
               </button>
