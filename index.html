@@ -1566,7 +1566,7 @@ function App(){
     const ACTIVOS=['ASIGNADO','ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO'];
     const [rP,rH,rD,rM]=await Promise.all([
       sb.from('pedidos').select('*').eq('delivery_id',delId).in('estatus',ACTIVOS).order('hora_asignado',{ascending:false}),
-      sb.from('pedidos').select('no_orden,estatus,nombre_comercio,ciudad_destino,ingreso_delivery,tarifa_envio,hora_finalizado,hora_asignado').eq('delivery_id',delId).eq('estatus','FINALIZADO').order('hora_finalizado',{ascending:false}).limit(100),
+      sb.from('pedidos').select('no_orden,estatus,nombre_comercio,ciudad_destino,ingreso_delivery,tarifa_envio,propina,distancia_km,hora_finalizado,hora_asignado,hora_aceptado,hora_en_establecimiento,hora_en_camino').eq('delivery_id',delId).eq('estatus','FINALIZADO').order('hora_finalizado',{ascending:false}).limit(100),
       sb.from('depositos_delivery').select('*').eq('delivery_id',delId).order('creado_at',{ascending:false}),
       sb.from('depositos_delivery').select('id,monto,estatus,notas_despacho,creado_at').eq('delivery_id',delId).eq('estatus','APROBADO').order('creado_at',{ascending:false}).limit(20),
     ]);
