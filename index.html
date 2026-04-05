@@ -47,6 +47,10 @@
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
   @keyframes ping{0%{transform:scale(1);opacity:1}75%,100%{transform:scale(2);opacity:0}}
   @keyframes spin{to{transform:rotate(360deg)}}
+  /* Fix teclado virtual Android — el viewport se reduce al abrirse */
+  @supports (height: 100dvh) {
+    .chat-wrap { height: calc(100dvh - 130px); }
+  }
 </style>
 </head>
 <body>
@@ -1508,9 +1512,13 @@ function TabChat({delivery}){
     let imagen_url=null;
     if(imgFile){
       try{
-        const fd=new FormData();fd.append('file',imgFile);fd.append('upload_preset','somar_riders');fd.append('folder','chat');
-        const r=await fetch('https://api.cloudinary.com/v1_1/drkaxsziu/image/upload',{method:'POST',body:fd});
-        const d=await r.json();imagen_url=d.secure_url;
+        const ext=imgFile.name.split('.').pop()?.toLowerCase()||'jpg';
+        const {data:upData,error:upErr}=await sb.storage.from('delivery-docs').upload(
+          `chat/${delivery.id}_${Date.now()}.${ext}`,imgFile,{cacheControl:'3600',upsert:true,contentType:imgFile.type});
+        if(!upErr&&upData){
+          const {data:urlData}=await sb.storage.from('delivery-docs').createSignedUrl(upData.path,60*60*24*365*10);
+          imagen_url=urlData?.signedUrl||null;
+        }
       }catch(e){console.error('[chat img]',e);}
       setImgFile(null);setImgPreview(null);
     }
@@ -1520,7 +1528,7 @@ function TabChat({delivery}){
   };
 
   return(
-    <div style={{display:'flex',flexDirection:'column',height:'calc(100dvh - 68px - 56px)',minHeight:300}}>
+    <div style={{display:'flex',flexDirection:'column',height:'calc(100dvh - 130px)',maxHeight:'calc(100dvh - 130px)',overflow:'hidden'}}>
       <div style={{background:'#1A1A1A',borderBottom:'1px solid #333',padding:'12px 14px',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
         <div style={{width:38,height:38,background:'#FF8C00',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>📟</div>
         <div>
