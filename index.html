@@ -1476,113 +1476,248 @@ function AuthScreen({onLogin}){
 
 
 // ─── CHAT ─────────────────────────────────────────────────
-function TabChat({delivery}){
-  const [msgs,setMsgs]=useState([]);
-  const [texto,setTexto]=useState('');
-  const [cargando,setCargando]=useState(true);
-  const [enviando,setEnviando]=useState(false);
-  const [imgFile,setImgFile]=useState(null);
-  const [imgPreview,setImgPreview]=useState(null);
-  const listRef=useRef(null);
-  const chRef=useRef(null);
+function TabChat({delivery, chatUnread, setChatUnread}){
+  const [abierto,setAbierto]   = useState(false);
+  const [msgs,setMsgs]         = useState([]);
+  const [texto,setTexto]       = useState('');
+  const [cargando,setCargando] = useState(false);
+  const [enviando,setEnviando] = useState(false);
+  const [imgFile,setImgFile]   = useState(null);
+  const [imgPreview,setImgPreview] = useState(null);
+  const listRef = useRef(null);
+  const chRef   = useRef(null);
+  const inputRef = useRef(null);
 
+  // Cargar mensajes y suscribirse al abrir la conversación
   useEffect(()=>{
-    if(!delivery?.id)return;
-    const cargar=async()=>{
-      setCargando(true);
-      const {data}=await sb.from('chat_mensajes').select('*').eq('delivery_id',delivery.id).order('created_at',{ascending:true}).limit(100);
-      setMsgs(data||[]);setCargando(false);
-      await sb.from('chat_mensajes').update({leido:true,leido_at:new Date().toISOString()}).eq('delivery_id',delivery.id).eq('remitente','DESPACHO').eq('leido',false);
-    };
-    cargar();
-    chRef.current=sb.channel('chat_'+delivery.id)
-      .on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_mensajes',filter:'delivery_id=eq.'+delivery.id},p=>{
+    if(!abierto || !delivery?.id) return;
+    setCargando(true);
+    sb.from('chat_mensajes')
+      .select('*').eq('delivery_id',delivery.id)
+      .order('created_at',{ascending:true}).limit(200)
+      .then(({data})=>{ setMsgs(data||[]); setCargando(false); });
+    // Marcar como leídos
+    sb.from('chat_mensajes')
+      .update({leido:true,leido_at:new Date().toISOString()})
+      .eq('delivery_id',delivery.id).eq('remitente','DESPACHO').eq('leido',false);
+    if(setChatUnread) setChatUnread(0);
+    // Realtime
+    chRef.current = sb.channel('chat_rider_'+delivery.id)
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'chat_mensajes',
+        filter:'delivery_id=eq.'+delivery.id}, p=>{
         setMsgs(ms=>[...ms,p.new]);
-        if(p.new.remitente==='DESPACHO') sb.from('chat_mensajes').update({leido:true,leido_at:new Date().toISOString()}).eq('id',p.new.id);
+        if(p.new.remitente==='DESPACHO')
+          sb.from('chat_mensajes').update({leido:true,leido_at:new Date().toISOString()}).eq('id',p.new.id);
       }).subscribe();
-    return()=>{if(chRef.current)sb.removeChannel(chRef.current);};
-  },[delivery?.id]);
+    return ()=>{ if(chRef.current){ sb.removeChannel(chRef.current); chRef.current=null; } };
+  },[abierto, delivery?.id]);
 
-  useEffect(()=>{ if(listRef.current)listRef.current.scrollTop=listRef.current.scrollHeight; },[msgs]);
+  // Scroll al fondo al llegar mensajes
+  useEffect(()=>{
+    if(listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+  },[msgs]);
 
-  const enviar=async()=>{
-    const msg=texto.trim();
-    if((!msg&&!imgFile)||enviando||!delivery?.id)return;
-    setEnviando(true);setTexto('');
-    let imagen_url=null;
+  // Bloquear scroll del body cuando chat está abierto
+  useEffect(()=>{
+    document.body.style.overflow = abierto ? 'hidden' : '';
+    return ()=>{ document.body.style.overflow = ''; };
+  },[abierto]);
+
+  const abrir = () => setAbierto(true);
+  const cerrar = () => { setAbierto(false); setMsgs([]); setTexto(''); };
+
+  const enviar = async () => {
+    const msg = texto.trim();
+    if((!msg&&!imgFile)||enviando||!delivery?.id) return;
+    setEnviando(true); setTexto('');
+    let imagen_url = null;
     if(imgFile){
       try{
-        const ext=imgFile.name.split('.').pop()?.toLowerCase()||'jpg';
-        const {data:upData,error:upErr}=await sb.storage.from('delivery-docs').upload(
-          `chat/${delivery.id}_${Date.now()}.${ext}`,imgFile,{cacheControl:'3600',upsert:true,contentType:imgFile.type});
+        const ext = imgFile.name.split('.').pop()?.toLowerCase()||'jpg';
+        const {data:upData,error:upErr} = await sb.storage.from('delivery-docs')
+          .upload(`chat/${delivery.id}_${Date.now()}.${ext}`,imgFile,
+            {cacheControl:'3600',upsert:true,contentType:imgFile.type});
         if(!upErr&&upData){
-          const {data:urlData}=await sb.storage.from('delivery-docs').createSignedUrl(upData.path,60*60*24*365*10);
-          imagen_url=urlData?.signedUrl||null;
+          const {data:urlData} = await sb.storage.from('delivery-docs')
+            .createSignedUrl(upData.path, 60*60*24*365*10);
+          imagen_url = urlData?.signedUrl||null;
         }
-      }catch(e){console.error('[chat img]',e);}
-      setImgFile(null);setImgPreview(null);
+      }catch(e){ console.error('[chat img]',e); }
+      setImgFile(null); setImgPreview(null);
     }
-    const {error}=await sb.from('chat_mensajes').insert({delivery_id:delivery.id,remitente:'DELIVERY',mensaje:msg||null,imagen_url});
-    if(error)setTexto(msg);
+    const {error} = await sb.from('chat_mensajes').insert({
+      delivery_id:delivery.id, remitente:'DELIVERY', mensaje:msg||null, imagen_url
+    });
+    if(error) setTexto(msg);
     setEnviando(false);
+    setTimeout(()=>inputRef.current?.focus(),100);
   };
 
+  const ultimo = msgs[msgs.length-1];
+  const ultimaHora = ultimo
+    ? new Date(ultimo.created_at).toLocaleTimeString('es-HN',{hour:'2-digit',minute:'2-digit',timeZone:'America/Tegucigalpa'})
+    : null;
+
   return(
-    <div style={{display:'flex',flexDirection:'column',height:'calc(100dvh - 130px)',maxHeight:'calc(100dvh - 130px)',overflow:'hidden'}}>
-      <div style={{background:'#1A1A1A',borderBottom:'1px solid #333',padding:'12px 14px',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
-        <div style={{width:38,height:38,background:'#FF8C00',borderRadius:10,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>📟</div>
-        <div>
-          <div style={{fontSize:14,fontWeight:700}}>Despacho Somar Express</div>
-          <div style={{fontSize:11,color:'#22C55E',display:'flex',alignItems:'center',gap:4}}><div style={{width:6,height:6,borderRadius:'50%',background:'#22C55E',animation:'pulse 2s infinite'}}/>En línea</div>
+    <>
+      {/* ── LISTADO (pantalla principal del tab) ── */}
+      <div style={{paddingBottom:8}}>
+        <div style={{fontSize:11,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.08em',padding:'16px 16px 10px'}}>
+          Mensajes
         </div>
+        {/* Card de conversación con Despacho */}
+        <button onClick={abrir}
+          style={{width:'100%',display:'flex',alignItems:'center',gap:14,padding:'14px 16px',
+            background:'none',border:'none',borderBottom:'1px solid var(--brd)',cursor:'pointer',textAlign:'left'}}>
+          <div style={{position:'relative',flexShrink:0}}>
+            <div style={{width:52,height:52,borderRadius:16,background:'var(--brand)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
+              </svg>
+            </div>
+            {chatUnread>0&&(
+              <div style={{position:'absolute',top:-4,right:-4,width:18,height:18,background:'var(--red)',borderRadius:'50%',fontSize:10,fontWeight:800,color:'#fff',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                {chatUnread>9?'9+':chatUnread}
+              </div>
+            )}
+          </div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:15,fontWeight:700,color:'var(--txt)',marginBottom:3}}>Despacho Somar Express</div>
+            <div style={{fontSize:13,color:'var(--txt3)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+              {ultimo
+                ? (ultimo.remitente==='DELIVERY'?'Tú: ':'')+( ultimo.mensaje||'📷 Imagen')
+                : 'Escríbele a Despacho'}
+            </div>
+          </div>
+          <div style={{flexShrink:0,textAlign:'right'}}>
+            {ultimaHora&&<div style={{fontSize:11,color:'var(--txt3)',marginBottom:4}}>{ultimaHora}</div>}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--txt3)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </div>
+        </button>
       </div>
-      <div ref={listRef} style={{flex:1,overflowY:'auto',padding:'12px',display:'flex',flexDirection:'column',gap:8}}>
-        {cargando&&<div style={{textAlign:'center',color:'#888',padding:20}}>Cargando...</div>}
-        {!cargando&&msgs.length===0&&<div style={{textAlign:'center',padding:'40px 24px'}}><div style={{fontSize:40,marginBottom:10}}>💬</div><div style={{fontSize:14,color:'#888'}}>Escríbele a Despacho aquí</div></div>}
-        {msgs.map(m=>{
-          const mio=m.remitente==='DELIVERY';
-          const agente=m.remitente_nombre;
-          // Paleta de colores por agente
-          const COLORES=['#FF8C00','#3B82F6','#8B5CF6','#EC4899','#14B8A6','#F59E0B'];
-          const colorIdx=agente?Math.abs(agente.split('').reduce((a,c)=>a+c.charCodeAt(0),0))%COLORES.length:0;
-          const aColor=COLORES[colorIdx];
-          const hora=new Date(m.created_at).toLocaleTimeString('es-HN',{hour:'2-digit',minute:'2-digit',timeZone:'America/Tegucigalpa'});
-          return(
-            <div key={m.id} style={{display:'flex',justifyContent:mio?'flex-end':'flex-start',marginBottom:4}}>
-              {!mio&&<div style={{width:28,height:28,background:aColor,borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800,flexShrink:0,marginRight:6,alignSelf:'flex-end',color:'#fff'}}>
-                {agente?agente.charAt(0).toUpperCase():'D'}
-              </div>}
-              <div style={{maxWidth:'78%'}}>
-                {!mio&&agente&&<div style={{fontSize:10,fontWeight:700,color:aColor,marginBottom:2,paddingLeft:2}}>{agente}</div>}
-                <div style={{background:mio?'#FF8C00':'#232323',color:'#F0F0F0',borderRadius:mio?'18px 18px 4px 18px':'18px 18px 18px 4px',padding:'10px 14px',fontSize:14,lineHeight:1.5,
-                  ...(mio?{}:{borderLeft:`2px solid ${aColor}`})}}>
-                  {m.mensaje&&<div>{m.mensaje}</div>}
-                  {m.imagen_url&&<img src={m.imagen_url} onClick={()=>window.open(m.imagen_url)} style={{maxWidth:'200px',maxHeight:'180px',borderRadius:10,display:'block',marginTop:m.mensaje?6:0,cursor:'pointer',objectFit:'cover'}} loading="lazy"/>}
-                </div>
-                <div style={{fontSize:10,color:'#555',marginTop:3,textAlign:mio?'right':'left'}}>
-                  {hora}{mio&&<span style={{marginLeft:4}}>{m.leido?'✓✓':'✓'}</span>}
-                </div>
+
+      {/* ── CONVERSACIÓN (overlay fullscreen estilo WhatsApp) ── */}
+      {abierto&&(
+        <div style={{position:'fixed',inset:0,zIndex:200,background:'var(--bg)',display:'flex',flexDirection:'column'}}>
+
+          {/* Header */}
+          <div style={{background:'var(--s1)',borderBottom:'1px solid var(--brd)',
+            padding:'10px 14px',display:'flex',alignItems:'center',gap:12,
+            flexShrink:0,paddingTop:'max(10px, env(safe-area-inset-top))'}}>
+            <button onClick={cerrar}
+              style={{background:'none',border:'none',color:'var(--txt)',padding:4,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 12H5M12 5l-7 7 7 7"/>
+              </svg>
+            </button>
+            <div style={{width:38,height:38,borderRadius:12,background:'var(--brand)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
+              </svg>
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:15,fontWeight:700,color:'var(--txt)'}}>Despacho Somar Express</div>
+              <div style={{fontSize:11,color:'var(--green)',display:'flex',alignItems:'center',gap:4}}>
+                <div style={{width:6,height:6,borderRadius:'50%',background:'var(--green)',animation:'pulse 2s infinite'}}/>
+                En línea
               </div>
             </div>
-          );
-        })}
-      </div>
-      <div style={{background:'#1A1A1A',borderTop:'1px solid #333',padding:'8px 12px',display:'flex',flexDirection:'column',gap:6,flexShrink:0}}>
-        {imgPreview&&<div style={{position:'relative',display:'inline-block'}}>
-          <img src={imgPreview} style={{height:60,borderRadius:8,objectFit:'cover'}}/>
-          <button onClick={()=>{setImgFile(null);setImgPreview(null);}} style={{position:'absolute',top:-6,right:-6,width:18,height:18,borderRadius:'50%',background:'#EF4444',border:'none',color:'#fff',fontSize:11,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
-        </div>}
-        <div style={{display:'flex',gap:8,alignItems:'center'}}>
-          <button onClick={()=>document.getElementById('chat-img-del').click()} style={{width:38,height:38,borderRadius:10,background:'#2C2C2C',border:'1px solid #444',color:'#888',fontSize:18,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,cursor:'pointer'}}>📎</button>
-          <input type="file" id="chat-img-del" accept="image/*" style={{display:'none'}} onChange={e=>{const f=e.target.files[0];if(f){setImgFile(f);const r=new FileReader();r.onload=ev=>setImgPreview(ev.target.result);r.readAsDataURL(f);}e.target.value='';}}/>
-          <input value={texto} onChange={e=>setTexto(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();enviar();}}} placeholder="Escribe un mensaje..." style={{flex:1,background:'#2C2C2C',border:'1px solid #444',borderRadius:24,padding:'12px 16px',color:'#F0F0F0',fontSize:14,outline:'none'}}/>
-          <button onClick={enviar} disabled={(!texto.trim()&&!imgFile)||enviando} style={{width:48,height:48,borderRadius:'50%',background:(texto.trim()||imgFile)?'#FF8C00':'#2C2C2C',color:(texto.trim()||imgFile)?'#fff':'#555',fontSize:20,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'all .2s'}}>{enviando?'…':'➤'}</button>
+          </div>
+
+          {/* Mensajes */}
+          <div ref={listRef}
+            style={{flex:1,overflowY:'auto',overflowX:'hidden',padding:'12px 14px',
+              display:'flex',flexDirection:'column',gap:8,WebkitOverflowScrolling:'touch'}}>
+            {cargando&&<div style={{textAlign:'center',color:'var(--txt3)',padding:30}}>Cargando...</div>}
+            {!cargando&&msgs.length===0&&(
+              <div style={{textAlign:'center',padding:'60px 24px',color:'var(--txt3)'}}>
+                <div style={{fontSize:14}}>Escríbele a Despacho aquí</div>
+              </div>
+            )}
+            {msgs.map(m=>{
+              const mio = m.remitente==='DELIVERY';
+              const agente = m.remitente_nombre;
+              const COLORES=['#FF8C00','#3B82F6','#8B5CF6','#EC4899','#14B8A6','#F59E0B'];
+              const colorIdx = agente ? Math.abs(agente.split('').reduce((a,ch)=>a+ch.charCodeAt(0),0))%COLORES.length : 0;
+              const aColor = COLORES[colorIdx];
+              const hora = new Date(m.created_at).toLocaleTimeString('es-HN',{hour:'2-digit',minute:'2-digit',timeZone:'America/Tegucigalpa'});
+              return(
+                <div key={m.id} style={{display:'flex',justifyContent:mio?'flex-end':'flex-start',marginBottom:2}}>
+                  {!mio&&(
+                    <div style={{width:28,height:28,background:aColor,borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800,flexShrink:0,marginRight:8,alignSelf:'flex-end',color:'#fff'}}>
+                      {agente?agente.charAt(0).toUpperCase():'D'}
+                    </div>
+                  )}
+                  <div style={{maxWidth:'75%'}}>
+                    {!mio&&agente&&<div style={{fontSize:10,fontWeight:700,color:aColor,marginBottom:2,paddingLeft:2}}>{agente}</div>}
+                    <div style={{background:mio?'var(--brand)':'var(--s2)',color:mio?'#000':'var(--txt)',
+                      borderRadius:mio?'18px 18px 4px 18px':'18px 18px 18px 4px',
+                      padding:'10px 14px',fontSize:14,lineHeight:1.5,
+                      ...(mio?{}:{borderLeft:`2px solid ${aColor}`})}}>
+                      {m.mensaje&&<div>{m.mensaje}</div>}
+                      {m.imagen_url&&(
+                        <img src={m.imagen_url} onClick={()=>window.open(m.imagen_url)}
+                          style={{maxWidth:'220px',maxHeight:'200px',borderRadius:10,display:'block',
+                            marginTop:m.mensaje?8:0,cursor:'pointer',objectFit:'cover'}} loading="lazy"/>
+                      )}
+                    </div>
+                    <div style={{fontSize:10,color:'var(--txt3)',marginTop:3,textAlign:mio?'right':'left'}}>
+                      {hora}{mio&&<span style={{marginLeft:4}}>{m.leido?'✓✓':'✓'}</span>}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Input */}
+          <div style={{background:'var(--s1)',borderTop:'1px solid var(--brd)',
+            padding:'8px 12px',flexShrink:0,
+            paddingBottom:'max(8px, env(safe-area-inset-bottom))'}}>
+            {imgPreview&&(
+              <div style={{position:'relative',display:'inline-block',marginBottom:8}}>
+                <img src={imgPreview} style={{height:64,borderRadius:10,objectFit:'cover'}}/>
+                <button onClick={()=>{setImgFile(null);setImgPreview(null);}}
+                  style={{position:'absolute',top:-6,right:-6,width:20,height:20,borderRadius:'50%',
+                    background:'var(--red)',border:'none',color:'#fff',fontSize:12,cursor:'pointer',
+                    display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+              </div>
+            )}
+            <div style={{display:'flex',gap:8,alignItems:'flex-end'}}>
+              <button onClick={()=>document.getElementById('chat-img-rider').click()}
+                style={{width:40,height:40,borderRadius:12,background:'var(--s3)',border:'1px solid var(--brd)',
+                  color:'var(--txt3)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,cursor:'pointer'}}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+              </button>
+              <input type="file" id="chat-img-rider" accept="image/*" style={{display:'none'}}
+                onChange={e=>{const f=e.target.files[0];if(f){setImgFile(f);const r=new FileReader();r.onload=ev=>setImgPreview(ev.target.result);r.readAsDataURL(f);}e.target.value='';}}/>
+              <input ref={inputRef} value={texto} onChange={e=>setTexto(e.target.value)}
+                onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();enviar();}}}
+                placeholder="Escribe un mensaje..."
+                style={{flex:1,background:'var(--s3)',border:'1px solid var(--brd)',borderRadius:24,
+                  padding:'11px 16px',color:'var(--txt)',fontSize:14,outline:'none',
+                  fontFamily:'inherit',lineHeight:1.4}}/>
+              <button onClick={enviar} disabled={(!texto.trim()&&!imgFile)||enviando}
+                style={{width:44,height:44,borderRadius:'50%',flexShrink:0,
+                  background:(texto.trim()||imgFile)?'var(--brand)':'var(--s3)',
+                  border:'none',color:(texto.trim()||imgFile)?'#000':'var(--txt3)',
+                  display:'flex',alignItems:'center',justifyContent:'center',transition:'all .15s'}}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
         </div>
-      </div>
-    </div>
+      )}
+    </>
   );
 }
-
 
 // ─── NORMALIZAR PEDIDO (campos BD → campos cortos del UI) ────────────────────
 function normalizarPedido(p, asigId=null) {
@@ -2218,7 +2353,7 @@ function App(){
         )}
         {tab==='guaca'&&<TabGuaca historial={historial} saldo={saldo} movimientos={movimientos} onIrDepositos={()=>setTab('depositos')} delivery={delivery}/>}
         {tab==='zona'&&<TabZona delivery={delivery}/>}
-        {tab==='chat'&&<TabChat delivery={delivery}/>}
+        {tab==='chat'&&<TabChat delivery={delivery} chatUnread={chatUnread} setChatUnread={setChatUnread}/>}
         {tab==='depositos'&&<TabDepositos delivery={delivery} depositos={depositos} setDepositos={setDepositos} onConfirm={setSheet} toast={toast}/>}
         {tab==='perfil'&&(
           <div>
