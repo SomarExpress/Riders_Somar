@@ -1207,11 +1207,18 @@ function AuthScreen({onLogin}){
       } catch(e){ console.warn('fotos:',e); }
       // Insert aplicacion
       const {data:{session:ses}}=await sb.auth.getSession();
-      await fetch(SUPA_URL+'/rest/v1/aplicaciones_delivery',{
+      const _res = await fetch(SUPA_URL+'/rest/v1/aplicaciones_delivery',{
         method:'POST',
         headers:{'Content-Type':'application/json','apikey':SUPA_ANON,'Authorization':'Bearer '+(ses?.access_token||SUPA_ANON),'Prefer':'return=minimal'},
         body:JSON.stringify({nombre:reg.nombre,celular:reg.celular,correo:reg.email,identidad_delantera_url:duiUrl,moto_propia_url:motoUrl,estatus:'PENDIENTE',notas:'auth_uid:'+uid}),
       });
+      if(!_res.ok){
+        const _errBody = await _res.json().catch(()=>({}));
+        const _errMsg = _errBody?.message || _errBody?.error || `Error ${_res.status}`;
+        console.error('[registro] insert aplicacion:', _errMsg, _errBody);
+        setRegErr('Error al enviar solicitud: '+_errMsg);
+        return;
+      }
       _reg.current=false;
       setVista('pendiente');
     } finally { setRegCargando(false); _reg.current=false; }
