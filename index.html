@@ -846,7 +846,8 @@ function TabGuaca({historial, saldo, movimientos, onIrDepositos, delivery}){
 
   let tHoy=0,pH=0, tAyer=0,pA=0, tSem=0,pS=0;
   fin.forEach(p=>{
-    const g  = parseFloat(p.ingreso_delivery||p.gan||0);
+    // Ganancia = ingreso_delivery + propina (ambas van al rider)
+    const g  = parseFloat(p.ingreso_delivery||p.gan||0) + parseFloat(p.propina||0);
     const ts = new Date(p.hora_finalizado||p.ts||0).getTime();
     if(ts >= hoyIni.getTime())            { tHoy+=g; pH++; }
     if(ts >= ayerIni.getTime() && ts <= ayerFin.getTime()) { tAyer+=g; pA++; }
@@ -863,15 +864,39 @@ function TabGuaca({historial, saldo, movimientos, onIrDepositos, delivery}){
   const d1Ef = periodo==='custom' ? desde : (periodoRangos[periodo]||[])[0]||'';
   const d2Ef = periodo==='custom' ? hasta  : (periodoRangos[periodo]||[])[1]||'';
 
-  let rT=0,rC=0;
+  let rT=0,rC=0,rPropina=0,rKm=0;
+  let tiemposTotales=[], tiemposSinEspera=[];
   if(d1Ef && d2Ef){
     const d1=new Date(d1Ef+'T00:00:00').getTime();
     const d2=new Date(d2Ef+'T23:59:59').getTime();
     fin.forEach(p=>{
       const ts=new Date(p.hora_finalizado||p.ts||0).getTime();
-      if(ts>=d1&&ts<=d2){ rT+=parseFloat(p.ingreso_delivery||p.gan||0); rC++; }
+      if(ts>=d1&&ts<=d2){
+        const prop = parseFloat(p.propina||0);
+        rT  += parseFloat(p.ingreso_delivery||p.gan||0) + prop;
+        rPropina += prop;
+        rKm += parseFloat(p.distancia_km||0);
+        rC++;
+        // Tiempo total: hora_aceptado → hora_finalizado (en minutos)
+        if(p.hora_aceptado && p.hora_finalizado){
+          const tTotal = (new Date(p.hora_finalizado)-new Date(p.hora_aceptado))/60000;
+          if(tTotal>0 && tTotal<300) tiemposTotales.push(tTotal);
+          // Tiempo sin espera: descontamos tiempo en establecimiento
+          // = hora_en_camino - hora_en_establecimiento (si existen)
+          let espera = 0;
+          if(p.hora_en_establecimiento && p.hora_en_camino){
+            espera = (new Date(p.hora_en_camino)-new Date(p.hora_en_establecimiento))/60000;
+            if(espera<0) espera=0;
+          }
+          const tSinEspera = tTotal - espera;
+          if(tSinEspera>0 && tSinEspera<300) tiemposSinEspera.push(tSinEspera);
+        }
+      }
     });
   }
+  const promTotal    = tiemposTotales.length    ? tiemposTotales.reduce((a,b)=>a+b,0)/tiemposTotales.length       : null;
+  const promSinEsp   = tiemposSinEspera.length  ? tiemposSinEspera.reduce((a,b)=>a+b,0)/tiemposSinEspera.length   : null;
+  const fmtMin = m => m===null?'—': m<60 ? `${Math.round(m)}m` : `${Math.floor(m/60)}h ${Math.round(m%60)}m`;
 
   // ── Estado saldo ──────────────────────────────────────────
   const bloqueado = saldo < MIN;
@@ -906,16 +931,7 @@ function TabGuaca({historial, saldo, movimientos, onIrDepositos, delivery}){
               <div style={{fontSize:11,color:'var(--txt3)',marginTop:1}}>pedido{pH!==1?'s':''}</div>
             </div>
           </div>
-          {/* Barra meta diaria L.300 */}
-          <div style={{marginTop:12}}>
-            <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
-              <span style={{fontSize:10,color:'var(--txt3)',fontWeight:500}}>Meta del día</span>
-              <span style={{fontSize:10,color:'var(--txt3)',fontWeight:600}}>{Math.round(Math.min(100,tHoy/300*100))}% de L.300</span>
-            </div>
-            <div style={{background:'var(--s3)',borderRadius:4,height:4,overflow:'hidden'}}>
-              <div style={{height:'100%',background:'var(--green)',borderRadius:4,width:`${Math.min(100,tHoy/300*100)}%`,transition:'width .6s ease'}}/>
-            </div>
-          </div>
+
         </div>
 
         {/* Ayer + Esta semana */}
@@ -956,13 +972,32 @@ function TabGuaca({historial, saldo, movimientos, onIrDepositos, delivery}){
             )}
           </div>
           {/* Resultado */}
-          <div style={{background:'var(--s2)',borderTop:'1px solid var(--brd)',padding:'14px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <div>
-              <div style={{fontSize:28,fontWeight:800,color:(d1Ef&&d2Ef)?'var(--green)':'var(--txt3)',letterSpacing:'-0.04em'}}>{(d1Ef&&d2Ef)?fmtL(rT):'—'}</div>
-              <div style={{fontSize:12,color:'var(--txt3)',marginTop:2}}>
-                {(d1Ef&&d2Ef)?`${rC} pedido${rC!==1?'s':''}  ·  ${d1Ef===d2Ef?d1Ef:`${d1Ef} → ${d2Ef}`}` :'Selecciona un período'}
+          <div style={{background:'var(--s2)',borderTop:'1px solid var(--brd)',padding:'14px 16px'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:(d1Ef&&d2Ef&&rC>0)?12:0}}>
+              <div>
+                <div style={{fontSize:28,fontWeight:800,color:(d1Ef&&d2Ef)?'var(--green)':'var(--txt3)',letterSpacing:'-0.04em'}}>{(d1Ef&&d2Ef)?fmtL(rT):'—'}</div>
+                <div style={{fontSize:12,color:'var(--txt3)',marginTop:2}}>
+                  {(d1Ef&&d2Ef)?`${rC} pedido${rC!==1?'s':''}  ·  ${d1Ef===d2Ef?d1Ef:`${d1Ef} → ${d2Ef}`}`:'Selecciona un período'}
+                </div>
               </div>
             </div>
+            {/* Métricas del período — solo si hay datos */}
+            {(d1Ef&&d2Ef&&rC>0)&&(
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+                {[
+                  ['Propinas',       rPropina>0 ? fmtL(rPropina) : '—',    'Incluidas en ganancia'],
+                  ['Kilómetros',     rKm>0 ? `${rKm.toFixed(1)} km` : '—', `${rC} pedido${rC!==1?'s':''}`],
+                  ['Tiempo completo',fmtMin(promTotal),                      'Acepta → finaliza'],
+                  ['Sin espera',     fmtMin(promSinEsp),                     'Descuenta establec.'],
+                ].map(([lbl,val,sub])=>(
+                  <div key={lbl} style={{background:'var(--s3)',borderRadius:'var(--r-sm)',padding:'10px 12px'}}>
+                    <div style={{fontSize:10,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:4}}>{lbl}</div>
+                    <div style={{fontSize:16,fontWeight:700,color:'var(--txt)',letterSpacing:'-0.02em'}}>{val}</div>
+                    <div style={{fontSize:10,color:'var(--txt3)',marginTop:2}}>{sub}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
