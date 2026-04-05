@@ -1216,6 +1216,20 @@ function AuthScreen({onLogin}){
     return null;
   };
 
+  const validarPaso2 = () => {
+    if(!fotos.perfil)   return 'Sube tu foto de perfil';
+    if(!fotos.dui)      return 'Sube la foto del DNI';
+    if(!fotos.licencia) return 'Sube la foto de la licencia';
+    if(!fotos.revision) return 'Sube la foto de la revisión del vehículo';
+    if(!fotos.vehiculo) return 'Sube la foto del vehículo';
+    return null;
+  };
+
+  const validarPaso3 = () => {
+    if(!reg.cuenta_bac.trim()) return 'El número de cuenta BAC es requerido';
+    if(reg.tiene_mochila && !fotos.mochila) return 'Sube la foto de tu mochila de delivery';
+    return null;
+  };
 
   // ── Submit final ──────────────────────────────────────────
   const registro = async () => {
@@ -1375,7 +1389,7 @@ function AuthScreen({onLogin}){
               <FotoCard fotoKey="revision" label="Foto de la revisión del vehículo"/>
               <FotoCard fotoKey="vehiculo" label="Foto del vehículo"/>
               {regErr&&<div style={{color:'var(--red)',fontSize:13,marginBottom:12,padding:'8px 12px',background:'var(--red-dim)',borderRadius:'var(--r-sm)'}}>{regErr}</div>}
-              <button onClick={()=>{const e=validarPaso1();if(e){setRegErr(e);return;}setRegErr('');setPaso(3);}}
+              <button onClick={()=>{const e=validarPaso2();if(e){setRegErr(e);return;}setRegErr('');setPaso(3);}}
                 style={{width:'100%',padding:15,borderRadius:'var(--r-md)',background:'var(--brand)',color:'#000',fontSize:15,fontWeight:700}}>
                 Continuar →
               </button>
