@@ -162,7 +162,7 @@ function sonarDepositoAprobado() {
 const SUPA_URL  = 'https://jjrmzouigcmeztkybrvp.supabase.co';
 const SUPA_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impqcm16b3VpZ2NtZXp0a3licnZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5MzExNDgsImV4cCI6MjA4ODUwNzE0OH0.tNUHxGWMWh7Q6v4mH3y5gOxpczpEJHwNqwH2TehL61I';
 const sb = supabase.createClient(SUPA_URL, SUPA_ANON);
-const MIN_SALDO = 100; // valor por defecto, se sobreescribe desde BD
+const MIN_SALDO = 50; // valor por defecto, se sobreescribe desde BD
 let _configSistema = { zona_radio_km: 2.5, saldo_minimo: 100 };
 
 async function cargarConfigSistema() {
@@ -718,246 +718,242 @@ function VistaPedido({p, pedidos, onAvanzar, onBack, onConfirm, toast, ahora}){
 
 // ─── MI GUACA ─────────────────────────────────────────────
 function TabGuaca({historial, saldo, movimientos, onIrDepositos, delivery}){
-  const [desde,setDesde]=useState('');
-  const [hasta,setHasta]=useState('');
-  const [openDia,setOpenDia]=useState({});
-  const [liquidaciones,setLiquidaciones]=useState([]);
+  const [desde,setDesde]   = useState('');
+  const [hasta,setHasta]   = useState('');
+  const [periodo,setPeriodo] = useState(''); // 'semana'|'mes'|'anterior'|'custom'
+  const [verMasMovim,setVerMasMovim] = useState(false);
+  const [recargas,setRecargas] = useState([]);
+
+  const MIN = 50; // mínimo operativo L.50
 
   useEffect(()=>{
     if(!delivery?.id) return;
-    // Cargar liquidaciones del rider
-    sb.from('liquidaciones_delivery')
-      .select('*')
-      .eq('delivery_id',delivery.id)
+    sb.from('depositos_delivery')
+      .select('id,monto,estatus,creado_at')
+      .eq('delivery_id', delivery.id)
+      .eq('estatus','APROBADO')
       .order('creado_at',{ascending:false})
-      .limit(20)
-      .then(({data})=>{ if(data) setLiquidaciones(data); });
+      .limit(5)
+      .then(({data})=>{ if(data) setRecargas(data); });
   },[delivery?.id]);
 
-  // historial viene de Supabase: campos reales no normalizados
+  // ── Cálculos de ganancias ─────────────────────────────────
   const fin = historial.filter(p=>p.estatus==='FINALIZADO'||p.est==='FINALIZADO');
-  const hoy = new Date().setHours(0,0,0,0);
-  const d = new Date(hoy); d.setDate(d.getDate()-((d.getDay()+6)%7)); const lunSem=d.getTime();
-  const ini = new Date(new Date().getFullYear(),new Date().getMonth(),1).getTime();
-  let tH=0,pH=0,tS=0,pS=0,tM=0,pM=0;
-  const porDia={};
+
+  const ahora   = Date.now();
+  const hoyIni  = new Date(); hoyIni.setHours(0,0,0,0);
+  const ayerIni = new Date(hoyIni); ayerIni.setDate(ayerIni.getDate()-1);
+  const ayerFin = new Date(hoyIni.getTime()-1);
+  const lunSem  = new Date(hoyIni); lunSem.setDate(lunSem.getDate()-((lunSem.getDay()+6)%7));
+
+  let tHoy=0,pH=0, tAyer=0,pA=0, tSem=0,pS=0;
   fin.forEach(p=>{
-    // Usar ingreso_delivery (campo real) o gan (campo normalizado)
-    const g=parseFloat(p.ingreso_delivery||p.gan||0);
-    const tsRaw = p.hora_finalizado||p.ts;
-    const ts = tsRaw ? new Date(tsRaw).getTime() : 0;
-    const dia = tsRaw ? new Date(tsRaw).toISOString().slice(0,10) : 'sin-fecha';
-    if(!porDia[dia])porDia[dia]={t:0,items:[]};
-    porDia[dia].t+=g; porDia[dia].items.push({...p,_g:g,_ts:ts});
-    if(ts>=hoy){tH+=g;pH++;}
-    if(ts>=lunSem){tS+=g;pS++;}
-    if(ts>=ini){tM+=g;pM++;}
+    const g  = parseFloat(p.ingreso_delivery||p.gan||0);
+    const ts = new Date(p.hora_finalizado||p.ts||0).getTime();
+    if(ts >= hoyIni.getTime())            { tHoy+=g; pH++; }
+    if(ts >= ayerIni.getTime() && ts <= ayerFin.getTime()) { tAyer+=g; pA++; }
+    if(ts >= lunSem.getTime())            { tSem+=g; pS++; }
   });
+
+  // ── Período personalizado ─────────────────────────────────
+  const periodoRangos = {
+    semana:   [lunSem.toISOString().slice(0,10), new Date().toISOString().slice(0,10)],
+    mes:      [new Date(new Date().getFullYear(),new Date().getMonth(),1).toISOString().slice(0,10), new Date().toISOString().slice(0,10)],
+    anterior: [new Date(new Date().getFullYear(),new Date().getMonth()-1,1).toISOString().slice(0,10), new Date(new Date().getFullYear(),new Date().getMonth(),0).toISOString().slice(0,10)],
+  };
+
+  const d1Ef = periodo==='custom' ? desde : (periodoRangos[periodo]||[])[0]||'';
+  const d2Ef = periodo==='custom' ? hasta  : (periodoRangos[periodo]||[])[1]||'';
+
   let rT=0,rC=0;
-  if(desde&&hasta){const d1=new Date(desde+'T00:00:00').getTime(),d2=new Date(hasta+'T23:59:59').getTime();fin.forEach(p=>{const ts=new Date(p.hora_finalizado||p.ts||0).getTime();if(ts>=d1&&ts<=d2){rT+=parseFloat(p.ingreso_delivery||p.gan||0);rC++;}});}
-  let nivel='Bronce',stars='⭐',pct=0;
-  if(pM>=150){nivel='Oro';stars='⭐⭐⭐';pct=100;}
-  else if(pM>=75){nivel='Plata';stars='⭐⭐';pct=Math.round((pM-75)/75*100);}
-  else{pct=Math.round(pM/75*100);}
+  if(d1Ef && d2Ef){
+    const d1=new Date(d1Ef+'T00:00:00').getTime();
+    const d2=new Date(d2Ef+'T23:59:59').getTime();
+    fin.forEach(p=>{
+      const ts=new Date(p.hora_finalizado||p.ts||0).getTime();
+      if(ts>=d1&&ts<=d2){ rT+=parseFloat(p.ingreso_delivery||p.gan||0); rC++; }
+    });
+  }
 
-  // MODELO SALDO CORRECTO:
-  // saldo_billetera = dinero disponible del rider (recarga y baja con comisiones)
-  // Mínimo para operar = MIN_SALDO (L.100 por defecto)
-  const bloqueado  = saldo < MIN_SALDO;
-  const sBajo      = saldo < MIN_SALDO;
-  const sCerca     = saldo >= MIN_SALDO && saldo < MIN_SALDO * 2;
-  const sOk        = saldo >= MIN_SALDO * 2;
-  const sColor     = sBajo ? '#EF4444' : sCerca ? '#F59E0B' : '#22C55E';
-  const sBarPct    = Math.min(100, (saldo / 500) * 100); // barra de saldo disponible
+  // ── Estado saldo ──────────────────────────────────────────
+  const bloqueado = saldo < MIN;
+  const sBajo     = saldo < MIN;
+  const sCerca    = saldo >= MIN && saldo < MIN*2;
+  const sOk       = saldo >= MIN*2;
+  const sColor    = sBajo?'var(--red)':sCerca?'var(--amber)':'var(--green)';
+  const sBarPct   = Math.min(100, Math.max(0, (saldo / (MIN*4))*100));
 
-  const dias = Object.keys(porDia).sort().reverse();
+  // ── Movimientos ───────────────────────────────────────────
+  const movimVisibles = verMasMovim ? movimientos : movimientos.slice(0,5);
 
+  const inp = {flex:1,background:'var(--s3)',border:'1px solid var(--brd)',borderRadius:'var(--r-sm)',padding:'9px 12px',color:'var(--txt)',fontSize:13,outline:'none',fontFamily:'inherit'};
+  const lbl = {fontSize:10,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:6,display:'block'};
 
   return(
-    <div style={{paddingBottom:20}}>
+    <div style={{paddingBottom:24}}>
 
-      {/* ── BILLETERA ── */}
-      <div style={{margin:12,background:'#1A1A1A',border:`1px solid ${sColor}44`,borderRadius:18,overflow:'hidden'}}>
-        <div style={{background:sBajo?'#7f1d1d':sCerca?'#78350f':'#14532d',padding:'11px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <h3 style={{fontSize:13,fontWeight:800,textTransform:'uppercase',letterSpacing:'.06em',color:'#fff'}}>💳 Mi Billetera</h3>
-          <span style={{fontSize:11,color:'rgba(255,255,255,.7)',fontWeight:600}}>Mínimo {fmtL(MIN_SALDO)}</span>
+      {/* ══ 1. GANANCIAS HERO ══════════════════════════════════ */}
+      <div style={{margin:'12px 12px 8px'}}>
+        <div style={{fontSize:11,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:10}}>Ganancias</div>
+
+        {/* Hoy — destacado */}
+        <div style={{background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:'var(--r-lg)',padding:'18px 20px',marginBottom:8}}>
+          <div style={{fontSize:11,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:6}}>Hoy</div>
+          <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between'}}>
+            <div style={{fontSize:40,fontWeight:800,color:'var(--green)',letterSpacing:'-0.04em',lineHeight:1}}>
+              {fmtL(tHoy)}
+            </div>
+            <div style={{textAlign:'right',paddingBottom:4}}>
+              <div style={{fontSize:24,fontWeight:700,color:'var(--txt)',letterSpacing:'-0.03em'}}>{pH}</div>
+              <div style={{fontSize:11,color:'var(--txt3)',marginTop:1}}>pedido{pH!==1?'s':''}</div>
+            </div>
+          </div>
+          {/* Barra meta diaria L.300 */}
+          <div style={{marginTop:12}}>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+              <span style={{fontSize:10,color:'var(--txt3)',fontWeight:500}}>Meta del día</span>
+              <span style={{fontSize:10,color:'var(--txt3)',fontWeight:600}}>{Math.round(Math.min(100,tHoy/300*100))}% de L.300</span>
+            </div>
+            <div style={{background:'var(--s3)',borderRadius:4,height:4,overflow:'hidden'}}>
+              <div style={{height:'100%',background:'var(--green)',borderRadius:4,width:`${Math.min(100,tHoy/300*100)}%`,transition:'width .6s ease'}}/>
+            </div>
+          </div>
         </div>
-        <div style={{padding:16}}>
-          {/* Saldo disponible */}
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',marginBottom:10}}>
+
+        {/* Ayer + Esta semana */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+          {[['Ayer',tAyer,pA],['Esta semana',tSem,pS]].map(([lbl,t,p])=>(
+            <div key={lbl} style={{background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:'var(--r-md)',padding:'14px 16px'}}>
+              <div style={{fontSize:10,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:6}}>{lbl}</div>
+              <div style={{fontSize:22,fontWeight:700,color:'var(--txt)',letterSpacing:'-0.03em'}}>{fmtL(t)}</div>
+              <div style={{fontSize:11,color:'var(--txt3)',marginTop:3}}>{p} pedido{p!==1?'s':''}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ══ 2. GANANCIAS POR PERÍODO ═══════════════════════════ */}
+      <div style={{margin:'8px 12px'}}>
+        <div style={{background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:'var(--r-lg)',overflow:'hidden'}}>
+          <div style={{padding:'14px 16px 10px'}}>
+            <div style={{fontSize:11,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:10}}>Ganancias por período</div>
+            {/* Botones rápidos */}
+            <div style={{display:'flex',gap:6,marginBottom:12}}>
+              {[['semana','Esta semana'],['mes','Este mes'],['anterior','Mes anterior'],['custom','Personalizado']].map(([id,lbl])=>(
+                <button key={id} onClick={()=>setPeriodo(id===periodo?'':id)}
+                  style={{flex:1,padding:'7px 4px',borderRadius:20,border:`1px solid ${periodo===id?'var(--brand)':'var(--brd)'}`,
+                    background:periodo===id?'var(--brand-dim)':'transparent',
+                    color:periodo===id?'var(--brand)':'var(--txt3)',
+                    fontSize:10,fontWeight:600,letterSpacing:'.02em',cursor:'pointer',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
+                  {lbl}
+                </button>
+              ))}
+            </div>
+            {/* Fechas manuales solo si custom */}
+            {periodo==='custom'&&(
+              <div style={{display:'flex',gap:8,marginBottom:12}}>
+                <input type="date" value={desde} onChange={e=>setDesde(e.target.value)} style={inp}/>
+                <input type="date" value={hasta} onChange={e=>setHasta(e.target.value)} style={inp}/>
+              </div>
+            )}
+          </div>
+          {/* Resultado */}
+          <div style={{background:'var(--s2)',borderTop:'1px solid var(--brd)',padding:'14px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <div>
-              <div style={{fontSize:11,color:'#888',fontWeight:600,marginBottom:4}}>SALDO DISPONIBLE</div>
-              <div style={{fontSize:38,fontWeight:900,color:sColor,lineHeight:1}}>L. {saldo.toFixed(2)}</div>
-              <div style={{fontSize:11,color:'#888',marginTop:4}}>
-                {bloqueado ? '⛔ Saldo insuficiente — recarga para trabajar' : `Mínimo requerido: L. ${MIN_SALDO}`}
+              <div style={{fontSize:28,fontWeight:800,color:(d1Ef&&d2Ef)?'var(--green)':'var(--txt3)',letterSpacing:'-0.04em'}}>{(d1Ef&&d2Ef)?fmtL(rT):'—'}</div>
+              <div style={{fontSize:12,color:'var(--txt3)',marginTop:2}}>
+                {(d1Ef&&d2Ef)?`${rC} pedido${rC!==1?'s':''}  ·  ${d1Ef===d2Ef?d1Ef:`${d1Ef} → ${d2Ef}`}` :'Selecciona un período'}
               </div>
             </div>
-            <button onClick={onIrDepositos}
-              style={{background:'#FF8C00',border:'none',borderRadius:12,padding:'10px 16px',color:'#fff',fontSize:13,fontWeight:800,flexShrink:0}}>
-              + Recargar
-            </button>
           </div>
-          {/* Barra de saldo */}
-          <div style={{background:'#2C2C2C',borderRadius:6,height:8,marginBottom:8,overflow:'hidden'}}>
-            <div style={{height:'100%',borderRadius:6,background:sColor,width:`${sBarPct}%`,transition:'width .5s'}}/>
-          </div>
-          {/* Mensaje estado */}
-          {sBajo && <div style={{fontSize:13,fontWeight:700,color:'#EF4444',background:'rgba(239,68,68,.1)',padding:'8px 12px',borderRadius:10,display:'flex',alignItems:'center',gap:8}}>⛔ Saldo insuficiente — no puedes recibir pedidos</div>}
-          {sCerca && <div style={{fontSize:13,fontWeight:700,color:'#F59E0B',background:'rgba(245,158,11,.1)',padding:'8px 12px',borderRadius:10,display:'flex',alignItems:'center',gap:8}}>⚠️ Saldo bajo — recarga pronto</div>}
-          {sOk    && <div style={{fontSize:13,fontWeight:600,color:'#22C55E',background:'rgba(34,197,94,.08)',padding:'8px 12px',borderRadius:10,display:'flex',alignItems:'center',gap:8}}>✅ Listo para trabajar</div>}
         </div>
       </div>
 
-
-
-      {/* ── GANANCIAS HOY / SEMANA ── */}
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,margin:'0 12px 12px'}}>
-        <div style={{background:'#1A1A1A',border:'1px solid #333',borderRadius:14,padding:'13px 14px'}}>
-          <div style={{fontSize:10,color:'#888',fontWeight:700,textTransform:'uppercase',marginBottom:4}}>Ganado Hoy</div>
-          <div style={{fontSize:22,fontWeight:900,color:'#22C55E'}}>{fmtL(tH)}</div>
-          <div style={{fontSize:11,color:'#888',marginTop:2}}>{pH} pedido{pH!==1?'s':''}</div>
-        </div>
-        <div style={{background:'#1A1A1A',border:'1px solid #333',borderRadius:14,padding:'13px 14px'}}>
-          <div style={{fontSize:10,color:'#888',fontWeight:700,textTransform:'uppercase',marginBottom:4}}>Esta Semana</div>
-          <div style={{fontSize:22,fontWeight:900}}>{fmtL(tS)}</div>
-          <div style={{fontSize:11,color:'#888',marginTop:2}}>{pS} pedido{pS!==1?'s':''}</div>
-        </div>
-      </div>
-
-      {/* ── SELECTOR FECHAS ── */}
-      <div style={{margin:'0 12px 12px',background:'#1A1A1A',border:'1px solid #333',borderRadius:14,padding:'14px 16px'}}>
-        <div style={{fontSize:11,color:'#888',fontWeight:700,textTransform:'uppercase',marginBottom:10}}>📅 Ganancias por período</div>
-        <div style={{display:'flex',gap:8,marginBottom:10}}>
-          <input type="date" value={desde} onChange={e=>setDesde(e.target.value)} style={{flex:1,background:'#2C2C2C',border:'1px solid #444',borderRadius:8,padding:'9px 10px',color:'#F0F0F0',fontSize:13,outline:'none'}}/>
-          <input type="date" value={hasta} onChange={e=>setHasta(e.target.value)} style={{flex:1,background:'#2C2C2C',border:'1px solid #444',borderRadius:8,padding:'9px 10px',color:'#F0F0F0',fontSize:13,outline:'none'}}/>
-        </div>
-        <div style={{background:'#2C2C2C',borderRadius:10,padding:12,textAlign:'center'}}>
-          <div style={{fontSize:26,fontWeight:900,color:'#22C55E'}}>L. {rT.toFixed(2)}</div>
-          <div style={{fontSize:12,color:'#888',marginTop:2}}>{desde&&hasta?`${rC} pedido${rC!==1?'s':''}`:'Selecciona un período'}</div>
-        </div>
-      </div>
-
-      {/* ── RESUMEN MES ── */}
-      <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.07em',padding:'4px 14px 8px'}}>Resumen del Mes</div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,margin:'0 12px 12px'}}>
-        {[['💰','Ganado Total',`L.${tM.toFixed(0)}`],['📦','Pedidos',pM],['🎁','Bonos','L.0'],['⭐','Propinas','L.0'],['⏱️','Tiempo Prom.','— min'],['💵','Efectivo Cobrado','L.0']].map(([icon,lbl,val])=>(
-          <div key={lbl} style={{background:'#1A1A1A',border:'1px solid #333',borderRadius:13,padding:12,textAlign:'center'}}>
-            <div style={{fontSize:20,marginBottom:4}}>{icon}</div>
-            <div style={{fontSize:10,color:'#888',fontWeight:700,textTransform:'uppercase',letterSpacing:'.04em',marginBottom:4}}>{lbl}</div>
-            <div style={{fontSize:17,fontWeight:800}}>{val}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* ── SOMAR PRO ── */}
-      <div style={{margin:'0 12px 12px',background:'linear-gradient(135deg,#1a1000,#251800)',border:'1px solid rgba(245,158,11,.25)',borderRadius:16,overflow:'hidden'}}>
-        <div style={{background:'linear-gradient(90deg,#92400e,#78350f)',padding:'12px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-          <div><div style={{fontSize:10,color:'rgba(255,255,255,.6)',fontWeight:700,textTransform:'uppercase'}}>Calificación Somar Pro</div><div style={{fontSize:17,fontWeight:800,color:'#fff',marginTop:2}}>Rider Nivel {nivel}</div></div>
-          <div style={{fontSize:18}}>{stars}</div>
-        </div>
-        <div style={{padding:'14px 16px'}}>
-          <div style={{fontSize:11,color:'#888',fontWeight:600,marginBottom:6}}>Progreso Mensual ({pM} Pedidos)</div>
-          <div style={{background:'#2C2C2C',borderRadius:6,height:8,marginBottom:8,overflow:'hidden'}}><div style={{height:'100%',background:'linear-gradient(90deg,#F59E0B,#FF8C00)',borderRadius:6,width:`${pct}%`,transition:'width .5s'}}/></div>
-          <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:'#888',marginBottom:14,fontWeight:600}}><span>Bronce (0)</span><span>Plata (75)</span><span>Oro (150)</span></div>
-          {[['🔴 Bono Combustible','Meta: 7 pedidos del día',pH,7],['📊 Recarga Semanal','Meta: 40 pedidos esta semana',pS,40]].map(([name,sub,v,max])=>(
-            <div key={name} style={{background:'#2C2C2C',borderRadius:10,padding:'10px 12px',marginBottom:8}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:5}}><span style={{fontSize:13,fontWeight:700}}>{name}</span><span style={{fontSize:12,fontWeight:800,color:'#FF8C00'}}>{v}/{max}</span></div>
-              <div style={{fontSize:11,color:'#888',marginBottom:5}}>{sub}</div>
-              <div style={{background:'#333',borderRadius:4,height:5,overflow:'hidden'}}><div style={{height:'100%',background:'#FF8C00',borderRadius:4,width:`${Math.min(100,Math.round(v/max*100))}%`,transition:'width .5s'}}/></div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── MOVIMIENTOS DE BILLETERA ── */}
-      <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.07em',padding:'4px 14px 8px'}}>Movimientos de Billetera</div>
-      {movimientos.map(m=>{
-        // LIQUIDACION = Somar paga al delivery = ingreso (verde)
-        // RECARGA = delivery pone dinero a su wallet = salida (rojo)
-        const esIngreso = m.tipo==='LIQUIDACION';
-        const color = esIngreso ? '#22C55E' : '#EF4444';
-        const fecha = new Date(m.ts).toLocaleDateString('es-HN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'America/Tegucigalpa'});
-        return(
-          <div key={m.id} style={{background:'#1A1A1A',borderRadius:13,padding:'12px 14px',margin:'0 12px 6px',display:'flex',justifyContent:'space-between',alignItems:'flex-start',borderLeft:`3px solid ${color}`}}>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
-                <span style={{fontSize:14}}>{m.tipo==='RECARGA'?'⬇️':'💳'}</span>
-                <span style={{fontSize:13,fontWeight:700}}>
-                  {m.tipo==='RECARGA'?'Recarga de billetera':'Pago de Somar'}
-                </span>
-              </div>
-              {m.no && <div style={{fontSize:11,fontFamily:'monospace',color:'#888'}}>{m.no}</div>}
-              {m.tipo==='DESCUENTO' && (
-                <div style={{fontSize:10,color:'#666',marginTop:3}}>
-                  {m.pago==='EFECTIVO'?'💵':'📲'} Gan. producto: {fmtL(m.gan_prod)} · Fee envío: {fmtL(m.fee_envio)}
+      {/* ══ 3. SALDO ═══════════════════════════════════════════ */}
+      <div style={{margin:'8px 12px'}}>
+        <div style={{background:'var(--s1)',border:`1px solid ${sBajo?'rgba(239,68,68,.3)':sCerca?'rgba(245,158,11,.2)':'var(--brd)'}`,borderRadius:'var(--r-lg)',overflow:'hidden'}}>
+          <div style={{padding:'16px 16px 14px'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:14}}>
+              <div>
+                <div style={{fontSize:11,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:6}}>Saldo billetera</div>
+                <div style={{fontSize:38,fontWeight:800,color:sColor,letterSpacing:'-0.04em',lineHeight:1}}>
+                  {fmtL(saldo)}
                 </div>
-              )}
-              {m.nota && <div style={{fontSize:11,color:'#888',marginTop:2}}>{m.nota}</div>}
-              <div style={{fontSize:10,color:'#555',marginTop:3}}>{fecha}</div>
+                <div style={{fontSize:11,color:'var(--txt3)',marginTop:5}}>
+                  Mínimo para operar: {fmtL(MIN)}
+                </div>
+              </div>
+              <button onClick={onIrDepositos}
+                style={{background:'var(--brand)',border:'none',borderRadius:'var(--r-md)',padding:'10px 18px',color:'#000',fontSize:13,fontWeight:700,flexShrink:0,letterSpacing:'-0.01em'}}>
+                + Recargar
+              </button>
             </div>
-            <div style={{fontSize:16,fontWeight:900,color,flexShrink:0,marginLeft:10}}>
-              {esIngreso ? '+' : '-'}{fmtL(Math.abs(m.monto))}
+            {/* Barra */}
+            <div style={{background:'var(--s3)',borderRadius:4,height:5,marginBottom:8,overflow:'hidden'}}>
+              <div style={{height:'100%',background:sColor,borderRadius:4,width:`${sBarPct}%`,transition:'width .5s'}}/>
             </div>
+            {/* Mensaje */}
+            {sBajo&&<div style={{fontSize:12,fontWeight:600,color:'var(--red)',background:'var(--red-dim)',padding:'8px 12px',borderRadius:'var(--r-sm)'}}>Saldo insuficiente — recarga para recibir pedidos</div>}
+            {sCerca&&<div style={{fontSize:12,fontWeight:600,color:'var(--amber)',background:'var(--amber-dim)',padding:'8px 12px',borderRadius:'var(--r-sm)'}}>Saldo bajo — recarga pronto</div>}
+            {sOk&&<div style={{fontSize:12,fontWeight:500,color:'var(--green)',background:'var(--green-dim)',padding:'8px 12px',borderRadius:'var(--r-sm)'}}>Listo para recibir pedidos</div>}
           </div>
-        );
-      })}
 
-      {/* ── HISTORIAL DIARIO ── */}
-      <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.07em',padding:'12px 14px 8px'}}>Historial de Entregas</div>
-      {!dias.length&&<div style={{textAlign:'center',padding:'30px 24px',color:'#888'}}>Sin historial aún</div>}
-      {dias.map(dia=>{
-        const info=porDia[dia];
-        const fecha=new Date(dia+'T12:00:00').toLocaleDateString('es-HN',{weekday:'short',day:'2-digit',month:'short'});
-        return(
-          <div key={dia} style={{margin:'0 12px 6px',background:'#1A1A1A',border:'1px solid #333',borderRadius:13,overflow:'hidden'}}>
-            <div onClick={()=>setOpenDia(d=>({...d,[dia]:!d[dia]}))} style={{padding:'12px 14px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-              <div><div style={{fontSize:14,fontWeight:700}}>{fecha}</div><div style={{fontSize:11,color:'#888',marginTop:2}}>{info.items.length} pedidos</div></div>
-              <div style={{display:'flex',alignItems:'center',gap:8}}><div style={{fontSize:16,fontWeight:800,color:'#22C55E'}}>L. {info.t.toFixed(2)}</div><span style={{color:'#555',fontSize:18}}>{openDia[dia]?'∨':'›'}</span></div>
+          {/* Recargas recientes */}
+          {recargas.length>0&&(
+            <div style={{borderTop:'1px solid var(--brd)'}}>
+              <div style={{padding:'10px 16px 4px',fontSize:10,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.07em'}}>Últimas recargas</div>
+              {recargas.map(r=>{
+                const fecha=new Date(r.creado_at).toLocaleDateString('es-HN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'America/Tegucigalpa'});
+                return(
+                  <div key={r.id} style={{padding:'9px 16px',display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:'1px solid var(--brd)'}}>
+                    <div style={{fontSize:12,color:'var(--txt2)'}}>{fecha}</div>
+                    <div style={{fontSize:14,fontWeight:700,color:'var(--green)'}}>+ {fmtL(parseFloat(r.monto))}</div>
+                  </div>
+                );
+              })}
             </div>
-            {openDia[dia]&&info.items.map((p,i)=>(
-              <div key={i} style={{padding:'8px 14px',display:'flex',justifyContent:'space-between',borderTop:'1px solid #222',fontSize:13}}>
-                <span style={{fontFamily:'monospace',fontSize:12,color:'#888'}}>{p.no}</span>
-                <span style={{fontWeight:700,color:'#22C55E'}}>L. {parseFloat(p._g||p.ingreso_delivery||p.gan||0).toFixed(2)}</span>
-              </div>
-            ))}
-          </div>
-        );
-      })}
-      <div style={{height:12}}/>
-      {/* 💳 Transferencias pendientes de Somar */}
-      {liquidaciones&&liquidaciones.filter(l=>l.estatus==='PENDIENTE').length>0&&(
-        <div style={{margin:'12px 12px 0',background:'rgba(59,130,246,.08)',border:'1px solid rgba(59,130,246,.3)',borderRadius:14,padding:14}}>
-          <div style={{fontSize:11,fontWeight:700,color:'#3B82F6',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:10}}>
-            💳 Somar te debe · {liquidaciones.filter(l=>l.estatus==='PENDIENTE').length} pago{liquidaciones.filter(l=>l.estatus==='PENDIENTE').length!==1?'s':''}
-          </div>
-          {liquidaciones.filter(l=>l.estatus==='PENDIENTE').map(l=>(
-            <div key={l.id} style={{background:'rgba(0,0,0,.2)',borderRadius:10,padding:'10px 12px',marginBottom:6}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                <div style={{fontSize:12,color:'#ccc',flex:1,marginRight:8}}>{l.descripcion||'Liquidación pendiente'}</div>
-                <div style={{fontSize:16,fontWeight:900,color:'#3B82F6',flexShrink:0}}>L. {parseFloat(l.monto_liquidar).toFixed(2)}</div>
-              </div>
-              <div style={{fontSize:10,color:'#666',marginTop:3}}>⏳ {new Date(l.creado_at).toLocaleDateString('es-HN',{day:'2-digit',month:'short',timeZone:'America/Tegucigalpa'})}</div>
-            </div>
-          ))}
+          )}
         </div>
-      )}
-      {liquidaciones&&liquidaciones.filter(l=>l.estatus==='LIQUIDADO').length>0&&(
-        <div style={{margin:'6px 12px 0'}}>
-          {liquidaciones.filter(l=>l.estatus==='LIQUIDADO').slice(0,3).map(l=>(
-            <div key={l.id} style={{background:'#1A1A1A',borderRadius:10,padding:'10px 12px',marginBottom:6,borderLeft:'3px solid #22C55E'}}>
-              <div style={{display:'flex',justifyContent:'space-between'}}>
-                <div style={{fontSize:12,color:'#ccc',flex:1}}>{l.descripcion||'Transferencia recibida'}</div>
-                <div style={{fontSize:14,fontWeight:800,color:'#22C55E'}}>L. {parseFloat(l.monto_liquidar).toFixed(2)}</div>
-              </div>
-              <div style={{fontSize:10,color:'#555',marginTop:2}}>✅ Recibido</div>
-            </div>
-          ))}
+      </div>
+
+      {/* ══ 4. MOVIMIENTOS ═════════════════════════════════════ */}
+      {movimientos.length>0&&(
+        <div style={{margin:'8px 12px'}}>
+          <div style={{fontSize:11,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:8,paddingLeft:2}}>Movimientos</div>
+          <div style={{background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:'var(--r-lg)',overflow:'hidden'}}>
+            {movimVisibles.map((m,i)=>{
+              const esIngreso = m.tipo==='LIQUIDACION';
+              const col = esIngreso?'var(--green)':'var(--red)';
+              const fecha=new Date(m.ts).toLocaleDateString('es-HN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'America/Tegucigalpa'});
+              return(
+                <div key={m.id||i} style={{padding:'12px 16px',display:'flex',justifyContent:'space-between',alignItems:'center',borderBottom:i<movimVisibles.length-1?'1px solid var(--brd)':'none'}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:13,fontWeight:600,color:'var(--txt)',marginBottom:2}}>
+                      {m.tipo==='RECARGA'?'Recarga de billetera':m.tipo==='LIQUIDACION'?'Pago de Somar':'Movimiento'}
+                    </div>
+                    {m.nota&&<div style={{fontSize:11,color:'var(--txt3)'}}>{m.nota}</div>}
+                    <div style={{fontSize:10,color:'var(--txt3)',marginTop:2}}>{fecha}</div>
+                  </div>
+                  <div style={{fontSize:15,fontWeight:700,color:col,flexShrink:0,marginLeft:12}}>
+                    {esIngreso?'+':'-'}{fmtL(Math.abs(m.monto))}
+                  </div>
+                </div>
+              );
+            })}
+            {movimientos.length>5&&(
+              <button onClick={()=>setVerMasMovim(v=>!v)}
+                style={{width:'100%',padding:'12px',background:'none',border:'none',borderTop:'1px solid var(--brd)',color:'var(--brand)',fontSize:13,fontWeight:600,cursor:'pointer',letterSpacing:'-0.01em'}}>
+                {verMasMovim?'Ver menos':'Ver más'}
+              </button>
+            )}
+          </div>
         </div>
       )}
 
     </div>
   );
 }
+
 
 // ─── FORM DEPÓSITO ─────────────────────────────────────────
 function DepForm({onEnviar, onConfirm}){
@@ -1917,6 +1913,53 @@ function App(){
               </div>
             </div>
             <div style={{margin:'0 12px'}}><a href="https://wa.me/50499999999" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:14,background:'rgba(37,211,102,.1)',border:'1px solid rgba(37,211,102,.25)',borderRadius:14,color:'#25d366',fontWeight:700,fontSize:14}}>💬 WhatsApp Despacho</a></div>
+
+            {/* ── SOMAR PRO ─────────────────────────────── */}
+            {(()=>{
+              const fin = historial.filter(p=>p.estatus==='FINALIZADO'||p.est==='FINALIZADO');
+              const ini = new Date(new Date().getFullYear(),new Date().getMonth(),1).getTime();
+              const pM  = fin.filter(p=>new Date(p.hora_finalizado||p.ts||0).getTime()>=ini).length;
+              let nivel='Bronce',pct=0,meta=75,siguienteNivel='Plata';
+              if(pM>=150){nivel='Oro';pct=100;meta=150;siguienteNivel=null;}
+              else if(pM>=75){nivel='Plata';pct=Math.round((pM-75)/75*100);meta=150;siguienteNivel='Oro';}
+              else{pct=Math.round(pM/75*100);meta=75;siguienteNivel='Plata';}
+              const nivelColor = nivel==='Oro'?'#F59E0B':nivel==='Plata'?'#9CA3AF':'#CD7F32';
+              const nivelDim   = nivel==='Oro'?'rgba(245,158,11,.1)':nivel==='Plata'?'rgba(156,163,175,.1)':'rgba(205,127,50,.1)';
+              return(
+                <div style={{margin:'12px 12px 0',background:'var(--s1)',border:`1px solid ${nivelColor}33`,borderRadius:'var(--r-lg)',overflow:'hidden'}}>
+                  <div style={{padding:'14px 16px',background:nivelDim,borderBottom:'1px solid var(--brd)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                    <div>
+                      <div style={{fontSize:10,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:4}}>Somar Pro</div>
+                      <div style={{fontSize:18,fontWeight:800,color:nivelColor,letterSpacing:'-0.02em'}}>Nivel {nivel}</div>
+                    </div>
+                    <div style={{width:44,height:44,borderRadius:12,background:nivelDim,border:`1px solid ${nivelColor}44`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={nivelColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    </div>
+                  </div>
+                  <div style={{padding:'14px 16px'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+                      <span style={{fontSize:12,color:'var(--txt2)'}}>Pedidos este mes</span>
+                      <span style={{fontSize:13,fontWeight:700,color:'var(--txt)'}}>{pM} / {meta}</span>
+                    </div>
+                    <div style={{background:'var(--s3)',borderRadius:4,height:6,marginBottom:8,overflow:'hidden'}}>
+                      <div style={{height:'100%',background:nivelColor,borderRadius:4,width:`${pct}%`,transition:'width .6s ease'}}/>
+                    </div>
+                    {siguienteNivel
+                      ? <div style={{fontSize:11,color:'var(--txt3)'}}>Faltan {meta-pM} pedidos para nivel <span style={{color:nivelColor,fontWeight:700}}>{siguienteNivel}</span></div>
+                      : <div style={{fontSize:11,color:'var(--amber)',fontWeight:600}}>Nivel máximo alcanzado</div>
+                    }
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,marginTop:12}}>
+                      {[['Bronce','0+','#CD7F32'],['Plata','75+','#9CA3AF'],['Oro','150+','#F59E0B']].map(([n,req,col])=>(
+                        <div key={n} style={{background:nivel===n?`${col}18`:'var(--s2)',border:`1px solid ${nivel===n?col+'44':'var(--brd)'}`,borderRadius:'var(--r-sm)',padding:'8px 6px',textAlign:'center'}}>
+                          <div style={{fontSize:10,fontWeight:700,color:nivel===n?col:'var(--txt3)',letterSpacing:'.02em'}}>{n}</div>
+                          <div style={{fontSize:9,color:'var(--txt3)',marginTop:2}}>{req} pedidos</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>
