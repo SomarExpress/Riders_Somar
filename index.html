@@ -1742,7 +1742,7 @@ function normalizarPedido(p, asigId=null) {
     de:    p.direccion_entrega    || p.de || '',
     co:    p.ubicacion_recogida_gps || p.co || '',
     cd:    p.ubicacion_entrega_gps  || p.cd || '',
-    mc: parseFloat(p.monto_pagado || p.monto_pagar_establecimiento || p.subtotal || p.mc || 0),
+    mc: parseFloat(p.total || p.monto_cobrar || p.mc || 0),
     cp:    parseFloat(p.monto_recibido_efectivo || p.cp || 0),
     enc:   p.datos_encargo   || p.enc || '',
     me:    parseFloat(p.monto_pagado_en_comercio || p.me || 0),
@@ -1898,7 +1898,7 @@ function App(){
   };
 
   const cargarDatos=async(delId)=>{
-    const ACTIVOS=['ASIGNADO','ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO'];
+    const ACTIVOS=['ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO'];
     const [rP,rH,rD,rM]=await Promise.all([
       sb.from('pedidos').select('*').eq('delivery_id',delId).in('estatus',ACTIVOS).order('hora_asignado',{ascending:false}),
       sb.from('pedidos').select('no_orden,estatus,nombre_comercio,ciudad_destino,ingreso_delivery,tarifa_envio,propina,distancia_km,hora_finalizado,hora_asignado,hora_aceptado,hora_en_establecimiento,hora_en_camino').eq('delivery_id',delId).eq('estatus','FINALIZADO').order('hora_finalizado',{ascending:false}).limit(100),
@@ -2215,11 +2215,12 @@ function App(){
     </div>
   );
 
-  const activos=pedidos.filter(p=>['ASIGNADO','ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO'].includes(p.estatus||p.est));
+  const activos=pedidos.filter(p=>['ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO'].includes(p.estatus||p.est));
 
   // ── Vista detalle del pedido ──────────────────────────
   if(detalle&&tab==='asignados') return(
     <div>
+      {pe&&<PedidoEntrante pedido={pe} onAceptar={aceptarPE} onRechazar={rechazarPE}/>}
       <VistaPedido
         p={detalle} pedidos={pedidos}
         onAvanzar={avanzarReal}
@@ -2677,7 +2678,7 @@ function TabZona({delivery}){
   // Cargar pedidos activos del rider
   useEffect(()=>{
     if(!delivery?.id) return;
-    const ACTIVOS=['ASIGNADO','ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO'];
+    const ACTIVOS=['ACEPTADO','EN_ESTABLECIMIENTO','PEDIDO_EN_CAMINO','ENTREGANDO'];
     sb.from('pedidos').select('id,no_orden,estatus,nombre_comercio,direccion_recogida,ubicacion_recogida_gps,direccion_entrega,ubicacion_entrega_gps,nombre_cliente,distancia_km')
       .eq('delivery_id',delivery.id).in('estatus',ACTIVOS)
       .then(({data})=>{
