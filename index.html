@@ -523,7 +523,7 @@ function VistaPedido({p, pedidos, onAvanzar, onBack, onConfirm, toast, ahora}){
       msg: `¿Confirmar que ${labels[pedidoActual.est]}?`,
       confirmLbl: eb.lbl,
       color: eb.color,
-      onSi: () => onAvanzar(pedidoActual.id, pedidoActual.est),
+      onSi: () => onAvanzar(pedidoActual.id, pedidoActual.est, eb?.liq ? { facMonto, facFile } : null),
     });
   };
 
