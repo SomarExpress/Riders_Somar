@@ -1721,9 +1721,9 @@ function TabChat({delivery, chatUnread, setChatUnread}){
 
 // ─── NORMALIZAR PEDIDO (campos BD → campos cortos del UI) ────────────────────
 function normalizarPedido(p, asigId=null) {
-  // Calcular ganancia estimada (66% de tarifa_envio)
+  // Calcular ganancia estimada (70% de tarifa_envio)
   const tarifa = parseFloat(p.tarifa_envio || 0);
-  const gan = parseFloat(p.ingreso_delivery || p.gan || tarifa * 0.66 || 0);
+  const gan = parseFloat(p.ingreso_delivery || p.gan || tarifa * 0.7 || 0);
   // Calcular distancia aproximada si hay GPS
   let km = parseFloat(p.distancia_km || 0);
   return {
@@ -2017,34 +2017,21 @@ function App(){
           sonarMensaje();
         }
       })
-// ── NUEVO: detectar cuando la asignación expira o es cancelada ──
-.on('postgres_changes', {
-  event: 'UPDATE',
-  schema: 'public',
-  table: 'asignaciones_pendientes',
-  filter: 'delivery_id=eq.' + delId
-}, p => {
-  const est = p.new?.estatus;
-  // Si la asignación fue EXPIRADA o CANCELADA — limpiar el pedido entrante
-  if(est === 'EXPIRADO' || est === 'CANCELADO') {
-    detenerAlarma();
-    setPe(null);
-    cargarDatos(delId); // refrescar lista para que desaparezca
-  }
-})
-      .on('postgres_changes', {
-  event: 'INSERT',
-  schema: 'public',
-  table: 'notificaciones_delivery',
-  filter: 'delivery_id=eq.' + delId
-}, p => {
-  // Agregar la notificación al estado en tiempo real
-  setNotifs(prev => [p.new, ...prev]);
-  // Sonido + vibración suave
-  sonarMensaje();
-  // Notificación del sistema si la app está en background
-  notifLocal(p.new.titulo || '🔔 Somar Express', p.new.cuerpo || '');
-})
+      // ── Asignación expirada o cancelada → limpiar pedido entrante ──
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'asignaciones_pendientes',filter:'delivery_id=eq.'+delId},p=>{
+        const est=p.new?.estatus;
+        if(est==='EXPIRADO'||est==='CANCELADO'){
+          detenerAlarma();
+          setPe(null);
+          cargarDatos(delId);
+        }
+      })
+      // ── Notificaciones del sistema en tiempo real ──
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'notificaciones_delivery',filter:'delivery_id=eq.'+delId},p=>{
+        setNotifs(prev=>[p.new,...prev]);
+        sonarMensaje();
+        notifLocal(p.new.titulo||'🔔 Somar Express',p.new.cuerpo||'');
+      })
       .subscribe();
   };
 
@@ -2845,7 +2832,7 @@ function TabZona({delivery}){
 
       {/* Leyenda */}
       <div style={{margin:'10px 12px 0',fontSize:11,color:'#555',textAlign:'center'}}>
-        💡 Mantente dentro del radio de {radioKm}km
+        💡 Mantente dentro del radio de {radioKm}km · Ruta real por carretera via OSRM
       </div>
     </div>
   );
