@@ -1721,9 +1721,9 @@ function TabChat({delivery, chatUnread, setChatUnread}){
 
 // ─── NORMALIZAR PEDIDO (campos BD → campos cortos del UI) ────────────────────
 function normalizarPedido(p, asigId=null) {
-  // Calcular ganancia estimada (70% de tarifa_envio)
+  // Calcular ganancia estimada (66% de tarifa_envio)
   const tarifa = parseFloat(p.tarifa_envio || 0);
-  const gan = parseFloat(p.ingreso_delivery || p.gan || tarifa * 0.7 || 0);
+  const gan = parseFloat(p.ingreso_delivery || p.gan || tarifa * 0.66 || 0);
   // Calcular distancia aproximada si hay GPS
   let km = parseFloat(p.distancia_km || 0);
   return {
