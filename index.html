@@ -567,10 +567,11 @@ function VistaPedido({p, pedidos, onAvanzar, onBack, onConfirm, toast, ahora}){
               {wd && <a href={wd} target="_blank" style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'13px 0',borderRadius:12,background:'rgba(51,204,255,.08)',border:'1px solid rgba(51,204,255,.25)',color:'#33ccff',fontSize:14,fontWeight:700}}>🔵 Waze</a>}
               <a href={md} target="_blank" style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'13px 0',borderRadius:12,background:'rgba(66,133,244,.08)',border:'1px solid rgba(66,133,244,.25)',color:'#4285f4',fontSize:14,fontWeight:700}}>📍 Maps</a>
             </div>
+            {(()=>{ const telDest = pedidoActual.telefono_destinatario || pedidoActual.celular_cliente || pedidoActual.telefono_cliente || pedidoActual.tel || ''; const telWA = telDest.replace(/[^0-9]/g,''); return telDest ? (
             <div style={{display:'flex',gap:8}}>
-              <a href={`tel:${pedidoActual.tel}`} style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'13px 0',borderRadius:12,background:'rgba(34,197,94,.08)',border:'1px solid rgba(34,197,94,.25)',color:'#22C55E',fontSize:14,fontWeight:700}}>📞 Llamar</a>
-              <a href={`https://wa.me/504${pedidoActual.tel}`} target="_blank" style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'13px 0',borderRadius:12,background:'rgba(37,211,102,.08)',border:'1px solid rgba(37,211,102,.25)',color:'#25d366',fontSize:14,fontWeight:700}}>💬 WhatsApp</a>
-            </div>
+              <a href={`tel:${telDest}`} style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'13px 0',borderRadius:12,background:'rgba(34,197,94,.08)',border:'1px solid rgba(34,197,94,.25)',color:'#22C55E',fontSize:14,fontWeight:700}}>📞 Llamar</a>
+              <a href={`https://wa.me/504${telWA}`} target="_blank" style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'13px 0',borderRadius:12,background:'rgba(37,211,102,.08)',border:'1px solid rgba(37,211,102,.25)',color:'#25d366',fontSize:14,fontWeight:700}}>💬 WhatsApp</a>
+            </div>) : null; })()}
           </div>
         )}
 
@@ -601,10 +602,10 @@ function VistaPedido({p, pedidos, onAvanzar, onBack, onConfirm, toast, ahora}){
         {enEstablecimiento && (
           <div style={{padding:'14px',borderBottom:'1px solid #222'}}>
             <div style={{fontSize:10,fontWeight:700,color:'#F59E0B',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:10}}>🛒 Recolecta</div>
-            {pedidoActual.mc > 0 && (
+            {(pedidoActual.monto_pagado > 0 || pedidoActual.mc > 0) && (
               <div style={{background:'rgba(255,140,0,.1)',border:'1px solid rgba(255,140,0,.25)',borderRadius:14,padding:'14px',textAlign:'center',marginBottom:10}}>
                 <div style={{fontSize:11,color:'#F59E0B',fontWeight:700,textTransform:'uppercase',marginBottom:4}}>Monto a pagar en establecimiento</div>
-                <div style={{fontSize:36,fontWeight:900,color:'#FF8C00'}}>L. {pedidoActual.mc}</div>
+                <div style={{fontSize:36,fontWeight:900,color:'#FF8C00'}}>L. {parseFloat(pedidoActual.monto_pagado || pedidoActual.subtotal || 0).toFixed(2)}</div>
               </div>
             )}
             {pedidoActual.enc && (
@@ -670,6 +671,22 @@ function VistaPedido({p, pedidos, onAvanzar, onBack, onConfirm, toast, ahora}){
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Estado de factura ya enviada */}
+        {pedidoActual.foto_factura_url && (
+          <div style={{padding:'14px',borderBottom:'1px solid #222'}}>
+            <div style={{fontSize:10,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:10}}>🧾 Factura Enviada</div>
+            <div style={{background:pedidoActual.factura_aprobada?'rgba(34,197,94,.08)':'rgba(245,158,11,.08)',border:`1px solid ${pedidoActual.factura_aprobada?'rgba(34,197,94,.25)':'rgba(245,158,11,.25)'}`,borderRadius:12,padding:'12px 14px',display:'flex',alignItems:'center',gap:12}}>
+              <img src={pedidoActual.foto_factura_url} style={{width:52,height:52,borderRadius:8,objectFit:'cover',flexShrink:0,cursor:'pointer'}} onClick={()=>window.open(pedidoActual.foto_factura_url,'_blank')}/>
+              <div style={{flex:1}}>
+                <div style={{fontSize:13,fontWeight:700,color:pedidoActual.factura_aprobada?'#22C55E':'#F59E0B'}}>
+                  {pedidoActual.factura_aprobada ? '✅ Factura aprobada' : '⏳ En revisión por Despacho'}
+                </div>
+                <div style={{fontSize:12,color:'#888',marginTop:2}}>L. {parseFloat(pedidoActual.monto_pagado_en_comercio||pedidoActual.me||0).toFixed(2)} pagado</div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -1745,6 +1762,7 @@ function normalizarPedido(p, asigId=null) {
     mc: parseFloat(p.total || p.monto_cobrar || p.mc || 0),
     cp:    parseFloat(p.monto_recibido_efectivo || p.cp || 0),
     enc:   p.datos_encargo   || p.enc || '',
+    tel:   p.celular_cliente || p.telefono_destinatario || p.telefono_cliente || p.tel || '',
     me:    parseFloat(p.monto_pagado_en_comercio || p.me || 0),
     est:   p.estatus         || p.est || 'ACEPTADO',
     // Datos reales del cliente
