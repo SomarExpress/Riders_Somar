@@ -2030,6 +2030,21 @@ function App(){
   // Notificación del sistema si la app está en background
   notifLocal(p.new.titulo || '🔔 Somar Express', p.new.cuerpo || '');
 })
+      // ── NUEVO: detectar cuando la asignación expira o es cancelada ──
+.on('postgres_changes', {
+  event: 'UPDATE',
+  schema: 'public',
+  table: 'asignaciones_pendientes',
+  filter: 'delivery_id=eq.' + delId
+}, p => {
+  const est = p.new?.estatus;
+  // Si la asignación fue EXPIRADA o CANCELADA — limpiar el pedido entrante
+  if(est === 'EXPIRADO' || est === 'CANCELADO') {
+    detenerAlarma();
+    setPe(null);
+    cargarDatos(delId); // refrescar lista para que desaparezca
+  }
+})
       .subscribe();
   };
 
