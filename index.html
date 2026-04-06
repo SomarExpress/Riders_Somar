@@ -1742,7 +1742,7 @@ function normalizarPedido(p, asigId=null) {
     de:    p.direccion_entrega    || p.de || '',
     co:    p.ubicacion_recogida_gps || p.co || '',
     cd:    p.ubicacion_entrega_gps  || p.cd || '',
-    mc: parseFloat(p.monto_pagar_establecimiento || p.subtotal || p.mc || 0),
+    mc: parseFloat(p.monto_pagado || p.monto_pagar_establecimiento || p.subtotal || p.mc || 0),
     cp:    parseFloat(p.monto_recibido_efectivo || p.cp || 0),
     enc:   p.datos_encargo   || p.enc || '',
     me:    parseFloat(p.monto_pagado_en_comercio || p.me || 0),
