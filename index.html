@@ -2017,20 +2017,7 @@ function App(){
           sonarMensaje();
         }
       })
-      .on('postgres_changes', {
-  event: 'INSERT',
-  schema: 'public',
-  table: 'notificaciones_delivery',
-  filter: 'delivery_id=eq.' + delId
-}, p => {
-  // Agregar la notificación al estado en tiempo real
-  setNotifs(prev => [p.new, ...prev]);
-  // Sonido + vibración suave
-  sonarMensaje();
-  // Notificación del sistema si la app está en background
-  notifLocal(p.new.titulo || '🔔 Somar Express', p.new.cuerpo || '');
-})
-      // ── NUEVO: detectar cuando la asignación expira o es cancelada ──
+// ── NUEVO: detectar cuando la asignación expira o es cancelada ──
 .on('postgres_changes', {
   event: 'UPDATE',
   schema: 'public',
@@ -2044,6 +2031,19 @@ function App(){
     setPe(null);
     cargarDatos(delId); // refrescar lista para que desaparezca
   }
+})
+      .on('postgres_changes', {
+  event: 'INSERT',
+  schema: 'public',
+  table: 'notificaciones_delivery',
+  filter: 'delivery_id=eq.' + delId
+}, p => {
+  // Agregar la notificación al estado en tiempo real
+  setNotifs(prev => [p.new, ...prev]);
+  // Sonido + vibración suave
+  sonarMensaje();
+  // Notificación del sistema si la app está en background
+  notifLocal(p.new.titulo || '🔔 Somar Express', p.new.cuerpo || '');
 })
       .subscribe();
   };
