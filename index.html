@@ -23,16 +23,24 @@
   :root{
     --brand:#FF8C00; --brand-dim:rgba(255,140,0,.1); --brand-mid:rgba(255,140,0,.2);
     --bg:#0A0A0A; --s1:#141414; --s2:#1C1C1C; --s3:#242424; --s4:#2E2E2E;
-    --brd:#2a2a2a; --brd2:#383838;
-    --txt:#F2F2F2; --txt2:#A0A0A0; --txt3:#5a5a5a;
+    --brd:#3a3a3a; --brd2:#484848;
+    --txt:#FFFFFF; --txt2:#D1D5DB; --txt3:#A8ADB5;
     --green:#22C55E; --green-dim:rgba(34,197,94,.1);
     --red:#EF4444;   --red-dim:rgba(239,68,68,.1);
     --amber:#F59E0B; --amber-dim:rgba(245,158,11,.1);
     --blue:#3B82F6;  --blue-dim:rgba(59,130,246,.1);
     --r-sm:10px; --r-md:14px; --r-lg:18px; --r-xl:24px;
   }
-  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+  /* ☀️ MODO SOL — máximo contraste para luz directa en campo */
+  body.modo-sol {
+    --bg:#000000; --s1:#0A0A0A; --s2:#141414; --s3:#1C1C1C; --s4:#262626;
+    --brd:#5a5a5a; --brd2:#6a6a6a;
+    --txt2:#FFFFFF; --txt3:#E5E7EB;
+    font-weight:500 !important;
+  }
+  body.modo-sol * { letter-spacing:0.01em; }
+  body.modo-sol .card, body.modo-sol [style*="border"] { border-width:2px !important; }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased;font-weight:450}
   button{cursor:pointer;font-family:inherit;border:none;outline:none}
   a{text-decoration:none;color:inherit}
   input,textarea{font-family:inherit}
@@ -52,8 +60,9 @@
     .chat-wrap { height: calc(100dvh - 130px); }
   }
 </style>
-</head>
-<body>
+<script>try{if(localStorage.getItem("somar_modo_sol")==="1")document.documentElement.dataset.sol="1";}catch(e){}</script></head>
+<body class="">
+<script>if(document.documentElement.dataset.sol==="1")document.body.classList.add("modo-sol");</script>
 <div id="root"></div>
 <script type="text/babel">
 const { useState, useEffect, useRef, useCallback } = React;
@@ -2408,6 +2417,16 @@ function App(){
               </div>
             </div>
             <div style={{margin:'0 12px'}}><a href="https://wa.me/50499999999" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:14,background:'rgba(37,211,102,.1)',border:'1px solid rgba(37,211,102,.25)',borderRadius:14,color:'#25d366',fontWeight:700,fontSize:14}}>💬 WhatsApp Despacho</a></div>
+            <div style={{margin:'12px',background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:14,padding:16,display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:700,color:'var(--txt)'}}>☀️ Modo Sol</div>
+                <div style={{fontSize:11,color:'var(--txt3)',marginTop:2}}>Máximo contraste para luz directa</div>
+              </div>
+              <div onClick={()=>{ const on=!document.body.classList.contains('modo-sol'); document.body.classList.toggle('modo-sol',on); try{localStorage.setItem('somar_modo_sol',on?'1':'0');}catch(e){} }}
+                   style={{width:52,height:30,borderRadius:15,background:typeof document!=='undefined'&&document.body.classList.contains('modo-sol')?'#FF8C00':'#3a3a3a',position:'relative',cursor:'pointer',transition:'background .2s',flexShrink:0}}>
+                <div style={{width:24,height:24,borderRadius:12,background:'#fff',position:'absolute',top:3,left:typeof document!=='undefined'&&document.body.classList.contains('modo-sol')?25:3,transition:'left .2s'}}/>
+              </div>
+            </div>
 
             {/* ── SOMAR PRO ─────────────────────────────── */}
             {(()=>{
