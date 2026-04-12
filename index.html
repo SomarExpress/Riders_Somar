@@ -42,67 +42,94 @@
     --amber:#B45309; --amber-dim:rgba(180,83,9,.10);
     --blue:#1D4ED8;  --blue-dim:rgba(29,78,216,.10);
     color-scheme:light;
+    background:#FFFFFF; color:#0A0A0A;
   }
-  body.modo-sol { background:#FFFFFF; color:#0A0A0A; }
-  /* Overrides agresivos de hex hardcoded en estilos inline */
-  body.modo-sol [style*="background:'#0A0A0A'"],
-  body.modo-sol [style*="background:'#0F0F0F'"],
-  body.modo-sol [style*="background:'#141414'"],
-  body.modo-sol [style*="background:'#161616'"],
-  body.modo-sol [style*="background:'#1A1A1A'"],
-  body.modo-sol [style*="background:'#1C1C1C'"]{ background:#FFFFFF !important; }
-  body.modo-sol [style*="background:'#222'"],
-  body.modo-sol [style*="background:'#232323'"],
-  body.modo-sol [style*="background:'#242424'"],
-  body.modo-sol [style*="background:'#262626'"],
-  body.modo-sol [style*="background:'#2C2C2C'"],
-  body.modo-sol [style*="background:'#2E2E2E'"]{ background:#F0F0F0 !important; }
-  body.modo-sol [style*="background:'#333'"],
-  body.modo-sol [style*="background:'#444'"]{ background:#DEDEDE !important; }
-  body.modo-sol [style*="color:'#fff'"],
-  body.modo-sol [style*="color:'#FFFFFF'"],
-  body.modo-sol [style*="color:'#F0F0F0'"],
-  body.modo-sol [style*="color:'#D1D5DB'"],
-  body.modo-sol [style*="color:'#E5E7EB'"]{ color:#0A0A0A !important; }
-  body.modo-sol [style*="color:'#888'"],
-  body.modo-sol [style*="color:'#666'"],
-  body.modo-sol [style*="color:'#555'"],
-  body.modo-sol [style*="color:'#A8ADB5'"],
-  body.modo-sol [style*="color:'#ccc'"]{ color:#5C6470 !important; }
-  body.modo-sol [style*="color:'#444'"]{ color:#3A3F47 !important; }
-  body.modo-sol [style*="border:'1px solid #222'"],
-  body.modo-sol [style*="border:'1px solid #2"],
-  body.modo-sol [style*="border:'1px solid #3"],
-  body.modo-sol [style*="border:'1px solid #444'"],
-  body.modo-sol [style*="border:'1.5px solid #444'"],
-  body.modo-sol [style*="borderTop:'1px solid #222'"],
-  body.modo-sol [style*="borderBottom:'1px solid #222'"],
-  body.modo-sol [style*="borderBottom:'1px solid #333'"],
-  body.modo-sol [style*="borderTop:'1px solid #333'"],
-  body.modo-sol [style*="borderRight:'2px solid #0F0F0F'"]{ border-color:#C8CCD1 !important; }
-  /* Naranja: ligeramente más oscuro en claro para contraste AA */
-  body.modo-sol [style*="color:'#FF8C00'"]{ color:#E67E00 !important; }
-  body.modo-sol [style*="background:'#FF8C00'"]{ background:#E67E00 !important; }
+  /* Overrides agresivos de hex hardcoded en estilos inline.
+     React serializa style={{color:'#XXX'}} como style="color: #XXX" (con espacio, sin comillas)
+     y los selectores [style*=] son CASE-SENSITIVE — por eso duplicamos mayús/minús. */
+  /* === FONDOS OSCUROS → BLANCO/CLARO === */
+  body.modo-sol [style*="background: rgb(10, 10, 10)"],
+  body.modo-sol [style*="background:#0A0A0A"], body.modo-sol [style*="background: #0A0A0A"],
+  body.modo-sol [style*="background:#0a0a0a"], body.modo-sol [style*="background: #0a0a0a"],
+  body.modo-sol [style*="background:#0F0F0F"], body.modo-sol [style*="background: #0F0F0F"],
+  body.modo-sol [style*="background:#0f0f0f"], body.modo-sol [style*="background: #0f0f0f"],
+  body.modo-sol [style*="background:#141414"], body.modo-sol [style*="background: #141414"],
+  body.modo-sol [style*="background:#161616"], body.modo-sol [style*="background: #161616"],
+  body.modo-sol [style*="background:#1A1A1A"], body.modo-sol [style*="background: #1A1A1A"],
+  body.modo-sol [style*="background:#1a1a1a"], body.modo-sol [style*="background: #1a1a1a"],
+  body.modo-sol [style*="background:#1C1C1C"], body.modo-sol [style*="background: #1C1C1C"],
+  body.modo-sol [style*="background:#1c1c1c"], body.modo-sol [style*="background: #1c1c1c"],
+  body.modo-sol [style*="background:#1e1e1e"], body.modo-sol [style*="background: #1e1e1e"]{
+    background:#FFFFFF !important;
+  }
+  body.modo-sol [style*="background:#222"], body.modo-sol [style*="background: #222"],
+  body.modo-sol [style*="background:#232323"], body.modo-sol [style*="background: #232323"],
+  body.modo-sol [style*="background:#242424"], body.modo-sol [style*="background: #242424"],
+  body.modo-sol [style*="background:#262626"], body.modo-sol [style*="background: #262626"],
+  body.modo-sol [style*="background:#2C2C2C"], body.modo-sol [style*="background: #2C2C2C"],
+  body.modo-sol [style*="background:#2c2c2c"], body.modo-sol [style*="background: #2c2c2c"],
+  body.modo-sol [style*="background:#2E2E2E"], body.modo-sol [style*="background: #2E2E2E"]{
+    background:#F0F0F0 !important;
+  }
+  body.modo-sol [style*="background:#333"], body.modo-sol [style*="background: #333"],
+  body.modo-sol [style*="background:#444"], body.modo-sol [style*="background: #444"]{
+    background:#DEDEDE !important;
+  }
+  /* === TEXTOS BLANCOS/GRISES → NEGRO === */
+  body.modo-sol [style*="color:#fff"], body.modo-sol [style*="color: #fff"],
+  body.modo-sol [style*="color:#FFF"], body.modo-sol [style*="color: #FFF"],
+  body.modo-sol [style*="color:#FFFFFF"], body.modo-sol [style*="color: #FFFFFF"],
+  body.modo-sol [style*="color:#ffffff"], body.modo-sol [style*="color: #ffffff"],
+  body.modo-sol [style*="color:#F0F0F0"], body.modo-sol [style*="color: #F0F0F0"],
+  body.modo-sol [style*="color:#f0f0f0"], body.modo-sol [style*="color: #f0f0f0"],
+  body.modo-sol [style*="color:#D1D5DB"], body.modo-sol [style*="color: #D1D5DB"],
+  body.modo-sol [style*="color:#E5E7EB"], body.modo-sol [style*="color: #E5E7EB"]{
+    color:#0A0A0A !important;
+  }
+  body.modo-sol [style*="color:#888"], body.modo-sol [style*="color: #888"],
+  body.modo-sol [style*="color:#666"], body.modo-sol [style*="color: #666"],
+  body.modo-sol [style*="color:#555"], body.modo-sol [style*="color: #555"],
+  body.modo-sol [style*="color:#A8ADB5"], body.modo-sol [style*="color: #A8ADB5"],
+  body.modo-sol [style*="color:#ccc"], body.modo-sol [style*="color: #ccc"],
+  body.modo-sol [style*="color:#CCC"], body.modo-sol [style*="color: #CCC"],
+  body.modo-sol [style*="color:#9CA3AF"], body.modo-sol [style*="color: #9CA3AF"]{
+    color:#5C6470 !important;
+  }
+  body.modo-sol [style*="color:#444"], body.modo-sol [style*="color: #444"]{ color:#3A3F47 !important; }
+  /* === BORDES === */
+  body.modo-sol [style*="solid #222"], body.modo-sol [style*="solid #2c2c2c"], body.modo-sol [style*="solid #2C2C2C"],
+  body.modo-sol [style*="solid #333"], body.modo-sol [style*="solid #3a3a3a"], body.modo-sol [style*="solid #444"],
+  body.modo-sol [style*="solid #0F0F0F"], body.modo-sol [style*="solid #0f0f0f"]{
+    border-color:#C8CCD1 !important;
+  }
+  /* === COLORES SEMÁNTICOS adaptados para fondo claro (mejor contraste AA) === */
+  body.modo-sol [style*="color:#FF8C00"], body.modo-sol [style*="color: #FF8C00"]{ color:#C25E00 !important; }
+  body.modo-sol [style*="background:#FF8C00"], body.modo-sol [style*="background: #FF8C00"]{ background:#E67E00 !important; }
   body.modo-sol [style*="solid #FF8C00"]{ border-color:#E67E00 !important; }
-  /* Verde/rojo/ámbar/azul ajustados para fondo blanco */
-  body.modo-sol [style*="color:'#22C55E'"]{ color:#15803D !important; }
-  body.modo-sol [style*="color:'#EF4444'"]{ color:#DC2626 !important; }
-  body.modo-sol [style*="color:'#F59E0B'"]{ color:#B45309 !important; }
-  body.modo-sol [style*="color:'#3B82F6'"]{ color:#1D4ED8 !important; }
-  body.modo-sol [style*="color:'#33ccff'"]{ color:#0284C7 !important; }
-  body.modo-sol [style*="color:'#4285f4'"]{ color:#1D4ED8 !important; }
-  body.modo-sol [style*="color:'#25d366'"]{ color:#128C7E !important; }
-  /* Sombras suaves en lugar de duras en oscuro */
-  body.modo-sol [style*="boxShadow"]{ box-shadow:0 2px 8px rgba(0,0,0,.08) !important; }
-  /* Mapa Leaflet: invertir tiles oscuros */
+  body.modo-sol [style*="color:#22C55E"], body.modo-sol [style*="color: #22C55E"]{ color:#15803D !important; }
+  body.modo-sol [style*="background:#22C55E"], body.modo-sol [style*="background: #22C55E"]{ background:#15803D !important; }
+  body.modo-sol [style*="solid #22C55E"]{ border-color:#15803D !important; }
+  body.modo-sol [style*="color:#EF4444"], body.modo-sol [style*="color: #EF4444"]{ color:#B91C1C !important; }
+  body.modo-sol [style*="background:#EF4444"], body.modo-sol [style*="background: #EF4444"]{ background:#DC2626 !important; }
+  body.modo-sol [style*="color:#F59E0B"], body.modo-sol [style*="color: #F59E0B"]{ color:#92400E !important; }
+  body.modo-sol [style*="solid #F59E0B"]{ border-color:#B45309 !important; }
+  body.modo-sol [style*="color:#3B82F6"], body.modo-sol [style*="color: #3B82F6"]{ color:#1D4ED8 !important; }
+  body.modo-sol [style*="color:#33ccff"], body.modo-sol [style*="color: #33ccff"]{ color:#0369A1 !important; }
+  body.modo-sol [style*="color:#4285f4"], body.modo-sol [style*="color: #4285f4"]{ color:#1D4ED8 !important; }
+  body.modo-sol [style*="color:#25d366"], body.modo-sol [style*="color: #25d366"]{ color:#128C7E !important; }
+  /* === FONDOS DE OVERLAYS RGBA muy oscuros → claros === */
+  body.modo-sol [style*="background:rgba(0,0,0,.6)"],
+  body.modo-sol [style*="background: rgba(0, 0, 0, 0.6)"]{ background:rgba(0,0,0,.4) !important; }
+  /* === MAPA LEAFLET: invertir tiles oscuros para que se vean claros === */
   body.modo-sol .leaflet-tile-pane{ filter:invert(1) hue-rotate(180deg) brightness(.95) contrast(.95); }
-  /* Inputs claros */
+  /* === INPUTS adaptados === */
   body.modo-sol input, body.modo-sol textarea, body.modo-sol select{
     background:#FFFFFF !important; color:#0A0A0A !important; border-color:#C8CCD1 !important;
   }
   body.modo-sol input::placeholder, body.modo-sol textarea::placeholder{ color:#9CA3AF !important; }
-  /* Scrollbar adaptado */
   body.modo-sol ::-webkit-scrollbar-thumb{ background:#A1A6AD; }
+  /* === SOMBRAS suaves en lugar de duras de modo oscuro === */
+  body.modo-sol [style*="boxShadow"]{ box-shadow:0 2px 8px rgba(0,0,0,.10) !important; }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased;font-weight:450}
   button{cursor:pointer;font-family:inherit;border:none;outline:none}
   a{text-decoration:none;color:inherit}
@@ -598,6 +625,91 @@ function CardResumen({p, onTap}){
         )}
       </div>
     </button>
+  );
+}
+
+// ─── 📄 MIS DOCUMENTOS — licencia, revisión, etc. para mostrar a la policía ───
+function MisDocumentos({delivery, onConfirm}){
+  const [verDoc, setVerDoc] = useState(null); // {url,label}
+  const docs = delivery?.docs || {};
+  const items = [
+    {key:'licencia',         label:'Licencia de conducir',  icon:'🪪', url:docs.licencia,         critico:true},
+    {key:'revision',         label:'Revisión del vehículo', icon:'🔧', url:docs.revision,         critico:true},
+    {key:'identidad_frente', label:'Identidad (frente)',    icon:'🆔', url:docs.identidad_frente},
+    {key:'identidad_atras',  label:'Identidad (reverso)',   icon:'🆔', url:docs.identidad_atras},
+    {key:'vehiculo',         label:'Foto del vehículo',     icon:'🏍️', url:docs.vehiculo},
+    {key:'dui',              label:'DUI',                   icon:'📇', url:docs.dui},
+  ];
+  const tieneCriticos = items.filter(i=>i.critico).every(i=>i.url);
+  return(
+    <>
+      {/* Visor pantalla completa */}
+      {verDoc && (
+        <div onClick={()=>setVerDoc(null)}
+             style={{position:'fixed',inset:0,background:'rgba(0,0,0,.92)',zIndex:200,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:16}}>
+          <div style={{position:'absolute',top:14,left:14,right:14,display:'flex',alignItems:'center',justifyContent:'space-between',color:'#fff'}}>
+            <div style={{fontSize:14,fontWeight:700}}>{verDoc.label}</div>
+            <button onClick={(e)=>{e.stopPropagation();setVerDoc(null);}}
+                    style={{background:'rgba(255,255,255,.15)',border:'none',color:'#fff',width:36,height:36,borderRadius:18,fontSize:20,fontWeight:700,cursor:'pointer'}}>×</button>
+          </div>
+          <img src={verDoc.url} alt={verDoc.label} onClick={(e)=>e.stopPropagation()}
+               style={{maxWidth:'100%',maxHeight:'82vh',objectFit:'contain',borderRadius:8,boxShadow:'0 8px 32px rgba(0,0,0,.6)'}}/>
+          <div style={{marginTop:14,display:'flex',gap:10}}>
+            <a href={verDoc.url} target="_blank" rel="noopener" download
+               onClick={(e)=>e.stopPropagation()}
+               style={{padding:'10px 18px',background:'#FF8C00',color:'#fff',borderRadius:10,fontSize:13,fontWeight:700,textDecoration:'none'}}>
+              ⬇ Descargar
+            </a>
+            <button onClick={(e)=>{e.stopPropagation();setVerDoc(null);}}
+                    style={{padding:'10px 18px',background:'rgba(255,255,255,.12)',border:'none',color:'#fff',borderRadius:10,fontSize:13,fontWeight:700,cursor:'pointer'}}>
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div style={{margin:'12px',background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:14,overflow:'hidden'}}>
+        <div style={{padding:'14px 16px',borderBottom:'1px solid var(--brd)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <div>
+            <div style={{fontSize:14,fontWeight:700,color:'var(--txt)'}}>📄 Mis Documentos</div>
+            <div style={{fontSize:11,color:'var(--txt3)',marginTop:2}}>Disponibles si te detiene la policía</div>
+          </div>
+          {tieneCriticos
+            ? <div style={{fontSize:10,fontWeight:700,padding:'4px 10px',borderRadius:20,background:'var(--green-dim)',color:'var(--green)',border:'1px solid var(--green)'}}>✓ Completo</div>
+            : <div style={{fontSize:10,fontWeight:700,padding:'4px 10px',borderRadius:20,background:'var(--amber-dim)',color:'var(--amber)',border:'1px solid var(--amber)'}}>Incompleto</div>
+          }
+        </div>
+        <div style={{padding:10,display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+          {items.map(it=>(
+            <div key={it.key} onClick={()=>{
+                   if(it.url) setVerDoc({url:it.url,label:it.label});
+                   else onConfirm && onConfirm({msg:`No tienes "${it.label}" cargado. Contacta a Despacho para subirlo.`,confirmLbl:'Entendido',color:'#888',onSi:()=>{}});
+                 }}
+                 style={{background:'var(--s2)',border:`1.5px solid ${it.url?'var(--brd)':(it.critico?'var(--amber)':'var(--brd)')}`,borderRadius:12,overflow:'hidden',cursor:'pointer',position:'relative',aspectRatio:'1/1',display:'flex',flexDirection:'column'}}>
+              {it.url
+                ? <img src={it.url} alt={it.label}
+                       style={{width:'100%',flex:1,objectFit:'cover',background:'#000'}}
+                       onError={(e)=>{e.target.style.display='none';e.target.parentNode.querySelector('.no-img').style.display='flex';}}/>
+                : null
+              }
+              <div className="no-img" style={{display:it.url?'none':'flex',flex:1,alignItems:'center',justifyContent:'center',fontSize:36,opacity:.4,background:'var(--s3)'}}>{it.icon}</div>
+              <div style={{padding:'6px 8px',background:'var(--s1)',borderTop:'1px solid var(--brd)',display:'flex',alignItems:'center',gap:6,minHeight:34}}>
+                <span style={{fontSize:13}}>{it.icon}</span>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:10,fontWeight:600,color:'var(--txt2)',lineHeight:1.2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{it.label}</div>
+                  <div style={{fontSize:9,color:it.url?'var(--green)':(it.critico?'var(--amber)':'var(--txt3)'),fontWeight:600,marginTop:1}}>
+                    {it.url?'✓ Disponible':(it.critico?'⚠ Falta':'— Sin cargar')}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{padding:'10px 14px 12px',background:'var(--s2)',borderTop:'1px solid var(--brd)',fontSize:10,color:'var(--txt3)',textAlign:'center',lineHeight:1.4}}>
+          💡 Toca cualquier documento para verlo en pantalla completa
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -2049,11 +2161,33 @@ function App(){
   },[]);
 
   const iniciarApp=async(user)=>{
-    const {data:rows,error}=await sb.from('delivery').select('id,nombre,correo,celular,ciudad,activo,estatus,saldo_billetera,vehiculo').eq('perfil_id',user.id).limit(1);
+    const {data:rows,error}=await sb.from('delivery').select('id,nombre,correo,celular,ciudad,activo,estatus,saldo_billetera,vehiculo,foto_url,foto_dui_url,foto_moto_url,identidad').eq('perfil_id',user.id).limit(1);
     if(error||!rows?.length){setAuthed(true);setDelivery(null);return;}
     const del=rows[0];
     if(!del.activo){setAuthed(true);setDelivery(null);return;}
-    setDelivery({...del,email:del.correo||user.email});
+    // Documentos extra desde aplicaciones_delivery (licencia, revisión vehículo, etc.)
+    let docs={};
+    try{
+      const {data:apps}=await sb.from('aplicaciones_delivery')
+        .select('licencia_url,revision_vehiculo_url,identidad_delantera_url,identidad_trasera_url,moto_propia_url,foto_url')
+        .eq('auth_uid',user.id).order('created_at',{ascending:false}).limit(1);
+      if(apps?.length) docs=apps[0];
+    }catch(e){ console.warn('[docs]',e.message); }
+    setDelivery({
+      ...del,
+      email:del.correo||user.email,
+      // Foto de perfil con fallback: delivery.foto_url → aplicaciones.foto_url
+      foto_perfil_url: del.foto_url || docs.foto_url || null,
+      // Documentos para la sección Mis Documentos (Perfil)
+      docs:{
+        licencia:        docs.licencia_url        || null,
+        revision:        docs.revision_vehiculo_url || null,
+        identidad_frente: docs.identidad_delantera_url || null,
+        identidad_atras:  docs.identidad_trasera_url   || null,
+        vehiculo:        docs.moto_propia_url || del.foto_moto_url || null,
+        dui:             del.foto_dui_url || null,
+      }
+    });
     setSaldo(parseFloat(del.saldo_billetera)||0);
     setAuthed(true);
     // Leer turno actual desde ubicaciones_delivery
@@ -2443,8 +2577,14 @@ function App(){
           <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,.6)'}}/>
           <div onClick={e=>e.stopPropagation()} style={{position:'absolute',left:0,top:0,bottom:0,width:270,background:'var(--s1)',borderRight:'1px solid var(--brd)',display:'flex',flexDirection:'column',animation:'slideInL .22s ease'}}>
             <div style={{padding:'24px 20px 18px',borderBottom:'1px solid var(--brd)',display:'flex',alignItems:'center',gap:14}}>
-              <div style={{width:52,height:52,background:'#FF8C00',borderRadius:14,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,fontWeight:800,flexShrink:0}}>{delivery?.nombre?.charAt(0)||'?'}</div>
-              <div><div style={{fontSize:15,fontWeight:700}}>{delivery?.nombre}</div><div style={{fontSize:12,color:'#888'}}>{delivery?.email}</div></div>
+              {delivery?.foto_perfil_url
+                ? <img src={delivery.foto_perfil_url} alt="" style={{width:52,height:52,borderRadius:14,objectFit:'cover',flexShrink:0,border:'2px solid #FF8C00'}}/>
+                : <div style={{width:52,height:52,background:'#FF8C00',borderRadius:14,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,fontWeight:800,flexShrink:0,color:'#fff'}}>{delivery?.nombre?.charAt(0)||'?'}</div>
+              }
+              <div style={{minWidth:0,flex:1}}>
+                <div style={{fontSize:15,fontWeight:700,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{delivery?.nombre}</div>
+                <div style={{fontSize:12,color:'#888',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{delivery?.email}</div>
+              </div>
             </div>
             {[['📅 Mis Turnos','turnos'],['📋 Historial','historial'],['💳 Mis Depósitos','depositos']].map(([lbl,t])=>(
               <button key={t} onClick={()=>{setTabConHistorial(t);setSideOpen(false);}} style={{display:'flex',alignItems:'center',gap:12,padding:'16px 20px',background:'none',border:'none',borderBottom:'1px solid var(--brd)',color:'var(--txt)',width:'100%',textAlign:'left',fontSize:15,fontWeight:500,letterSpacing:'-0.01em'}}>{lbl}</button>
@@ -2463,7 +2603,9 @@ function App(){
         {/* Fila 1: ☰ logo · nombre · iconos */}
         <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px'}}>
           {/* Izquierda: hamburguesa + logo + nombre */}
-          <button onClick={()=>setSideOpen(true)} style={{background:'none',border:'none',color:'#F0F0F0',fontSize:22,padding:'0 2px',lineHeight:1,flexShrink:0}}>☰</button>
+          <button onClick={()=>setSideOpen(true)} aria-label="Menú" style={{background:'none',border:'none',color:'var(--txt)',padding:'4px 6px',lineHeight:0,flexShrink:0,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
           <img style={{width:32,height:32,borderRadius:8,flexShrink:0}} src="https://res.cloudinary.com/drkaxsziu/image/upload/v1767871213/Somar_Express_2048_x_2048_px_18_x_18_in__20250623_221102_0000_o0bv7a.png"/>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontSize:15,fontWeight:800,lineHeight:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{delivery?.nombre}</div>
@@ -2562,8 +2704,14 @@ function App(){
             <div style={{fontSize:11,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.08em',padding:'16px 16px 8px'}}>Mi Perfil</div>
             <div style={{margin:'0 12px 12px',background:'#1A1A1A',border:'1px solid #333',borderRadius:16,padding:16}}>
               <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:14}}>
-                <div style={{width:56,height:56,background:'#FF8C00',borderRadius:14,display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,fontWeight:900,flexShrink:0}}>{delivery?.nombre?.charAt(0)||'?'}</div>
-                <div><div style={{fontSize:17,fontWeight:700}}>{delivery?.nombre}</div><div style={{fontSize:13,color:'#888'}}>{delivery?.email}</div></div>
+                {delivery?.foto_perfil_url
+                  ? <img src={delivery.foto_perfil_url} alt="" style={{width:64,height:64,borderRadius:16,objectFit:'cover',flexShrink:0,border:'2px solid #FF8C00'}}/>
+                  : <div style={{width:64,height:64,background:'#FF8C00',borderRadius:16,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,fontWeight:900,flexShrink:0,color:'#fff'}}>{delivery?.nombre?.charAt(0)||'?'}</div>
+                }
+                <div style={{minWidth:0,flex:1}}>
+                  <div style={{fontSize:17,fontWeight:700,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{delivery?.nombre}</div>
+                  <div style={{fontSize:13,color:'#888',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{delivery?.email}</div>
+                </div>
               </div>
               <div style={{background:'#232323',borderRadius:12,overflow:'hidden'}}>
                 {[['Celular',delivery?.celular],['Ciudad',delivery?.ciudad],['Saldo',fmtL(saldo)]].map(([l,v])=>(
@@ -2574,6 +2722,7 @@ function App(){
             </div>
             <div style={{margin:'0 12px'}}><a href="https://wa.me/50499999999" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:14,background:'rgba(37,211,102,.1)',border:'1px solid rgba(37,211,102,.25)',borderRadius:14,color:'#25d366',fontWeight:700,fontSize:14}}>💬 WhatsApp Despacho</a></div>
             <ModoSolToggle/>
+            <MisDocumentos delivery={delivery} onConfirm={setSheet}/>
 
             {/* ── SOMAR PRO ─────────────────────────────── */}
             {(()=>{
