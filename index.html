@@ -31,15 +31,78 @@
     --blue:#3B82F6;  --blue-dim:rgba(59,130,246,.1);
     --r-sm:10px; --r-md:14px; --r-lg:18px; --r-xl:24px;
   }
-  /* ☀️ MODO SOL — máximo contraste para luz directa en campo */
+  /* ☀️ MODO SOL — tema CLARO real para uso diurno bajo luz directa */
   body.modo-sol {
-    --bg:#000000; --s1:#0A0A0A; --s2:#141414; --s3:#1C1C1C; --s4:#262626;
-    --brd:#5a5a5a; --brd2:#6a6a6a;
-    --txt2:#FFFFFF; --txt3:#E5E7EB;
-    font-weight:500 !important;
+    --brand:#E67E00; --brand-dim:rgba(230,126,0,.10); --brand-mid:rgba(230,126,0,.22);
+    --bg:#FFFFFF; --s1:#F5F5F5; --s2:#EBEBEB; --s3:#DEDEDE; --s4:#CFCFCF;
+    --brd:#C8CCD1; --brd2:#A1A6AD;
+    --txt:#0A0A0A; --txt2:#1F2937; --txt3:#4B5563;
+    --green:#15803D; --green-dim:rgba(21,128,61,.10);
+    --red:#DC2626;   --red-dim:rgba(220,38,38,.10);
+    --amber:#B45309; --amber-dim:rgba(180,83,9,.10);
+    --blue:#1D4ED8;  --blue-dim:rgba(29,78,216,.10);
+    color-scheme:light;
   }
-  body.modo-sol * { letter-spacing:0.01em; }
-  body.modo-sol .card, body.modo-sol [style*="border"] { border-width:2px !important; }
+  body.modo-sol { background:#FFFFFF; color:#0A0A0A; }
+  /* Overrides agresivos de hex hardcoded en estilos inline */
+  body.modo-sol [style*="background:'#0A0A0A'"],
+  body.modo-sol [style*="background:'#0F0F0F'"],
+  body.modo-sol [style*="background:'#141414'"],
+  body.modo-sol [style*="background:'#161616'"],
+  body.modo-sol [style*="background:'#1A1A1A'"],
+  body.modo-sol [style*="background:'#1C1C1C'"]{ background:#FFFFFF !important; }
+  body.modo-sol [style*="background:'#222'"],
+  body.modo-sol [style*="background:'#232323'"],
+  body.modo-sol [style*="background:'#242424'"],
+  body.modo-sol [style*="background:'#262626'"],
+  body.modo-sol [style*="background:'#2C2C2C'"],
+  body.modo-sol [style*="background:'#2E2E2E'"]{ background:#F0F0F0 !important; }
+  body.modo-sol [style*="background:'#333'"],
+  body.modo-sol [style*="background:'#444'"]{ background:#DEDEDE !important; }
+  body.modo-sol [style*="color:'#fff'"],
+  body.modo-sol [style*="color:'#FFFFFF'"],
+  body.modo-sol [style*="color:'#F0F0F0'"],
+  body.modo-sol [style*="color:'#D1D5DB'"],
+  body.modo-sol [style*="color:'#E5E7EB'"]{ color:#0A0A0A !important; }
+  body.modo-sol [style*="color:'#888'"],
+  body.modo-sol [style*="color:'#666'"],
+  body.modo-sol [style*="color:'#555'"],
+  body.modo-sol [style*="color:'#A8ADB5'"],
+  body.modo-sol [style*="color:'#ccc'"]{ color:#5C6470 !important; }
+  body.modo-sol [style*="color:'#444'"]{ color:#3A3F47 !important; }
+  body.modo-sol [style*="border:'1px solid #222'"],
+  body.modo-sol [style*="border:'1px solid #2"],
+  body.modo-sol [style*="border:'1px solid #3"],
+  body.modo-sol [style*="border:'1px solid #444'"],
+  body.modo-sol [style*="border:'1.5px solid #444'"],
+  body.modo-sol [style*="borderTop:'1px solid #222'"],
+  body.modo-sol [style*="borderBottom:'1px solid #222'"],
+  body.modo-sol [style*="borderBottom:'1px solid #333'"],
+  body.modo-sol [style*="borderTop:'1px solid #333'"],
+  body.modo-sol [style*="borderRight:'2px solid #0F0F0F'"]{ border-color:#C8CCD1 !important; }
+  /* Naranja: ligeramente más oscuro en claro para contraste AA */
+  body.modo-sol [style*="color:'#FF8C00'"]{ color:#E67E00 !important; }
+  body.modo-sol [style*="background:'#FF8C00'"]{ background:#E67E00 !important; }
+  body.modo-sol [style*="solid #FF8C00"]{ border-color:#E67E00 !important; }
+  /* Verde/rojo/ámbar/azul ajustados para fondo blanco */
+  body.modo-sol [style*="color:'#22C55E'"]{ color:#15803D !important; }
+  body.modo-sol [style*="color:'#EF4444'"]{ color:#DC2626 !important; }
+  body.modo-sol [style*="color:'#F59E0B'"]{ color:#B45309 !important; }
+  body.modo-sol [style*="color:'#3B82F6'"]{ color:#1D4ED8 !important; }
+  body.modo-sol [style*="color:'#33ccff'"]{ color:#0284C7 !important; }
+  body.modo-sol [style*="color:'#4285f4'"]{ color:#1D4ED8 !important; }
+  body.modo-sol [style*="color:'#25d366'"]{ color:#128C7E !important; }
+  /* Sombras suaves en lugar de duras en oscuro */
+  body.modo-sol [style*="boxShadow"]{ box-shadow:0 2px 8px rgba(0,0,0,.08) !important; }
+  /* Mapa Leaflet: invertir tiles oscuros */
+  body.modo-sol .leaflet-tile-pane{ filter:invert(1) hue-rotate(180deg) brightness(.95) contrast(.95); }
+  /* Inputs claros */
+  body.modo-sol input, body.modo-sol textarea, body.modo-sol select{
+    background:#FFFFFF !important; color:#0A0A0A !important; border-color:#C8CCD1 !important;
+  }
+  body.modo-sol input::placeholder, body.modo-sol textarea::placeholder{ color:#9CA3AF !important; }
+  /* Scrollbar adaptado */
+  body.modo-sol ::-webkit-scrollbar-thumb{ background:#A1A6AD; }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased;font-weight:450}
   button{cursor:pointer;font-family:inherit;border:none;outline:none}
   a{text-decoration:none;color:inherit}
@@ -60,7 +123,45 @@
     .chat-wrap { height: calc(100dvh - 130px); }
   }
 </style>
-<script>try{if(localStorage.getItem("somar_modo_sol")==="1")document.documentElement.dataset.sol="1";}catch(e){}</script></head>
+<script>
+/* ☀️🌙 SOMAR THEME — auto por hora del día con override manual de 12h */
+(function(){
+  try{
+    var KEY="somar_modo_sol", KEY_OV="somar_sol_override";
+    var ov=null;
+    try{ ov=JSON.parse(localStorage.getItem(KEY_OV)||"null"); }catch(e){}
+    var ahora=Date.now(), modo;
+    if(ov && ov.hasta && ov.hasta>ahora){
+      modo=ov.valor; // override manual aún vigente
+    } else {
+      var h=new Date().getHours();
+      modo=(h>=6 && h<18) ? "1" : "0"; // 6:00–17:59 = sol
+      try{ localStorage.removeItem(KEY_OV); }catch(e){}
+    }
+    try{ localStorage.setItem(KEY, modo); }catch(e){}
+    if(modo==="1") document.documentElement.dataset.sol="1";
+    // theme-color del status bar
+    var mc=document.querySelector('meta[name="theme-color"]');
+    if(mc) mc.setAttribute("content", modo==="1" ? "#FFFFFF" : "#0A0A0A");
+  }catch(e){}
+})();
+/* Helper global expuesto para toggle desde el Perfil */
+window.toggleModoSol=function(){
+  try{
+    var ahora=document.body.classList.contains("modo-sol");
+    var nuevo=ahora?"0":"1";
+    document.body.classList.toggle("modo-sol", !ahora);
+    document.documentElement.dataset.sol=nuevo;
+    localStorage.setItem("somar_modo_sol", nuevo);
+    // Override manual válido 12h: respeta la elección del rider
+    localStorage.setItem("somar_sol_override", JSON.stringify({
+      valor:nuevo, hasta:Date.now()+12*60*60*1000
+    }));
+    var mc=document.querySelector('meta[name="theme-color"]');
+    if(mc) mc.setAttribute("content", nuevo==="1" ? "#FFFFFF" : "#0A0A0A");
+  }catch(e){ console.warn("[modo-sol]",e); }
+};
+</script></head>
 <body class="">
 <script>if(document.documentElement.dataset.sol==="1")document.body.classList.add("modo-sol");</script>
 <div id="root"></div>
@@ -497,6 +598,61 @@ function CardResumen({p, onTap}){
         )}
       </div>
     </button>
+  );
+}
+
+// ─── ☀️🌙 MODO SOL TOGGLE ────────────────────────────────────
+function ModoSolToggle(){
+  const [on, setOn] = useState(()=>typeof document!=='undefined' && document.body.classList.contains('modo-sol'));
+  const [auto, setAuto] = useState(()=>{
+    try{ return !localStorage.getItem('somar_sol_override'); }catch(e){ return true; }
+  });
+  const toggle = ()=>{
+    if(window.toggleModoSol) window.toggleModoSol();
+    setOn(document.body.classList.contains('modo-sol'));
+    setAuto(false);
+  };
+  const restaurarAuto = ()=>{
+    try{
+      localStorage.removeItem('somar_sol_override');
+      const h = new Date().getHours();
+      const nuevo = (h>=6 && h<18) ? '1' : '0';
+      const debe = nuevo==='1';
+      document.body.classList.toggle('modo-sol', debe);
+      document.documentElement.dataset.sol = nuevo;
+      localStorage.setItem('somar_modo_sol', nuevo);
+      const mc=document.querySelector('meta[name="theme-color"]');
+      if(mc) mc.setAttribute('content', debe?'#FFFFFF':'#0A0A0A');
+      setOn(debe);
+      setAuto(true);
+    }catch(e){}
+  };
+  return (
+    <div style={{margin:'12px',background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:14,padding:16}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
+        <div style={{flex:1}}>
+          <div style={{fontSize:14,fontWeight:700,color:'var(--txt)'}}>{on?'☀️ Modo Sol':'🌙 Modo Luna'}</div>
+          <div style={{fontSize:11,color:'var(--txt3)',marginTop:2}}>
+            {on?'Tema claro para luz directa':'Tema oscuro para visibilidad nocturna'}
+          </div>
+        </div>
+        <div onClick={toggle}
+             style={{width:52,height:30,borderRadius:15,background:on?'var(--brand)':'var(--s4)',position:'relative',cursor:'pointer',transition:'background .2s',flexShrink:0}}>
+          <div style={{width:24,height:24,borderRadius:12,background:'#fff',position:'absolute',top:3,left:on?25:3,transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.3)'}}/>
+        </div>
+      </div>
+      {!auto && (
+        <div onClick={restaurarAuto}
+             style={{marginTop:10,padding:'8px 12px',background:'var(--s2)',border:'1px solid var(--brd)',borderRadius:10,fontSize:11,color:'var(--txt3)',textAlign:'center',cursor:'pointer'}}>
+          🔄 Restaurar automático por hora del día
+        </div>
+      )}
+      {auto && (
+        <div style={{marginTop:10,fontSize:10,color:'var(--txt3)',textAlign:'center',opacity:.7}}>
+          Automático · 6:00 AM – 6:00 PM = Sol
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -2417,16 +2573,7 @@ function App(){
               </div>
             </div>
             <div style={{margin:'0 12px'}}><a href="https://wa.me/50499999999" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:14,background:'rgba(37,211,102,.1)',border:'1px solid rgba(37,211,102,.25)',borderRadius:14,color:'#25d366',fontWeight:700,fontSize:14}}>💬 WhatsApp Despacho</a></div>
-            <div style={{margin:'12px',background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:14,padding:16,display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
-              <div style={{flex:1}}>
-                <div style={{fontSize:14,fontWeight:700,color:'var(--txt)'}}>☀️ Modo Sol</div>
-                <div style={{fontSize:11,color:'var(--txt3)',marginTop:2}}>Máximo contraste para luz directa</div>
-              </div>
-              <div onClick={()=>{ const on=!document.body.classList.contains('modo-sol'); document.body.classList.toggle('modo-sol',on); try{localStorage.setItem('somar_modo_sol',on?'1':'0');}catch(e){} }}
-                   style={{width:52,height:30,borderRadius:15,background:typeof document!=='undefined'&&document.body.classList.contains('modo-sol')?'#FF8C00':'#3a3a3a',position:'relative',cursor:'pointer',transition:'background .2s',flexShrink:0}}>
-                <div style={{width:24,height:24,borderRadius:12,background:'#fff',position:'absolute',top:3,left:typeof document!=='undefined'&&document.body.classList.contains('modo-sol')?25:3,transition:'left .2s'}}/>
-              </div>
-            </div>
+            <ModoSolToggle/>
 
             {/* ── SOMAR PRO ─────────────────────────────── */}
             {(()=>{
