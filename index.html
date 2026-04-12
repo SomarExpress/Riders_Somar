@@ -49,6 +49,12 @@
      y los selectores [style*=] son CASE-SENSITIVE — por eso duplicamos mayús/minús. */
   /* === FONDOS OSCUROS → BLANCO/CLARO === */
   body.modo-sol [style*="background: rgb(10, 10, 10)"],
+  body.modo-sol [style*="background: rgb(15, 15, 15)"],
+  body.modo-sol [style*="background: rgb(20, 20, 20)"],
+  body.modo-sol [style*="background: rgb(22, 22, 22)"],
+  body.modo-sol [style*="background: rgb(26, 26, 26)"],
+  body.modo-sol [style*="background: rgb(28, 28, 28)"],
+  body.modo-sol [style*="background: rgb(30, 30, 30)"],
   body.modo-sol [style*="background:#0A0A0A"], body.modo-sol [style*="background: #0A0A0A"],
   body.modo-sol [style*="background:#0a0a0a"], body.modo-sol [style*="background: #0a0a0a"],
   body.modo-sol [style*="background:#0F0F0F"], body.modo-sol [style*="background: #0F0F0F"],
@@ -62,6 +68,12 @@
   body.modo-sol [style*="background:#1e1e1e"], body.modo-sol [style*="background: #1e1e1e"]{
     background:#FFFFFF !important;
   }
+  body.modo-sol [style*="background: rgb(34, 34, 34)"],
+  body.modo-sol [style*="background: rgb(35, 35, 35)"],
+  body.modo-sol [style*="background: rgb(36, 36, 36)"],
+  body.modo-sol [style*="background: rgb(38, 38, 38)"],
+  body.modo-sol [style*="background: rgb(44, 44, 44)"],
+  body.modo-sol [style*="background: rgb(46, 46, 46)"],
   body.modo-sol [style*="background:#222"], body.modo-sol [style*="background: #222"],
   body.modo-sol [style*="background:#232323"], body.modo-sol [style*="background: #232323"],
   body.modo-sol [style*="background:#242424"], body.modo-sol [style*="background: #242424"],
@@ -71,11 +83,17 @@
   body.modo-sol [style*="background:#2E2E2E"], body.modo-sol [style*="background: #2E2E2E"]{
     background:#F0F0F0 !important;
   }
+  body.modo-sol [style*="background: rgb(51, 51, 51)"],
+  body.modo-sol [style*="background: rgb(68, 68, 68)"],
   body.modo-sol [style*="background:#333"], body.modo-sol [style*="background: #333"],
   body.modo-sol [style*="background:#444"], body.modo-sol [style*="background: #444"]{
     background:#DEDEDE !important;
   }
   /* === TEXTOS BLANCOS/GRISES → NEGRO === */
+  body.modo-sol [style*="color: rgb(255, 255, 255)"],
+  body.modo-sol [style*="color: rgb(240, 240, 240)"],
+  body.modo-sol [style*="color: rgb(209, 213, 219)"],
+  body.modo-sol [style*="color: rgb(229, 231, 235)"],
   body.modo-sol [style*="color:#fff"], body.modo-sol [style*="color: #fff"],
   body.modo-sol [style*="color:#FFF"], body.modo-sol [style*="color: #FFF"],
   body.modo-sol [style*="color:#FFFFFF"], body.modo-sol [style*="color: #FFFFFF"],
@@ -86,6 +104,12 @@
   body.modo-sol [style*="color:#E5E7EB"], body.modo-sol [style*="color: #E5E7EB"]{
     color:#0A0A0A !important;
   }
+  body.modo-sol [style*="color: rgb(136, 136, 136)"],
+  body.modo-sol [style*="color: rgb(102, 102, 102)"],
+  body.modo-sol [style*="color: rgb(85, 85, 85)"],
+  body.modo-sol [style*="color: rgb(168, 173, 181)"],
+  body.modo-sol [style*="color: rgb(204, 204, 204)"],
+  body.modo-sol [style*="color: rgb(156, 163, 175)"],
   body.modo-sol [style*="color:#888"], body.modo-sol [style*="color: #888"],
   body.modo-sol [style*="color:#666"], body.modo-sol [style*="color: #666"],
   body.modo-sol [style*="color:#555"], body.modo-sol [style*="color: #555"],
@@ -95,27 +119,48 @@
   body.modo-sol [style*="color:#9CA3AF"], body.modo-sol [style*="color: #9CA3AF"]{
     color:#5C6470 !important;
   }
+  body.modo-sol [style*="color: rgb(68, 68, 68)"],
   body.modo-sol [style*="color:#444"], body.modo-sol [style*="color: #444"]{ color:#3A3F47 !important; }
   /* === BORDES === */
+  body.modo-sol [style*="solid rgb(34, 34, 34)"],
+  body.modo-sol [style*="solid rgb(44, 44, 44)"],
+  body.modo-sol [style*="solid rgb(51, 51, 51)"],
+  body.modo-sol [style*="solid rgb(58, 58, 58)"],
+  body.modo-sol [style*="solid rgb(68, 68, 68)"],
+  body.modo-sol [style*="solid rgb(15, 15, 15)"],
   body.modo-sol [style*="solid #222"], body.modo-sol [style*="solid #2c2c2c"], body.modo-sol [style*="solid #2C2C2C"],
   body.modo-sol [style*="solid #333"], body.modo-sol [style*="solid #3a3a3a"], body.modo-sol [style*="solid #444"],
   body.modo-sol [style*="solid #0F0F0F"], body.modo-sol [style*="solid #0f0f0f"]{
     border-color:#C8CCD1 !important;
   }
-  /* === COLORES SEMÁNTICOS adaptados para fondo claro (mejor contraste AA) === */
+  /* === COLORES SEMÁNTICOS (rgb + hex) === */
+  body.modo-sol [style*="color: rgb(255, 140, 0)"],
   body.modo-sol [style*="color:#FF8C00"], body.modo-sol [style*="color: #FF8C00"]{ color:#C25E00 !important; }
+  body.modo-sol [style*="background: rgb(255, 140, 0)"],
   body.modo-sol [style*="background:#FF8C00"], body.modo-sol [style*="background: #FF8C00"]{ background:#E67E00 !important; }
+  body.modo-sol [style*="solid rgb(255, 140, 0)"],
   body.modo-sol [style*="solid #FF8C00"]{ border-color:#E67E00 !important; }
+  body.modo-sol [style*="color: rgb(34, 197, 94)"],
   body.modo-sol [style*="color:#22C55E"], body.modo-sol [style*="color: #22C55E"]{ color:#15803D !important; }
+  body.modo-sol [style*="background: rgb(34, 197, 94)"],
   body.modo-sol [style*="background:#22C55E"], body.modo-sol [style*="background: #22C55E"]{ background:#15803D !important; }
+  body.modo-sol [style*="solid rgb(34, 197, 94)"],
   body.modo-sol [style*="solid #22C55E"]{ border-color:#15803D !important; }
+  body.modo-sol [style*="color: rgb(239, 68, 68)"],
   body.modo-sol [style*="color:#EF4444"], body.modo-sol [style*="color: #EF4444"]{ color:#B91C1C !important; }
+  body.modo-sol [style*="background: rgb(239, 68, 68)"],
   body.modo-sol [style*="background:#EF4444"], body.modo-sol [style*="background: #EF4444"]{ background:#DC2626 !important; }
+  body.modo-sol [style*="color: rgb(245, 158, 11)"],
   body.modo-sol [style*="color:#F59E0B"], body.modo-sol [style*="color: #F59E0B"]{ color:#92400E !important; }
+  body.modo-sol [style*="solid rgb(245, 158, 11)"],
   body.modo-sol [style*="solid #F59E0B"]{ border-color:#B45309 !important; }
+  body.modo-sol [style*="color: rgb(59, 130, 246)"],
   body.modo-sol [style*="color:#3B82F6"], body.modo-sol [style*="color: #3B82F6"]{ color:#1D4ED8 !important; }
+  body.modo-sol [style*="color: rgb(51, 204, 255)"],
   body.modo-sol [style*="color:#33ccff"], body.modo-sol [style*="color: #33ccff"]{ color:#0369A1 !important; }
+  body.modo-sol [style*="color: rgb(66, 133, 244)"],
   body.modo-sol [style*="color:#4285f4"], body.modo-sol [style*="color: #4285f4"]{ color:#1D4ED8 !important; }
+  body.modo-sol [style*="color: rgb(37, 211, 102)"],
   body.modo-sol [style*="color:#25d366"], body.modo-sol [style*="color: #25d366"]{ color:#128C7E !important; }
   /* === FONDOS DE OVERLAYS RGBA muy oscuros → claros === */
   body.modo-sol [style*="background:rgba(0,0,0,.6)"],
@@ -628,9 +673,57 @@ function CardResumen({p, onTap}){
   );
 }
 
-// ─── 📄 MIS DOCUMENTOS — licencia, revisión, etc. para mostrar a la policía ───
+// ─── 🏆 SOMAR PRO CARD ──────────────────────────────────
+function SomarProCard({historial}){
+  const fin = historial.filter(p=>p.estatus==='FINALIZADO'||p.est==='FINALIZADO');
+  const ini = new Date(new Date().getFullYear(),new Date().getMonth(),1).getTime();
+  const pM  = fin.filter(p=>new Date(p.hora_finalizado||p.ts||0).getTime()>=ini).length;
+  let nivel='Bronce',pct=0,meta=75,siguienteNivel='Plata';
+  if(pM>=150){nivel='Oro';pct=100;meta=150;siguienteNivel=null;}
+  else if(pM>=75){nivel='Plata';pct=Math.round((pM-75)/75*100);meta=150;siguienteNivel='Oro';}
+  else{pct=Math.round(pM/75*100);meta=75;siguienteNivel='Plata';}
+  const nivelColor = nivel==='Oro'?'#F59E0B':nivel==='Plata'?'#9CA3AF':'#CD7F32';
+  const nivelDim   = nivel==='Oro'?'rgba(245,158,11,.1)':nivel==='Plata'?'rgba(156,163,175,.1)':'rgba(205,127,50,.1)';
+  return(
+    <div style={{margin:'0 12px 12px',background:'var(--s1)',border:`1px solid ${nivelColor}33`,borderRadius:'var(--r-lg)',overflow:'hidden'}}>
+      <div style={{padding:'14px 16px',background:nivelDim,borderBottom:'1px solid var(--brd)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <div>
+          <div style={{fontSize:10,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:4}}>Somar Pro</div>
+          <div style={{fontSize:18,fontWeight:800,color:nivelColor,letterSpacing:'-0.02em'}}>Nivel {nivel}</div>
+        </div>
+        <div style={{width:44,height:44,borderRadius:12,background:nivelDim,border:`1px solid ${nivelColor}44`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={nivelColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+      </div>
+      <div style={{padding:'14px 16px'}}>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+          <span style={{fontSize:12,color:'var(--txt2)'}}>Pedidos este mes</span>
+          <span style={{fontSize:13,fontWeight:700,color:'var(--txt)'}}>{pM} / {meta}</span>
+        </div>
+        <div style={{background:'var(--s3)',borderRadius:4,height:6,marginBottom:8,overflow:'hidden'}}>
+          <div style={{height:'100%',background:nivelColor,borderRadius:4,width:`${pct}%`,transition:'width .6s ease'}}/>
+        </div>
+        {siguienteNivel
+          ? <div style={{fontSize:11,color:'var(--txt3)'}}>Faltan {meta-pM} pedidos para nivel <span style={{color:nivelColor,fontWeight:700}}>{siguienteNivel}</span></div>
+          : <div style={{fontSize:11,color:'var(--amber)',fontWeight:600}}>Nivel máximo alcanzado</div>
+        }
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,marginTop:12}}>
+          {[['Bronce','0+','#CD7F32'],['Plata','75+','#9CA3AF'],['Oro','150+','#F59E0B']].map(([n,req,col])=>(
+            <div key={n} style={{background:nivel===n?`${col}18`:'var(--s2)',border:`1px solid ${nivel===n?col+'44':'var(--brd)'}`,borderRadius:'var(--r-sm)',padding:'8px 6px',textAlign:'center'}}>
+              <div style={{fontSize:10,fontWeight:700,color:nivel===n?col:'var(--txt3)',letterSpacing:'.02em'}}>{n}</div>
+              <div style={{fontSize:9,color:'var(--txt3)',marginTop:2}}>{req} pedidos</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── 📄 MIS DOCUMENTOS — colapsable, para mostrar a la policía ───
 function MisDocumentos({delivery, onConfirm}){
-  const [verDoc, setVerDoc] = useState(null); // {url,label}
+  const [abierto, setAbierto] = useState(false);
+  const [verDoc, setVerDoc]   = useState(null); // {url,label}
   const docs = delivery?.docs || {};
   const items = [
     {key:'licencia',         label:'Licencia de conducir',  icon:'🪪', url:docs.licencia,         critico:true},
@@ -640,7 +733,9 @@ function MisDocumentos({delivery, onConfirm}){
     {key:'vehiculo',         label:'Foto del vehículo',     icon:'🏍️', url:docs.vehiculo},
     {key:'dui',              label:'DUI',                   icon:'📇', url:docs.dui},
   ];
-  const tieneCriticos = items.filter(i=>i.critico).every(i=>i.url);
+  const criticos = items.filter(i=>i.critico);
+  const tieneCriticos = criticos.every(i=>i.url);
+  const disponibles = items.filter(i=>i.url).length;
   return(
     <>
       {/* Visor pantalla completa */}
@@ -668,46 +763,63 @@ function MisDocumentos({delivery, onConfirm}){
         </div>
       )}
 
-      <div style={{margin:'12px',background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:14,overflow:'hidden'}}>
-        <div style={{padding:'14px 16px',borderBottom:'1px solid var(--brd)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-          <div>
-            <div style={{fontSize:14,fontWeight:700,color:'var(--txt)'}}>📄 Mis Documentos</div>
-            <div style={{fontSize:11,color:'var(--txt3)',marginTop:2}}>Disponibles si te detiene la policía</div>
-          </div>
-          {tieneCriticos
-            ? <div style={{fontSize:10,fontWeight:700,padding:'4px 10px',borderRadius:20,background:'var(--green-dim)',color:'var(--green)',border:'1px solid var(--green)'}}>✓ Completo</div>
-            : <div style={{fontSize:10,fontWeight:700,padding:'4px 10px',borderRadius:20,background:'var(--amber-dim)',color:'var(--amber)',border:'1px solid var(--amber)'}}>Incompleto</div>
-          }
-        </div>
-        <div style={{padding:10,display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-          {items.map(it=>(
-            <div key={it.key} onClick={()=>{
-                   if(it.url) setVerDoc({url:it.url,label:it.label});
-                   else onConfirm && onConfirm({msg:`No tienes "${it.label}" cargado. Contacta a Despacho para subirlo.`,confirmLbl:'Entendido',color:'#888',onSi:()=>{}});
-                 }}
-                 style={{background:'var(--s2)',border:`1.5px solid ${it.url?'var(--brd)':(it.critico?'var(--amber)':'var(--brd)')}`,borderRadius:12,overflow:'hidden',cursor:'pointer',position:'relative',aspectRatio:'1/1',display:'flex',flexDirection:'column'}}>
-              {it.url
-                ? <img src={it.url} alt={it.label}
-                       style={{width:'100%',flex:1,objectFit:'cover',background:'#000'}}
-                       onError={(e)=>{e.target.style.display='none';e.target.parentNode.querySelector('.no-img').style.display='flex';}}/>
-                : null
+      <div style={{margin:'0 12px 16px',background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:14,overflow:'hidden'}}>
+        {/* Header tocable para expandir/colapsar */}
+        <div onClick={()=>setAbierto(a=>!a)}
+             style={{padding:'14px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,cursor:'pointer',userSelect:'none'}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <div style={{fontSize:14,fontWeight:700,color:'var(--txt)'}}>📄 Mis Documentos</div>
+              {tieneCriticos
+                ? <span style={{fontSize:9,fontWeight:700,padding:'2px 7px',borderRadius:20,background:'var(--green-dim)',color:'var(--green)',border:'1px solid var(--green)'}}>✓ Completo</span>
+                : <span style={{fontSize:9,fontWeight:700,padding:'2px 7px',borderRadius:20,background:'var(--amber-dim)',color:'var(--amber)',border:'1px solid var(--amber)'}}>Incompleto</span>
               }
-              <div className="no-img" style={{display:it.url?'none':'flex',flex:1,alignItems:'center',justifyContent:'center',fontSize:36,opacity:.4,background:'var(--s3)'}}>{it.icon}</div>
-              <div style={{padding:'6px 8px',background:'var(--s1)',borderTop:'1px solid var(--brd)',display:'flex',alignItems:'center',gap:6,minHeight:34}}>
-                <span style={{fontSize:13}}>{it.icon}</span>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:10,fontWeight:600,color:'var(--txt2)',lineHeight:1.2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{it.label}</div>
-                  <div style={{fontSize:9,color:it.url?'var(--green)':(it.critico?'var(--amber)':'var(--txt3)'),fontWeight:600,marginTop:1}}>
-                    {it.url?'✓ Disponible':(it.critico?'⚠ Falta':'— Sin cargar')}
+            </div>
+            <div style={{fontSize:11,color:'var(--txt3)',marginTop:2}}>
+              {disponibles} de {items.length} disponibles · Si te detiene la policía
+            </div>
+          </div>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+               style={{color:'var(--txt3)',flexShrink:0,transition:'transform .25s ease',transform:abierto?'rotate(180deg)':'rotate(0deg)'}}>
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </div>
+
+        {/* Contenido colapsable */}
+        {abierto && (
+          <>
+            <div style={{padding:10,display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,borderTop:'1px solid var(--brd)'}}>
+              {items.map(it=>(
+                <div key={it.key} onClick={()=>{
+                       if(it.url) setVerDoc({url:it.url,label:it.label});
+                       else onConfirm && onConfirm({msg:`No tienes "${it.label}" cargado. Contacta a Despacho para subirlo.`,confirmLbl:'Entendido',color:'#888',onSi:()=>{}});
+                     }}
+                     style={{background:'var(--s2)',border:`1.5px solid ${it.url?'var(--brd)':(it.critico?'var(--amber)':'var(--brd)')}`,borderRadius:12,overflow:'hidden',cursor:'pointer',aspectRatio:'1/1',display:'flex',flexDirection:'column'}}>
+                  {it.url
+                    ? <img src={it.url} alt={it.label}
+                           style={{width:'100%',flex:1,objectFit:'cover',background:'var(--s3)'}}
+                           onError={(e)=>{e.target.style.display='none';e.target.parentNode.querySelector('.no-img').style.display='flex';}}/>
+                    : null
+                  }
+                  <div className="no-img" style={{display:it.url?'none':'flex',flex:1,alignItems:'center',justifyContent:'center',fontSize:36,opacity:.4,background:'var(--s3)'}}>{it.icon}</div>
+                  <div style={{padding:'6px 8px',background:'var(--s1)',borderTop:'1px solid var(--brd)',display:'flex',alignItems:'center',gap:6,minHeight:34}}>
+                    <span style={{fontSize:13}}>{it.icon}</span>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:10,fontWeight:600,color:'var(--txt2)',lineHeight:1.2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{it.label}</div>
+                      <div style={{fontSize:9,color:it.url?'var(--green)':(it.critico?'var(--amber)':'var(--txt3)'),fontWeight:600,marginTop:1}}>
+                        {it.url?'✓ Disponible':(it.critico?'⚠ Falta':'— Sin cargar')}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
-        <div style={{padding:'10px 14px 12px',background:'var(--s2)',borderTop:'1px solid var(--brd)',fontSize:10,color:'var(--txt3)',textAlign:'center',lineHeight:1.4}}>
-          💡 Toca cualquier documento para verlo en pantalla completa
-        </div>
+            <div style={{padding:'10px 14px 12px',background:'var(--s2)',borderTop:'1px solid var(--brd)',fontSize:10,color:'var(--txt3)',textAlign:'center',lineHeight:1.4}}>
+              💡 Toca un documento para verlo en pantalla completa
+            </div>
+          </>
+        )}
       </div>
     </>
   );
@@ -740,7 +852,7 @@ function ModoSolToggle(){
     }catch(e){}
   };
   return (
-    <div style={{margin:'12px',background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:14,padding:16}}>
+    <div style={{margin:'0 12px 12px',background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:14,padding:16}}>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
         <div style={{flex:1}}>
           <div style={{fontSize:14,fontWeight:700,color:'var(--txt)'}}>{on?'☀️ Modo Sol':'🌙 Modo Luna'}</div>
@@ -2702,74 +2814,52 @@ function App(){
         {tab==='perfil'&&(
           <div>
             <div style={{fontSize:11,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.08em',padding:'16px 16px 8px'}}>Mi Perfil</div>
-            <div style={{margin:'0 12px 12px',background:'#1A1A1A',border:'1px solid #333',borderRadius:16,padding:16}}>
+
+            {/* ── 1. DATOS PERSONALES ────────────────────── */}
+            <div style={{margin:'0 12px 12px',background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:16,padding:16}}>
               <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:14}}>
                 {delivery?.foto_perfil_url
-                  ? <img src={delivery.foto_perfil_url} alt="" style={{width:64,height:64,borderRadius:16,objectFit:'cover',flexShrink:0,border:'2px solid #FF8C00'}}/>
-                  : <div style={{width:64,height:64,background:'#FF8C00',borderRadius:16,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,fontWeight:900,flexShrink:0,color:'#fff'}}>{delivery?.nombre?.charAt(0)||'?'}</div>
+                  ? <img src={delivery.foto_perfil_url} alt="" style={{width:64,height:64,borderRadius:16,objectFit:'cover',flexShrink:0,border:'2px solid var(--brand)'}}/>
+                  : <div style={{width:64,height:64,background:'var(--brand)',borderRadius:16,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,fontWeight:900,flexShrink:0,color:'#fff'}}>{delivery?.nombre?.charAt(0)||'?'}</div>
                 }
                 <div style={{minWidth:0,flex:1}}>
-                  <div style={{fontSize:17,fontWeight:700,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{delivery?.nombre}</div>
-                  <div style={{fontSize:13,color:'#888',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{delivery?.email}</div>
+                  <div style={{fontSize:17,fontWeight:700,color:'var(--txt)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{delivery?.nombre}</div>
+                  <div style={{fontSize:13,color:'var(--txt3)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{delivery?.email}</div>
                 </div>
               </div>
-              <div style={{background:'#232323',borderRadius:12,overflow:'hidden'}}>
-                {[['Celular',delivery?.celular],['Ciudad',delivery?.ciudad],['Saldo',fmtL(saldo)]].map(([l,v])=>(
-                  <div key={l} style={{padding:'12px 14px',borderBottom:'1px solid #2C2C2C',display:'flex',justifyContent:'space-between'}}><span style={{fontSize:12,color:'#888'}}>{l}</span><span style={{fontSize:13,fontWeight:600,color:l==='Saldo'?(saldo<MIN_SALDO?'#EF4444':saldo<MIN_SALDO*2?'#F59E0B':'#22C55E'):'inherit'}}>{v||'—'}</span></div>
+              <div style={{background:'var(--s2)',borderRadius:12,overflow:'hidden'}}>
+                {[
+                  ['ID Rider', delivery?.id ? `#${String(delivery.id).padStart(4,'0')}` : '—'],
+                  ['Identidad', delivery?.identidad],
+                  ['Celular', delivery?.celular],
+                  ['Ciudad', delivery?.ciudad],
+                  ['Vehículo', delivery?.vehiculo],
+                  ['Saldo', fmtL(saldo)],
+                ].map(([l,v])=>(
+                  <div key={l} style={{padding:'12px 14px',borderBottom:'1px solid var(--brd)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                    <span style={{fontSize:12,color:'var(--txt3)'}}>{l}</span>
+                    <span style={{fontSize:13,fontWeight:600,color:l==='Saldo'?(saldo<MIN_SALDO?'var(--red)':saldo<MIN_SALDO*2?'var(--amber)':'var(--green)'):l==='ID Rider'?'var(--brand)':'var(--txt)',fontFamily:l==='ID Rider'?'Space Mono,monospace':'inherit'}}>{v||'—'}</span>
+                  </div>
                 ))}
-                <div style={{padding:'12px 14px',display:'flex',justifyContent:'space-between'}}><span style={{fontSize:12,color:'#888'}}>Estado</span><span style={{fontSize:13,fontWeight:600,color:'#22C55E'}}>Activo ✅</span></div>
+                <div style={{padding:'12px 14px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <span style={{fontSize:12,color:'var(--txt3)'}}>Estado</span>
+                  <span style={{fontSize:13,fontWeight:600,color:'var(--green)'}}>Activo ✅</span>
+                </div>
               </div>
             </div>
-            <div style={{margin:'0 12px'}}><a href="https://wa.me/50499999999" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:14,background:'rgba(37,211,102,.1)',border:'1px solid rgba(37,211,102,.25)',borderRadius:14,color:'#25d366',fontWeight:700,fontSize:14}}>💬 WhatsApp Despacho</a></div>
-            <ModoSolToggle/>
-            <MisDocumentos delivery={delivery} onConfirm={setSheet}/>
 
-            {/* ── SOMAR PRO ─────────────────────────────── */}
-            {(()=>{
-              const fin = historial.filter(p=>p.estatus==='FINALIZADO'||p.est==='FINALIZADO');
-              const ini = new Date(new Date().getFullYear(),new Date().getMonth(),1).getTime();
-              const pM  = fin.filter(p=>new Date(p.hora_finalizado||p.ts||0).getTime()>=ini).length;
-              let nivel='Bronce',pct=0,meta=75,siguienteNivel='Plata';
-              if(pM>=150){nivel='Oro';pct=100;meta=150;siguienteNivel=null;}
-              else if(pM>=75){nivel='Plata';pct=Math.round((pM-75)/75*100);meta=150;siguienteNivel='Oro';}
-              else{pct=Math.round(pM/75*100);meta=75;siguienteNivel='Plata';}
-              const nivelColor = nivel==='Oro'?'#F59E0B':nivel==='Plata'?'#9CA3AF':'#CD7F32';
-              const nivelDim   = nivel==='Oro'?'rgba(245,158,11,.1)':nivel==='Plata'?'rgba(156,163,175,.1)':'rgba(205,127,50,.1)';
-              return(
-                <div style={{margin:'12px 12px 0',background:'var(--s1)',border:`1px solid ${nivelColor}33`,borderRadius:'var(--r-lg)',overflow:'hidden'}}>
-                  <div style={{padding:'14px 16px',background:nivelDim,borderBottom:'1px solid var(--brd)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                    <div>
-                      <div style={{fontSize:10,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:4}}>Somar Pro</div>
-                      <div style={{fontSize:18,fontWeight:800,color:nivelColor,letterSpacing:'-0.02em'}}>Nivel {nivel}</div>
-                    </div>
-                    <div style={{width:44,height:44,borderRadius:12,background:nivelDim,border:`1px solid ${nivelColor}44`,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={nivelColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                    </div>
-                  </div>
-                  <div style={{padding:'14px 16px'}}>
-                    <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
-                      <span style={{fontSize:12,color:'var(--txt2)'}}>Pedidos este mes</span>
-                      <span style={{fontSize:13,fontWeight:700,color:'var(--txt)'}}>{pM} / {meta}</span>
-                    </div>
-                    <div style={{background:'var(--s3)',borderRadius:4,height:6,marginBottom:8,overflow:'hidden'}}>
-                      <div style={{height:'100%',background:nivelColor,borderRadius:4,width:`${pct}%`,transition:'width .6s ease'}}/>
-                    </div>
-                    {siguienteNivel
-                      ? <div style={{fontSize:11,color:'var(--txt3)'}}>Faltan {meta-pM} pedidos para nivel <span style={{color:nivelColor,fontWeight:700}}>{siguienteNivel}</span></div>
-                      : <div style={{fontSize:11,color:'var(--amber)',fontWeight:600}}>Nivel máximo alcanzado</div>
-                    }
-                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,marginTop:12}}>
-                      {[['Bronce','0+','#CD7F32'],['Plata','75+','#9CA3AF'],['Oro','150+','#F59E0B']].map(([n,req,col])=>(
-                        <div key={n} style={{background:nivel===n?`${col}18`:'var(--s2)',border:`1px solid ${nivel===n?col+'44':'var(--brd)'}`,borderRadius:'var(--r-sm)',padding:'8px 6px',textAlign:'center'}}>
-                          <div style={{fontSize:10,fontWeight:700,color:nivel===n?col:'var(--txt3)',letterSpacing:'.02em'}}>{n}</div>
-                          <div style={{fontSize:9,color:'var(--txt3)',marginTop:2}}>{req} pedidos</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
+            <div style={{margin:'0 12px 12px'}}>
+              <a href="https://wa.me/50499999999" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:14,background:'var(--green-dim)',border:'1px solid var(--green)',borderRadius:14,color:'var(--green)',fontWeight:700,fontSize:14}}>💬 WhatsApp Despacho</a>
+            </div>
+
+            {/* ── 2. SOMAR PRO ─────────────────────────── */}
+            <SomarProCard historial={historial}/>
+
+            {/* ── 3. MODO SOL / LUNA ───────────────────── */}
+            <ModoSolToggle/>
+
+            {/* ── 4. MIS DOCUMENTOS (colapsable) ───────── */}
+            <MisDocumentos delivery={delivery} onConfirm={setSheet}/>
           </div>
         )}
       </div>
@@ -2864,31 +2954,31 @@ function TabTurnos({delivery, toast}){
 
       {/* Selector fecha */}
       <div style={{margin:'10px 12px'}}>
-        <label style={{fontSize:11,color:'#888',fontWeight:600,display:'block',marginBottom:6}}>Fecha a reservar</label>
+        <label style={{fontSize:11,color:'var(--txt3)',fontWeight:600,display:'block',marginBottom:6}}>Fecha a reservar</label>
         <input type="date" value={fecha} min={manana}
           onChange={e=>setFecha(e.target.value)}
-          style={{width:'100%',background:'#1A1A1A',border:'1px solid #333',borderRadius:10,padding:'10px 14px',color:'#F0F0F0',fontSize:14}}/>
+          style={{width:'100%',background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:10,padding:'10px 14px',color:'var(--txt)',fontSize:14}}/>
       </div>
 
       {/* Turnos disponibles */}
-      <div style={{margin:'0 12px',fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:8}}>Turnos disponibles</div>
-      {cargando?<div style={{textAlign:'center',padding:20,color:'#888'}}>Cargando...</div>:
+      <div style={{margin:'0 12px',fontSize:11,fontWeight:700,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:8}}>Turnos disponibles</div>
+      {cargando?<div style={{textAlign:'center',padding:20,color:'var(--txt3)'}}>Cargando...</div>:
         turnos.map(t=>{
           const yaReservo = reservas.find(r=>r.turno_id===t.id&&r.fecha===fecha&&r.estatus!=='CANCELADO');
           return(
-            <div key={t.id} style={{margin:'0 12px 8px',background:'#1A1A1A',border:`1px solid ${yaReservo?'#22C55E':'#333'}`,borderRadius:14,padding:'12px 14px'}}>
+            <div key={t.id} style={{margin:'0 12px 8px',background:'var(--s1)',border:`1px solid ${yaReservo?'var(--green)':'var(--brd)'}`,borderRadius:14,padding:'12px 14px'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                 <div>
-                  <div style={{fontSize:14,fontWeight:800}}>{t.nombre}</div>
-                  <div style={{fontSize:12,color:'#888',marginTop:2}}>{t.hora_inicio?.slice(0,5)} – {t.hora_fin?.slice(0,5)}</div>
-                  <div style={{fontSize:11,color:'#555',marginTop:1}}>Máx {t.max_riders} riders</div>
+                  <div style={{fontSize:14,fontWeight:800,color:'var(--txt)'}}>{t.nombre}</div>
+                  <div style={{fontSize:12,color:'var(--txt3)',marginTop:2}}>{t.hora_inicio?.slice(0,5)} – {t.hora_fin?.slice(0,5)}</div>
+                  <div style={{fontSize:11,color:'var(--txt3)',marginTop:1,opacity:.7}}>Máx {t.max_riders} riders</div>
                 </div>
                 {yaReservo
                   ? <div style={{textAlign:'right'}}>
-                      <div style={{fontSize:11,fontWeight:700,color:colores[yaReservo.estatus]||'#888',marginBottom:6}}>{yaReservo.estatus}</div>
-                      {yaReservo.estatus==='RESERVADO'&&<button onClick={()=>cancelar(yaReservo.id)} style={{background:'none',border:'1px solid #EF4444',borderRadius:8,padding:'5px 10px',color:'#EF4444',fontSize:11,cursor:'pointer'}}>Cancelar</button>}
+                      <div style={{fontSize:11,fontWeight:700,color:colores[yaReservo.estatus]||'var(--txt3)',marginBottom:6}}>{yaReservo.estatus}</div>
+                      {yaReservo.estatus==='RESERVADO'&&<button onClick={()=>cancelar(yaReservo.id)} style={{background:'none',border:'1px solid var(--red)',borderRadius:8,padding:'5px 10px',color:'var(--red)',fontSize:11,cursor:'pointer'}}>Cancelar</button>}
                     </div>
-                  : <button onClick={()=>reservar(t.id)} style={{background:'#FF8C00',border:'none',borderRadius:10,padding:'10px 16px',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer'}}>Reservar</button>
+                  : <button onClick={()=>reservar(t.id)} style={{background:'var(--brand)',border:'none',borderRadius:10,padding:'10px 16px',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer'}}>Reservar</button>
                 }
               </div>
             </div>
@@ -2899,14 +2989,14 @@ function TabTurnos({delivery, toast}){
       {/* Mis reservaciones futuras */}
       {reservas.filter(r=>r.estatus!=='CANCELADO').length>0&&(
         <div style={{margin:'16px 12px 0'}}>
-          <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:8}}>Mis próximos turnos</div>
+          <div style={{fontSize:11,fontWeight:700,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:8}}>Mis próximos turnos</div>
           {reservas.filter(r=>r.estatus!=='CANCELADO').map(r=>(
-            <div key={r.id} style={{background:'#1A1A1A',border:'1px solid #333',borderRadius:12,padding:'10px 14px',marginBottom:6,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <div key={r.id} style={{background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:12,padding:'10px 14px',marginBottom:6,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
               <div>
-                <div style={{fontSize:12,fontWeight:700}}>{r.turno?.nombre||'—'}</div>
-                <div style={{fontSize:11,color:'#888'}}>{r.fecha} · {r.turno?.hora_inicio?.slice(0,5)}–{r.turno?.hora_fin?.slice(0,5)}</div>
+                <div style={{fontSize:12,fontWeight:700,color:'var(--txt)'}}>{r.turno?.nombre||'—'}</div>
+                <div style={{fontSize:11,color:'var(--txt3)'}}>{r.fecha} · {r.turno?.hora_inicio?.slice(0,5)}–{r.turno?.hora_fin?.slice(0,5)}</div>
               </div>
-              <span style={{fontSize:11,fontWeight:700,color:colores[r.estatus]||'#888'}}>{r.estatus}</span>
+              <span style={{fontSize:11,fontWeight:700,color:colores[r.estatus]||'var(--txt3)'}}>{r.estatus}</span>
             </div>
           ))}
         </div>
@@ -3214,41 +3304,41 @@ function TabDepositos({delivery, depositos, setDepositos, onConfirm, toast}){
   return(
     <div>
       <div style={{fontSize:11,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.08em',padding:'16px 16px 8px'}}>Recargar Billetera</div>
-      <div style={{margin:'0 12px 12px',background:'#1A1A1A',border:'1px solid #333',borderRadius:16,padding:16}}>
-        <div style={{fontSize:15,fontWeight:800,marginBottom:4}}>💳 Registrar Depósito</div>
-        <div style={{fontSize:12,color:'#888',marginBottom:14}}>Sube el comprobante — Despacho aprobará tu recarga</div>
-        <label style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.05em',display:'block',marginBottom:6}}>Monto depositado (L.)</label>
+      <div style={{margin:'0 12px 12px',background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:16,padding:16}}>
+        <div style={{fontSize:15,fontWeight:800,marginBottom:4,color:'var(--txt)'}}>💳 Registrar Depósito</div>
+        <div style={{fontSize:12,color:'var(--txt3)',marginBottom:14}}>Sube el comprobante — Despacho aprobará tu recarga</div>
+        <label style={{fontSize:11,fontWeight:700,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.05em',display:'block',marginBottom:6}}>Monto depositado (L.)</label>
         <input type="number" inputMode="decimal" placeholder="0.00" value={monto} onChange={e=>setMonto(e.target.value)}
-          style={{width:'100%',background:'#232323',border:'1.5px solid #444',borderRadius:12,padding:'15px 14px',color:'#F0F0F0',fontSize:20,fontWeight:800,outline:'none',marginBottom:14}}/>
-        <label style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.05em',display:'block',marginBottom:6}}>Foto del comprobante</label>
+          style={{width:'100%',background:'var(--s2)',border:'1.5px solid var(--brd)',borderRadius:12,padding:'15px 14px',color:'var(--txt)',fontSize:20,fontWeight:800,outline:'none',marginBottom:14}}/>
+        <label style={{fontSize:11,fontWeight:700,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.05em',display:'block',marginBottom:6}}>Foto del comprobante</label>
         <div onClick={()=>document.getElementById('depInp').click()}
-          style={{background:'#232323',border:'2px '+(prev?'solid #22C55E':'dashed #444'),borderRadius:14,padding:prev?0:20,textAlign:'center',overflow:'hidden',marginBottom:14}}>
+          style={{background:'var(--s2)',border:'2px '+(prev?'solid var(--green)':'dashed var(--brd)'),borderRadius:14,padding:prev?0:20,textAlign:'center',overflow:'hidden',marginBottom:14,cursor:'pointer'}}>
           {prev
             ?<img src={prev} style={{width:'100%',maxHeight:140,objectFit:'cover',display:'block'}}/>
-            :<><div style={{fontSize:32,marginBottom:6}}>📷</div><div style={{fontSize:14,fontWeight:700}}>Tomar foto del comprobante</div><div style={{fontSize:12,color:'#888',marginTop:4}}>Toca aquí</div></>
+            :<><div style={{fontSize:32,marginBottom:6}}>📷</div><div style={{fontSize:14,fontWeight:700,color:'var(--txt)'}}>Tomar foto del comprobante</div><div style={{fontSize:12,color:'var(--txt3)',marginTop:4}}>Toca aquí</div></>
           }
         </div>
         <input type="file" id="depInp" accept="image/*" capture="environment" style={{display:'none'}} onChange={hFile}/>
-        {err&&<div style={{color:'#EF4444',fontSize:12,marginBottom:10}}>{err}</div>}
+        {err&&<div style={{color:'var(--red)',fontSize:12,marginBottom:10}}>{err}</div>}
         <button onClick={enviar} disabled={enviando}
-          style={{width:'100%',padding:16,borderRadius:14,background:enviando?'#333':'#FF8C00',color:enviando?'#888':'#fff',fontSize:16,fontWeight:800}}>
+          style={{width:'100%',padding:16,borderRadius:14,background:enviando?'var(--s4)':'var(--brand)',color:enviando?'var(--txt3)':'#fff',fontSize:16,fontWeight:800,border:'none'}}>
           {enviando?'Enviando...':'Enviar Depósito'}
         </button>
       </div>
-      <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.07em',padding:'8px 14px'}}>Historial</div>
-      {depositos.length===0&&<div style={{textAlign:'center',padding:'30px',color:'#888'}}>Sin depósitos aún</div>}
+      <div style={{fontSize:11,fontWeight:700,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.07em',padding:'8px 14px'}}>Historial</div>
+      {depositos.length===0&&<div style={{textAlign:'center',padding:'30px',color:'var(--txt3)'}}>Sin depósitos aún</div>}
       {depositos.map(d=>{
-        const [c,bg]=cc[d.estatus||d.est]||['#888','rgba(136,136,136,.15)'];
+        const [c,bg]=cc[d.estatus||d.est]||['var(--txt3)','rgba(136,136,136,.15)'];
         const fecha=new Date(d.creado_at||d.ts||Date.now()).toLocaleDateString('es-HN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'America/Tegucigalpa'});
         return(
-          <div key={d.id} style={{background:'#1A1A1A',borderRadius:13,padding:'13px 14px',margin:'0 12px 8px',borderLeft:'4px solid '+c}}>
+          <div key={d.id} style={{background:'var(--s1)',borderRadius:13,padding:'13px 14px',margin:'0 12px 8px',borderLeft:'4px solid '+c,border:'1px solid var(--brd)',borderLeftWidth:4}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-              <div style={{fontSize:20,fontWeight:900}}>L. {parseFloat(d.monto).toFixed(2)}</div>
+              <div style={{fontSize:20,fontWeight:900,color:'var(--txt)'}}>L. {parseFloat(d.monto).toFixed(2)}</div>
               <span style={{fontSize:10,fontWeight:700,textTransform:'uppercase',padding:'3px 9px',borderRadius:20,background:bg,color:c}}>{d.estatus||d.est}</span>
             </div>
-            <div style={{fontSize:11,color:'#888',marginTop:4}}>{fecha}</div>
-            {(d.notas_despacho||d.nota)&&<div style={{fontSize:12,color:'#888',marginTop:6,fontStyle:'italic'}}>{d.notas_despacho||d.nota}</div>}
-            {(d.estatus||d.est)==='PENDIENTE'&&<div style={{fontSize:11,color:'#F59E0B',marginTop:6,fontWeight:600}}>⏳ En revisión — saldo se acredita al aprobar</div>}
+            <div style={{fontSize:11,color:'var(--txt3)',marginTop:4}}>{fecha}</div>
+            {(d.notas_despacho||d.nota)&&<div style={{fontSize:12,color:'var(--txt2)',marginTop:6,fontStyle:'italic'}}>{d.notas_despacho||d.nota}</div>}
+            {(d.estatus||d.est)==='PENDIENTE'&&<div style={{fontSize:11,color:'var(--amber)',marginTop:6,fontWeight:600}}>⏳ En revisión — saldo se acredita al aprobar</div>}
           </div>
         );
       })}
