@@ -1,5 +1,5 @@
 // SERVICE WORKER — Somar Rider PWA
-const CACHE = 'somar-rider-v3.36';
+const CACHE = 'somar-rider-v3.37';
 const STATIC = ['./index.html', './manifest-delivery.json'];
 
 self.addEventListener('install', e => {
