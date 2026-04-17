@@ -21,72 +21,219 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
   :root{
-    --brand:#FF8C00; --brand-dim:rgba(255,140,0,.08); --brand-mid:rgba(255,140,0,.18);
-    --brand-glow:rgba(255,140,0,.25);
-    --bg:#060606; --s1:#111111; --s2:#181818; --s3:#222222; --s4:#2C2C2C;
-    --brd:rgba(255,255,255,.06); --brd2:rgba(255,255,255,.1);
-    --txt:#F5F5F7; --txt2:#C8CCD2; --txt3:#7A7F88;
-    --green:#34D399; --green-dim:rgba(52,211,153,.08);
-    --red:#F87171;   --red-dim:rgba(248,113,113,.08);
-    --amber:#FBBF24; --amber-dim:rgba(251,191,36,.08);
-    --blue:#60A5FA;  --blue-dim:rgba(96,165,250,.08);
+    --brand:#FF8C00; --brand-dim:rgba(255,140,0,.1); --brand-mid:rgba(255,140,0,.2);
+    --bg:#0A0A0A; --s1:#141414; --s2:#1C1C1C; --s3:#242424; --s4:#2E2E2E;
+    --brd:#3a3a3a; --brd2:#484848;
+    --txt:#FFFFFF; --txt2:#D1D5DB; --txt3:#A8ADB5;
+    --green:#22C55E; --green-dim:rgba(34,197,94,.1);
+    --red:#EF4444;   --red-dim:rgba(239,68,68,.1);
+    --amber:#F59E0B; --amber-dim:rgba(245,158,11,.1);
+    --blue:#3B82F6;  --blue-dim:rgba(59,130,246,.1);
     --r-sm:10px; --r-md:14px; --r-lg:18px; --r-xl:24px;
-    --shadow-sm:0 1px 3px rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.3);
-    --shadow-md:0 4px 16px rgba(0,0,0,.5), 0 2px 4px rgba(0,0,0,.3);
-    --shadow-lg:0 10px 40px rgba(0,0,0,.6), 0 4px 12px rgba(0,0,0,.4);
-    --shadow-brand:0 4px 20px rgba(255,140,0,.2), 0 2px 8px rgba(255,140,0,.12);
-    --glass:rgba(17,17,17,.75);
-    --glass-border:rgba(255,255,255,.06);
-    --transition-fast:.15s cubic-bezier(.4,0,.2,1);
-    --transition-smooth:.3s cubic-bezier(.4,0,.2,1);
-    --transition-spring:.4s cubic-bezier(.175,.885,.32,1.275);
   }
-  /* ☀️ MODO SOL — máximo contraste para luz directa en campo */
+  /* ☀️ MODO SOL — tema CLARO real para uso diurno bajo luz directa */
   body.modo-sol {
-    --bg:#000000; --s1:#0A0A0A; --s2:#141414; --s3:#1C1C1C; --s4:#262626;
-    --brd:rgba(255,255,255,.12); --brd2:rgba(255,255,255,.18);
-    --txt2:#FFFFFF; --txt3:#E5E7EB;
-    font-weight:500 !important;
+    --brand:#E67E00; --brand-dim:rgba(230,126,0,.10); --brand-mid:rgba(230,126,0,.22);
+    --bg:#FFFFFF; --s1:#F5F5F5; --s2:#EBEBEB; --s3:#DEDEDE; --s4:#CFCFCF;
+    --brd:#C8CCD1; --brd2:#A1A6AD;
+    --txt:#0A0A0A; --txt2:#1F2937; --txt3:#4B5563;
+    --green:#15803D; --green-dim:rgba(21,128,61,.10);
+    --red:#DC2626;   --red-dim:rgba(220,38,38,.10);
+    --amber:#B45309; --amber-dim:rgba(180,83,9,.10);
+    --blue:#1D4ED8;  --blue-dim:rgba(29,78,216,.10);
+    color-scheme:light;
+    background:#FFFFFF; color:#0A0A0A;
   }
-  body.modo-sol * { letter-spacing:0.01em; }
-  body.modo-sol .card, body.modo-sol [style*="border"] { border-width:2px !important; }
-  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  body{
-    font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--txt);
-    min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased;font-weight:450;
-    background-image:radial-gradient(ellipse 80% 60% at 50% -20%,rgba(255,140,0,.03),transparent);
+  /* Overrides agresivos de hex hardcoded en estilos inline.
+     React serializa style={{color:'#XXX'}} como style="color: #XXX" (con espacio, sin comillas)
+     y los selectores [style*=] son CASE-SENSITIVE — por eso duplicamos mayús/minús. */
+  /* === FONDOS OSCUROS → BLANCO/CLARO === */
+  body.modo-sol [style*="background: rgb(10, 10, 10)"],
+  body.modo-sol [style*="background: rgb(15, 15, 15)"],
+  body.modo-sol [style*="background: rgb(20, 20, 20)"],
+  body.modo-sol [style*="background: rgb(22, 22, 22)"],
+  body.modo-sol [style*="background: rgb(26, 26, 26)"],
+  body.modo-sol [style*="background: rgb(28, 28, 28)"],
+  body.modo-sol [style*="background: rgb(30, 30, 30)"],
+  body.modo-sol [style*="background:#0A0A0A"], body.modo-sol [style*="background: #0A0A0A"],
+  body.modo-sol [style*="background:#0a0a0a"], body.modo-sol [style*="background: #0a0a0a"],
+  body.modo-sol [style*="background:#0F0F0F"], body.modo-sol [style*="background: #0F0F0F"],
+  body.modo-sol [style*="background:#0f0f0f"], body.modo-sol [style*="background: #0f0f0f"],
+  body.modo-sol [style*="background:#141414"], body.modo-sol [style*="background: #141414"],
+  body.modo-sol [style*="background:#161616"], body.modo-sol [style*="background: #161616"],
+  body.modo-sol [style*="background:#1A1A1A"], body.modo-sol [style*="background: #1A1A1A"],
+  body.modo-sol [style*="background:#1a1a1a"], body.modo-sol [style*="background: #1a1a1a"],
+  body.modo-sol [style*="background:#1C1C1C"], body.modo-sol [style*="background: #1C1C1C"],
+  body.modo-sol [style*="background:#1c1c1c"], body.modo-sol [style*="background: #1c1c1c"],
+  body.modo-sol [style*="background:#1e1e1e"], body.modo-sol [style*="background: #1e1e1e"]{
+    background:#FFFFFF !important;
   }
-  button{cursor:pointer;font-family:inherit;border:none;outline:none;transition:transform var(--transition-fast),opacity var(--transition-fast),background var(--transition-fast),color var(--transition-fast)}
-  button:active{transform:scale(.97)}
-  a{text-decoration:none;color:inherit;transition:opacity var(--transition-fast)}
-  a:active{opacity:.75}
-  input,textarea{font-family:inherit;transition:border-color var(--transition-fast),box-shadow var(--transition-fast)}
-  input:focus,textarea:focus{outline:none;border-color:var(--brand) !important;box-shadow:0 0 0 3px var(--brand-dim)}
+  body.modo-sol [style*="background: rgb(34, 34, 34)"],
+  body.modo-sol [style*="background: rgb(35, 35, 35)"],
+  body.modo-sol [style*="background: rgb(36, 36, 36)"],
+  body.modo-sol [style*="background: rgb(38, 38, 38)"],
+  body.modo-sol [style*="background: rgb(44, 44, 44)"],
+  body.modo-sol [style*="background: rgb(46, 46, 46)"],
+  body.modo-sol [style*="background:#222"], body.modo-sol [style*="background: #222"],
+  body.modo-sol [style*="background:#232323"], body.modo-sol [style*="background: #232323"],
+  body.modo-sol [style*="background:#242424"], body.modo-sol [style*="background: #242424"],
+  body.modo-sol [style*="background:#262626"], body.modo-sol [style*="background: #262626"],
+  body.modo-sol [style*="background:#2C2C2C"], body.modo-sol [style*="background: #2C2C2C"],
+  body.modo-sol [style*="background:#2c2c2c"], body.modo-sol [style*="background: #2c2c2c"],
+  body.modo-sol [style*="background:#2E2E2E"], body.modo-sol [style*="background: #2E2E2E"]{
+    background:#F0F0F0 !important;
+  }
+  body.modo-sol [style*="background: rgb(51, 51, 51)"],
+  body.modo-sol [style*="background: rgb(68, 68, 68)"],
+  body.modo-sol [style*="background:#333"], body.modo-sol [style*="background: #333"],
+  body.modo-sol [style*="background:#444"], body.modo-sol [style*="background: #444"]{
+    background:#DEDEDE !important;
+  }
+  /* === TEXTOS BLANCOS/GRISES → NEGRO === */
+  body.modo-sol [style*="color: rgb(255, 255, 255)"],
+  body.modo-sol [style*="color: rgb(240, 240, 240)"],
+  body.modo-sol [style*="color: rgb(209, 213, 219)"],
+  body.modo-sol [style*="color: rgb(229, 231, 235)"],
+  body.modo-sol [style*="color:#fff"], body.modo-sol [style*="color: #fff"],
+  body.modo-sol [style*="color:#FFF"], body.modo-sol [style*="color: #FFF"],
+  body.modo-sol [style*="color:#FFFFFF"], body.modo-sol [style*="color: #FFFFFF"],
+  body.modo-sol [style*="color:#ffffff"], body.modo-sol [style*="color: #ffffff"],
+  body.modo-sol [style*="color:#F0F0F0"], body.modo-sol [style*="color: #F0F0F0"],
+  body.modo-sol [style*="color:#f0f0f0"], body.modo-sol [style*="color: #f0f0f0"],
+  body.modo-sol [style*="color:#D1D5DB"], body.modo-sol [style*="color: #D1D5DB"],
+  body.modo-sol [style*="color:#E5E7EB"], body.modo-sol [style*="color: #E5E7EB"]{
+    color:#0A0A0A !important;
+  }
+  body.modo-sol [style*="color: rgb(136, 136, 136)"],
+  body.modo-sol [style*="color: rgb(102, 102, 102)"],
+  body.modo-sol [style*="color: rgb(85, 85, 85)"],
+  body.modo-sol [style*="color: rgb(168, 173, 181)"],
+  body.modo-sol [style*="color: rgb(204, 204, 204)"],
+  body.modo-sol [style*="color: rgb(156, 163, 175)"],
+  body.modo-sol [style*="color:#888"], body.modo-sol [style*="color: #888"],
+  body.modo-sol [style*="color:#666"], body.modo-sol [style*="color: #666"],
+  body.modo-sol [style*="color:#555"], body.modo-sol [style*="color: #555"],
+  body.modo-sol [style*="color:#A8ADB5"], body.modo-sol [style*="color: #A8ADB5"],
+  body.modo-sol [style*="color:#ccc"], body.modo-sol [style*="color: #ccc"],
+  body.modo-sol [style*="color:#CCC"], body.modo-sol [style*="color: #CCC"],
+  body.modo-sol [style*="color:#9CA3AF"], body.modo-sol [style*="color: #9CA3AF"]{
+    color:#5C6470 !important;
+  }
+  body.modo-sol [style*="color: rgb(68, 68, 68)"],
+  body.modo-sol [style*="color:#444"], body.modo-sol [style*="color: #444"]{ color:#3A3F47 !important; }
+  /* === BORDES === */
+  body.modo-sol [style*="solid rgb(34, 34, 34)"],
+  body.modo-sol [style*="solid rgb(44, 44, 44)"],
+  body.modo-sol [style*="solid rgb(51, 51, 51)"],
+  body.modo-sol [style*="solid rgb(58, 58, 58)"],
+  body.modo-sol [style*="solid rgb(68, 68, 68)"],
+  body.modo-sol [style*="solid rgb(15, 15, 15)"],
+  body.modo-sol [style*="solid #222"], body.modo-sol [style*="solid #2c2c2c"], body.modo-sol [style*="solid #2C2C2C"],
+  body.modo-sol [style*="solid #333"], body.modo-sol [style*="solid #3a3a3a"], body.modo-sol [style*="solid #444"],
+  body.modo-sol [style*="solid #0F0F0F"], body.modo-sol [style*="solid #0f0f0f"]{
+    border-color:#C8CCD1 !important;
+  }
+  /* === COLORES SEMÁNTICOS (rgb + hex) === */
+  body.modo-sol [style*="color: rgb(255, 140, 0)"],
+  body.modo-sol [style*="color:#FF8C00"], body.modo-sol [style*="color: #FF8C00"]{ color:#C25E00 !important; }
+  body.modo-sol [style*="background: rgb(255, 140, 0)"],
+  body.modo-sol [style*="background:#FF8C00"], body.modo-sol [style*="background: #FF8C00"]{ background:#E67E00 !important; }
+  body.modo-sol [style*="solid rgb(255, 140, 0)"],
+  body.modo-sol [style*="solid #FF8C00"]{ border-color:#E67E00 !important; }
+  body.modo-sol [style*="color: rgb(34, 197, 94)"],
+  body.modo-sol [style*="color:#22C55E"], body.modo-sol [style*="color: #22C55E"]{ color:#15803D !important; }
+  body.modo-sol [style*="background: rgb(34, 197, 94)"],
+  body.modo-sol [style*="background:#22C55E"], body.modo-sol [style*="background: #22C55E"]{ background:#15803D !important; }
+  body.modo-sol [style*="solid rgb(34, 197, 94)"],
+  body.modo-sol [style*="solid #22C55E"]{ border-color:#15803D !important; }
+  body.modo-sol [style*="color: rgb(239, 68, 68)"],
+  body.modo-sol [style*="color:#EF4444"], body.modo-sol [style*="color: #EF4444"]{ color:#B91C1C !important; }
+  body.modo-sol [style*="background: rgb(239, 68, 68)"],
+  body.modo-sol [style*="background:#EF4444"], body.modo-sol [style*="background: #EF4444"]{ background:#DC2626 !important; }
+  body.modo-sol [style*="color: rgb(245, 158, 11)"],
+  body.modo-sol [style*="color:#F59E0B"], body.modo-sol [style*="color: #F59E0B"]{ color:#92400E !important; }
+  body.modo-sol [style*="solid rgb(245, 158, 11)"],
+  body.modo-sol [style*="solid #F59E0B"]{ border-color:#B45309 !important; }
+  body.modo-sol [style*="color: rgb(59, 130, 246)"],
+  body.modo-sol [style*="color:#3B82F6"], body.modo-sol [style*="color: #3B82F6"]{ color:#1D4ED8 !important; }
+  body.modo-sol [style*="color: rgb(51, 204, 255)"],
+  body.modo-sol [style*="color:#33ccff"], body.modo-sol [style*="color: #33ccff"]{ color:#0369A1 !important; }
+  body.modo-sol [style*="color: rgb(66, 133, 244)"],
+  body.modo-sol [style*="color:#4285f4"], body.modo-sol [style*="color: #4285f4"]{ color:#1D4ED8 !important; }
+  body.modo-sol [style*="color: rgb(37, 211, 102)"],
+  body.modo-sol [style*="color:#25d366"], body.modo-sol [style*="color: #25d366"]{ color:#128C7E !important; }
+  /* === FONDOS DE OVERLAYS RGBA muy oscuros → claros === */
+  body.modo-sol [style*="background:rgba(0,0,0,.6)"],
+  body.modo-sol [style*="background: rgba(0, 0, 0, 0.6)"]{ background:rgba(0,0,0,.4) !important; }
+  /* === MAPA LEAFLET: invertir tiles oscuros para que se vean claros === */
+  body.modo-sol .leaflet-tile-pane{ filter:invert(1) hue-rotate(180deg) brightness(.95) contrast(.95); }
+  /* === INPUTS adaptados === */
+  body.modo-sol input, body.modo-sol textarea, body.modo-sol select{
+    background:#FFFFFF !important; color:#0A0A0A !important; border-color:#C8CCD1 !important;
+  }
+  body.modo-sol input::placeholder, body.modo-sol textarea::placeholder{ color:#9CA3AF !important; }
+  body.modo-sol ::-webkit-scrollbar-thumb{ background:#A1A6AD; }
+  /* === SOMBRAS suaves en lugar de duras de modo oscuro === */
+  body.modo-sol [style*="boxShadow"]{ box-shadow:0 2px 8px rgba(0,0,0,.10) !important; }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}  body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased;font-weight:450}
+  button{cursor:pointer;font-family:inherit;border:none;outline:none}
+  a{text-decoration:none;color:inherit}
+  input,textarea{font-family:inherit}
+  input:focus,textarea:focus{outline:none}
   /* Scrollbar delgado */
   ::-webkit-scrollbar{width:3px;height:3px}
   ::-webkit-scrollbar-track{background:transparent}
   ::-webkit-scrollbar-thumb{background:var(--s4);border-radius:3px}
-
-  /* ── Animaciones ──────────────────────────────────────── */
   @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.75)}}
-  @keyframes slideUp{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
-  @keyframes slideInL{from{transform:translateX(-100%);opacity:.5}to{transform:translateX(0);opacity:1}}
+  @keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+  @keyframes slideInL{from{transform:translateX(-100%)}to{transform:translateX(0)}}
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
   @keyframes ping{0%{transform:scale(1);opacity:1}75%,100%{transform:scale(2);opacity:0}}
   @keyframes spin{to{transform:rotate(360deg)}}
-  @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
-  @keyframes glowPulse{0%,100%{box-shadow:0 0 8px rgba(255,140,0,.15)}50%{box-shadow:0 0 20px rgba(255,140,0,.3)}}
-  @keyframes slideDown{from{transform:translateY(-12px);opacity:0}to{transform:translateY(0);opacity:1}}
-  @keyframes scaleIn{from{transform:scale(.92);opacity:0}to{transform:scale(1);opacity:1}}
-  @keyframes slideUpOut{from{transform:translateY(0);opacity:1}to{transform:translateY(-20px);opacity:0}}
-  @keyframes borderGlow{0%,100%{border-color:rgba(255,140,0,.15)}50%{border-color:rgba(255,140,0,.4)}}
-
   /* Fix teclado virtual Android — el viewport se reduce al abrirse */
   @supports (height: 100dvh) {
     .chat-wrap { height: calc(100dvh - 130px); }
   }
 </style>
-<script>try{if(localStorage.getItem("somar_modo_sol")==="1")document.documentElement.dataset.sol="1";}catch(e){}</script></head>
+<script>
+/* ☀️🌙 SOMAR THEME — auto por hora del día con override manual de 12h */
+(function(){
+  try{
+    var KEY="somar_modo_sol", KEY_OV="somar_sol_override";
+    var ov=null;
+    try{ ov=JSON.parse(localStorage.getItem(KEY_OV)||"null"); }catch(e){}
+    var ahora=Date.now(), modo;
+    if(ov && ov.hasta && ov.hasta>ahora){
+      modo=ov.valor; // override manual aún vigente
+    } else {
+      var h=new Date().getHours();
+      modo=(h>=6 && h<18) ? "1" : "0"; // 6:00–17:59 = sol
+      try{ localStorage.removeItem(KEY_OV); }catch(e){}
+    }
+    try{ localStorage.setItem(KEY, modo); }catch(e){}
+    if(modo==="1") document.documentElement.dataset.sol="1";
+    // theme-color del status bar
+    var mc=document.querySelector('meta[name="theme-color"]');
+    if(mc) mc.setAttribute("content", modo==="1" ? "#FFFFFF" : "#0A0A0A");
+  }catch(e){}
+})();
+/* Helper global expuesto para toggle desde el Perfil */
+window.toggleModoSol=function(){
+  try{
+    var ahora=document.body.classList.contains("modo-sol");
+    var nuevo=ahora?"0":"1";
+    document.body.classList.toggle("modo-sol", !ahora);
+    document.documentElement.dataset.sol=nuevo;
+    localStorage.setItem("somar_modo_sol", nuevo);
+    // Override manual válido 12h: respeta la elección del rider
+    localStorage.setItem("somar_sol_override", JSON.stringify({
+      valor:nuevo, hasta:Date.now()+12*60*60*1000
+    }));
+    var mc=document.querySelector('meta[name="theme-color"]');
+    if(mc) mc.setAttribute("content", nuevo==="1" ? "#FFFFFF" : "#0A0A0A");
+  }catch(e){ console.warn("[modo-sol]",e); }
+};
+</script></head>
 <body class="">
 <script>if(document.documentElement.dataset.sol==="1")document.body.classList.add("modo-sol");</script>
 <div id="root"></div>
@@ -256,18 +403,18 @@ function BottomSheet({data, onClose}){
   if(!data) return null;
   return(
     <div style={{position:'fixed',inset:0,zIndex:200,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={onClose}>
-      <div style={{background:'rgba(0,0,0,.65)',backdropFilter:'blur(8px)',WebkitBackdropFilter:'blur(8px)',position:'absolute',inset:0,animation:'fadeIn .2s'}}/>
-      <div onClick={e=>e.stopPropagation()} style={{background:'linear-gradient(180deg,#1E1E1E 0%,#151515 100%)',borderRadius:'28px 28px 0 0',padding:'20px 20px 40px',animation:'slideUp .3s cubic-bezier(.175,.885,.32,1.275)',position:'relative',zIndex:1,boxShadow:'0 -8px 40px rgba(0,0,0,.5)'}}>
+      <div style={{background:'rgba(0,0,0,.6)',position:'absolute',inset:0,animation:'fadeIn .2s'}}/>
+      <div onClick={e=>e.stopPropagation()} style={{background:'var(--s2)',borderRadius:'24px 24px 0 0',padding:'20px 20px 40px',animation:'slideUp .25s ease',position:'relative',zIndex:1}}>
         {/* Handle bar */}
-        <div style={{width:40,height:4,background:'rgba(255,255,255,.12)',borderRadius:4,margin:'0 auto 24px'}}/>
-        <div style={{fontSize:17,fontWeight:600,textAlign:'center',lineHeight:1.6,marginBottom:28,padding:'0 8px',letterSpacing:'-0.02em',color:'var(--txt2)'}}>{data.msg}</div>
+        <div style={{width:36,height:3,background:'var(--s4)',borderRadius:4,margin:'0 auto 22px'}}/>
+        <div style={{fontSize:17,fontWeight:600,textAlign:'center',lineHeight:1.6,marginBottom:26,padding:'0 8px',letterSpacing:'-0.02em'}}>{data.msg}</div>
         <div style={{display:'flex',gap:12}}>
           {/* Cancel — right side, smaller (hard to tap accidentally) */}
-          <button onClick={onClose} style={{flex:'0 0 100px',padding:'18px 0',borderRadius:16,background:'var(--s3)',color:'var(--txt3)',fontSize:15,fontWeight:600,letterSpacing:'-0.01em',border:'1px solid var(--brd)'}}>
+          <button onClick={onClose} style={{flex:'0 0 100px',padding:'18px 0',borderRadius:'var(--r-md)',background:'var(--s3)',color:'var(--txt2)',fontSize:15,fontWeight:600,letterSpacing:'-0.01em'}}>
             No
           </button>
           {/* Confirm — left/center, LARGE (thumb zone) */}
-          <button onClick={()=>{data.onSi();onClose();}} style={{flex:1,padding:'18px 0',borderRadius:16,background:data.color||'#FF8C00',color:'#fff',fontSize:17,fontWeight:800,boxShadow:`0 4px 20px ${data.color||'#FF8C00'}33`}}>
+          <button onClick={()=>{data.onSi();onClose();}} style={{flex:1,padding:'18px 0',borderRadius:16,background:data.color||'#FF8C00',color:'#fff',fontSize:17,fontWeight:800}}>
             {data.confirmLbl||'Sí, confirmar'}
           </button>
         </div>
@@ -280,7 +427,7 @@ function BottomSheet({data, onClose}){
 function Toast({msg}){
   if(!msg)return null;
   return(
-    <div style={{position:'fixed',bottom:100,left:16,right:16,background:'linear-gradient(135deg,#1A1A1A 0%,#222 100%)',border:'1px solid rgba(255,255,255,.08)',borderRadius:16,padding:'15px 20px',fontSize:14,fontWeight:600,zIndex:150,boxShadow:'var(--shadow-lg)',animation:'slideUp .25s cubic-bezier(.175,.885,.32,1.275)',backdropFilter:'blur(20px)',WebkitBackdropFilter:'blur(20px)',letterSpacing:'-0.01em'}}>
+    <div style={{position:'fixed',bottom:100,left:16,right:16,background:'#232323',border:'1px solid #444',borderRadius:14,padding:'14px 18px',fontSize:14,fontWeight:700,zIndex:150,boxShadow:'0 8px 32px rgba(0,0,0,.6)',animation:'slideUp .2s ease'}}>
       {msg}
     </div>
   );
@@ -362,22 +509,22 @@ function PedidoEntrante({pedido, onAceptar, onRechazar}){
   return(
     <div style={{position:'fixed',inset:0,zIndex:180,display:'flex',flexDirection:'column'}}>
       {/* Info arriba */}
-      <div style={{background:'linear-gradient(180deg,rgba(0,0,0,.98) 0%,rgba(10,8,4,.92) 100%)',flex:1,display:'flex',flexDirection:'column',justifyContent:'center',padding:'24px 20px',gap:16}}>
+      <div style={{background:'linear-gradient(180deg,rgba(0,0,0,.97),rgba(0,0,0,.85))',flex:1,display:'flex',flexDirection:'column',justifyContent:'center',padding:'24px 20px',gap:16}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
           <div style={{flex:1,paddingRight:12}}>
-            <div style={{fontSize:11,color:'rgba(255,140,0,.7)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:8}}>🔔 Nuevo Pedido</div>
-            <div style={{fontSize:26,fontWeight:900,lineHeight:1.15,letterSpacing:'-0.03em'}}>{com}</div>
-            <div style={{fontSize:14,color:'rgba(255,255,255,.55)',marginTop:6,fontWeight:500}}>{tipo==='DELIVERY'?'📦 Delivery':'🛒 Compra'}</div>
+            <div style={{fontSize:11,color:'rgba(255,255,255,.6)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:6}}>🔔 Nuevo Pedido</div>
+            <div style={{fontSize:24,fontWeight:900,lineHeight:1.2}}>{com}</div>
+            <div style={{fontSize:14,color:'rgba(255,255,255,.7)',marginTop:4}}>{tipo==='DELIVERY'?'📦 Delivery':'🛒 Compra'}</div>
           </div>
           {/* Countdown */}
-          <div style={{position:'relative',width:68,height:68,flexShrink:0}}>
-            <svg width="68" height="68" viewBox="0 0 68 68" style={{transform:'rotate(-90deg)',filter:pct>0.3?'drop-shadow(0 0 8px rgba(255,140,0,.3))':'drop-shadow(0 0 8px rgba(248,113,113,.3))'}}>
-              <circle fill="none" stroke="rgba(255,255,255,.06)" strokeWidth="4" cx="34" cy="34" r="29"/>
-              <circle fill="none" stroke={pct>0.3?'#FF8C00':'#F87171'} strokeWidth="4" strokeLinecap="round"
+          <div style={{position:'relative',width:64,height:64,flexShrink:0}}>
+            <svg width="64" height="64" viewBox="0 0 64 64" style={{transform:'rotate(-90deg)'}}>
+              <circle fill="none" stroke="#333" strokeWidth="5" cx="32" cy="32" r="27"/>
+              <circle fill="none" stroke={pct>0.3?'#FF8C00':'#EF4444'} strokeWidth="5" strokeLinecap="round"
                 strokeDasharray={CIRC} strokeDashoffset={offset}
-                cx="34" cy="34" r="29" style={{transition:'stroke-dashoffset .95s linear, stroke .3s'}}/>
+                cx="32" cy="32" r="27" style={{transition:'stroke-dashoffset .95s linear, stroke .3s'}}/>
             </svg>
-            <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,fontWeight:900,color:pct>0.3?'#FF8C00':'#F87171',letterSpacing:'-0.02em'}}>{seg}</div>
+            <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,color:pct>0.3?'#FF8C00':'#EF4444'}}>{seg}</div>
           </div>
         </div>
         {/* Info rápida */}
@@ -388,9 +535,9 @@ function PedidoEntrante({pedido, onAceptar, onRechazar}){
             ['💳 Pago',       pago==='EFECTIVO'?'Efectivo':'Transferencia'],
             ['💰 Tu ganancia',fmtL(gan)],
           ].map(([l,v])=>(
-            <div key={l} style={{background:'rgba(255,255,255,.05)',borderRadius:14,padding:'11px 14px',border:'1px solid rgba(255,255,255,.04)',backdropFilter:'blur(4px)'}}>
-              <div style={{fontSize:10,color:'rgba(255,255,255,.4)',fontWeight:600,marginBottom:4,letterSpacing:'.04em'}}>{l}</div>
-              <div style={{fontSize:15,fontWeight:700,letterSpacing:'-0.01em'}}>{v}</div>
+            <div key={l} style={{background:'rgba(255,255,255,.08)',borderRadius:12,padding:'10px 12px'}}>
+              <div style={{fontSize:10,color:'rgba(255,255,255,.5)',fontWeight:600,marginBottom:3}}>{l}</div>
+              <div style={{fontSize:14,fontWeight:700}}>{v}</div>
             </div>
           ))}
         </div>
@@ -398,23 +545,22 @@ function PedidoEntrante({pedido, onAceptar, onRechazar}){
       </div>
 
       {/* BOTONES */}
-      <div style={{display:'flex',height:110,background:'#080808',flexShrink:0}}>
+      <div style={{display:'flex',height:110,background:'#0F0F0F',flexShrink:0}}>
         {/* ACEPTAR */}
         <button
           onClick={handleAceptar}
           disabled={procesando}
-          style={{flex:3,background:procesando?'#1a4a1a':'linear-gradient(135deg,#22C55E 0%,#16A34A 100%)',color:'#fff',fontSize:22,fontWeight:900,
+          style={{flex:3,background:procesando?'#1a4a1a':'#22C55E',color:'#fff',fontSize:22,fontWeight:900,
             display:'flex',alignItems:'center',justifyContent:'center',gap:10,
-            borderRight:'2px solid #080808',border:'none',cursor:procesando?'default':'pointer',
-            WebkitTapHighlightColor:'transparent',touchAction:'manipulation',
-            boxShadow:procesando?'none':'0 0 30px rgba(34,197,94,.2)',letterSpacing:'-0.02em'}}>
+            borderRight:'2px solid #0F0F0F',border:'none',cursor:procesando?'default':'pointer',
+            WebkitTapHighlightColor:'transparent',touchAction:'manipulation'}}>
           <span style={{fontSize:32}}>✓</span> ACEPTAR
         </button>
         {/* RECHAZAR */}
         <button
           onClick={handleRechazar}
           disabled={procesando}
-          style={{flex:1,background:'#111',color:procesando?'#444':'#F87171',fontSize:13,fontWeight:700,
+          style={{flex:1,background:'#1A1A1A',color:procesando?'#444':'#EF4444',fontSize:13,fontWeight:700,
             display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:4,
             border:'none',cursor:procesando?'default':'pointer',
             WebkitTapHighlightColor:'transparent',touchAction:'manipulation'}}>
@@ -456,22 +602,22 @@ function TimerPedido({p, ahora}){
   });
 
   return(
-    <div style={{padding:'10px 14px',borderTop:'1px solid var(--brd)',background:'rgba(255,255,255,.015)'}}>
+    <div style={{padding:'10px 14px',borderTop:'1px solid #222',background:'rgba(255,255,255,.02)'}}>
       {/* Tiempo total */}
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-        <span style={{fontSize:11,color:'var(--txt3)',fontWeight:600,textTransform:'uppercase',letterSpacing:'.05em'}}>⏱ Tiempo Total</span>
-        <span style={{fontSize:15,fontWeight:900,fontFamily:'monospace',color:'var(--brand)',letterSpacing:'.02em'}}>{fmtDur(totalMs)}</span>
+        <span style={{fontSize:11,color:'#888',fontWeight:600,textTransform:'uppercase',letterSpacing:'.05em'}}>⏱ Tiempo Total</span>
+        <span style={{fontSize:15,fontWeight:900,fontFamily:'monospace',color:'#FF8C00'}}>{fmtDur(totalMs)}</span>
       </div>
       {/* Por estado */}
       <div style={{display:'flex',flexDirection:'column',gap:5}}>
         {duraciones.map(({est,dur,activo})=>(
           <div key={est} style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
             <div style={{display:'flex',alignItems:'center',gap:6}}>
-              {activo && <div style={{width:6,height:6,borderRadius:'50%',background:'var(--brand)',animation:'pulse 1.5s infinite',boxShadow:'0 0 6px rgba(255,140,0,.3)'}}/>}
-              {!activo && <div style={{width:6,height:6,borderRadius:'50%',background:'var(--s4)'}}/>}
-              <span style={{fontSize:11,color:activo?'var(--txt)':'var(--txt3)',fontWeight:activo?700:400}}>{ESTADO_LABEL_CORTO[est]}</span>
+              {activo && <div style={{width:6,height:6,borderRadius:'50%',background:'#FF8C00',animation:'pulse 1.5s infinite'}}/>}
+              {!activo && <div style={{width:6,height:6,borderRadius:'50%',background:'#444'}}/>}
+              <span style={{fontSize:11,color:activo?'#F0F0F0':'#666',fontWeight:activo?700:400}}>{ESTADO_LABEL_CORTO[est]}</span>
             </div>
-            <span style={{fontSize:11,fontFamily:'monospace',color:activo?'var(--brand)':'var(--txt3)',fontWeight:activo?800:400,letterSpacing:'.02em'}}>{fmtDur(dur)}</span>
+            <span style={{fontSize:11,fontFamily:'monospace',color:activo?'#FF8C00':'#555',fontWeight:activo?800:400}}>{fmtDur(dur)}</span>
           </div>
         ))}
       </div>
@@ -481,9 +627,9 @@ function TimerPedido({p, ahora}){
 
 // ─── CHIP DE ESTADO ────────────────────────────────────────
 function Chip({est}){
-  const CMAP = {ACEPTADO:'#60A5FA',EN_ESTABLECIMIENTO:'#FBBF24',PEDIDO_EN_CAMINO:'#FF8C00',ENTREGANDO:'#34D399',FINALIZADO:'#34D399',CANCELADO:'#F87171',PENDIENTE:'#FBBF24',APROBADO:'#34D399',RECHAZADO:'#F87171'};
+  const CMAP = {ACEPTADO:'#3B82F6',EN_ESTABLECIMIENTO:'#F59E0B',PEDIDO_EN_CAMINO:'#FF8C00',ENTREGANDO:'#22C55E',FINALIZADO:'#22C55E',CANCELADO:'#EF4444',PENDIENTE:'#F59E0B',APROBADO:'#22C55E',RECHAZADO:'#EF4444'};
   const c = CMAP[est]||'#888';
-  return <span style={{fontSize:10,fontWeight:600,letterSpacing:'.04em',textTransform:'uppercase',padding:'3px 10px',borderRadius:20,background:`${c}12`,color:c,border:`1px solid ${c}22`,transition:'all var(--transition-fast)'}}>{ELBL[est]||est}</span>;
+  return <span style={{fontSize:10,fontWeight:600,letterSpacing:'.04em',textTransform:'uppercase',padding:'3px 10px',borderRadius:20,background:`${c}18`,color:c,border:`1px solid ${c}30`}}>{ELBL[est]||est}</span>;
 }
 
 // ─── CARD RESUMEN (lista de asignados) ────────────────────
@@ -491,7 +637,7 @@ function CardResumen({p, onTap}){
   const eb = ESIG[p.est];
   const ec = ECHIP[p.est]||'#888';
   return(
-    <button onClick={()=>onTap(p)} style={{width:'calc(100% - 24px)',margin:'10px 12px',background:'linear-gradient(145deg,var(--s1) 0%,var(--s2) 100%)',border:'1px solid var(--brd)',borderLeft:`3px solid ${ec}`,borderRadius:'var(--r-md)',padding:0,textAlign:'left',overflow:'hidden',display:'block',transition:'all var(--transition-smooth)',boxShadow:'var(--shadow-sm)'}}>
+    <button onClick={()=>onTap(p)} style={{width:'calc(100% - 24px)',margin:'10px 12px',background:'var(--s1)',border:'1px solid var(--brd)',borderLeft:`3px solid ${ec}`,borderRadius:'var(--r-md)',padding:0,textAlign:'left',overflow:'hidden',display:'block',transition:'background .12s'}}>
       <div style={{padding:'14px 16px'}}>
         {/* Top row */}
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
@@ -507,23 +653,230 @@ function CardResumen({p, onTap}){
         {/* Bottom row — info rápida */}
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
           <div style={{display:'flex',gap:8}}>
-            <span style={{fontSize:12,color:'var(--txt3)'}}>📍 {p.ciudad}</span>
-            <span style={{fontSize:12,color:'var(--txt3)'}}>·</span>
-            <span style={{fontSize:12,color:'var(--txt3)'}}>📏 {p.km.toFixed(1)} km</span>
+            <span style={{fontSize:12,color:'#888'}}>📍 {p.ciudad}</span>
+            <span style={{fontSize:12,color:'#888'}}>·</span>
+            <span style={{fontSize:12,color:'#888'}}>📏 {p.km.toFixed(1)} km</span>
           </div>
-          <div style={{display:'flex',alignItems:'center',gap:4,color:'var(--txt3)',fontSize:13,fontWeight:600}}>
+          <div style={{display:'flex',alignItems:'center',gap:4,color:'#555',fontSize:13,fontWeight:600}}>
             {eb && <span style={{fontSize:11,color:eb.color}}>{ELBL[p.est]}</span>}
-            <span style={{fontSize:20,transition:'transform var(--transition-fast)'}}>›</span>
+            <span style={{fontSize:20}}>›</span>
           </div>
         </div>
         {/* Siguiente acción hint */}
         {eb && (
-          <div style={{marginTop:10,background:`${eb.color}0D`,borderRadius:10,padding:'7px 12px',display:'inline-flex',alignItems:'center',gap:6,border:`1px solid ${eb.color}15`}}>
+          <div style={{marginTop:8,background:`${eb.color}15`,borderRadius:8,padding:'6px 10px',display:'inline-flex',alignItems:'center',gap:6}}>
             <span style={{fontSize:11,fontWeight:700,color:eb.color}}>Siguiente: {eb.lbl}</span>
           </div>
         )}
       </div>
     </button>
+  );
+}
+
+// ─── 🏆 SOMAR PRO CARD ──────────────────────────────────
+function SomarProCard({historial}){
+  const fin = historial.filter(p=>p.estatus==='FINALIZADO'||p.est==='FINALIZADO');
+  const ini = new Date(new Date().getFullYear(),new Date().getMonth(),1).getTime();
+  const pM  = fin.filter(p=>new Date(p.hora_finalizado||p.ts||0).getTime()>=ini).length;
+  let nivel='Bronce',pct=0,meta=75,siguienteNivel='Plata';
+  if(pM>=150){nivel='Oro';pct=100;meta=150;siguienteNivel=null;}
+  else if(pM>=75){nivel='Plata';pct=Math.round((pM-75)/75*100);meta=150;siguienteNivel='Oro';}
+  else{pct=Math.round(pM/75*100);meta=75;siguienteNivel='Plata';}
+  const nivelColor = nivel==='Oro'?'#F59E0B':nivel==='Plata'?'#9CA3AF':'#CD7F32';
+  const nivelDim   = nivel==='Oro'?'rgba(245,158,11,.1)':nivel==='Plata'?'rgba(156,163,175,.1)':'rgba(205,127,50,.1)';
+  return(
+    <div style={{margin:'0 12px 12px',background:'var(--s1)',border:`1px solid ${nivelColor}33`,borderRadius:'var(--r-lg)',overflow:'hidden'}}>
+      <div style={{padding:'14px 16px',background:nivelDim,borderBottom:'1px solid var(--brd)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <div>
+          <div style={{fontSize:10,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:4}}>Somar Pro</div>
+          <div style={{fontSize:18,fontWeight:800,color:nivelColor,letterSpacing:'-0.02em'}}>Nivel {nivel}</div>
+        </div>
+        <div style={{width:44,height:44,borderRadius:12,background:nivelDim,border:`1px solid ${nivelColor}44`,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={nivelColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+      </div>
+      <div style={{padding:'14px 16px'}}>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+          <span style={{fontSize:12,color:'var(--txt2)'}}>Pedidos este mes</span>
+          <span style={{fontSize:13,fontWeight:700,color:'var(--txt)'}}>{pM} / {meta}</span>
+        </div>
+        <div style={{background:'var(--s3)',borderRadius:4,height:6,marginBottom:8,overflow:'hidden'}}>
+          <div style={{height:'100%',background:nivelColor,borderRadius:4,width:`${pct}%`,transition:'width .6s ease'}}/>
+        </div>
+        {siguienteNivel
+          ? <div style={{fontSize:11,color:'var(--txt3)'}}>Faltan {meta-pM} pedidos para nivel <span style={{color:nivelColor,fontWeight:700}}>{siguienteNivel}</span></div>
+          : <div style={{fontSize:11,color:'var(--amber)',fontWeight:600}}>Nivel máximo alcanzado</div>
+        }
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,marginTop:12}}>
+          {[['Bronce','0+','#CD7F32'],['Plata','75+','#9CA3AF'],['Oro','150+','#F59E0B']].map(([n,req,col])=>(
+            <div key={n} style={{background:nivel===n?`${col}18`:'var(--s2)',border:`1px solid ${nivel===n?col+'44':'var(--brd)'}`,borderRadius:'var(--r-sm)',padding:'8px 6px',textAlign:'center'}}>
+              <div style={{fontSize:10,fontWeight:700,color:nivel===n?col:'var(--txt3)',letterSpacing:'.02em'}}>{n}</div>
+              <div style={{fontSize:9,color:'var(--txt3)',marginTop:2}}>{req} pedidos</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── 📄 MIS DOCUMENTOS — colapsable, para mostrar a la policía ───
+function MisDocumentos({delivery, onConfirm}){
+  const [abierto, setAbierto] = useState(false);
+  const [verDoc, setVerDoc]   = useState(null); // {url,label}
+  const docs = delivery?.docs || {};
+  const items = [
+    {key:'licencia',         label:'Licencia de conducir',  icon:'🪪', url:docs.licencia,         critico:true},
+    {key:'revision',         label:'Revisión del vehículo', icon:'🔧', url:docs.revision,         critico:true},
+    {key:'identidad_frente', label:'Identidad (frente)',    icon:'🆔', url:docs.identidad_frente},
+    {key:'identidad_atras',  label:'Identidad (reverso)',   icon:'🆔', url:docs.identidad_atras},
+    {key:'vehiculo',         label:'Foto del vehículo',     icon:'🏍️', url:docs.vehiculo},
+    {key:'dui',              label:'DUI',                   icon:'📇', url:docs.dui},
+  ];
+  const criticos = items.filter(i=>i.critico);
+  const tieneCriticos = criticos.every(i=>i.url);
+  const disponibles = items.filter(i=>i.url).length;
+  return(
+    <>
+      {/* Visor pantalla completa */}
+      {verDoc && (
+        <div onClick={()=>setVerDoc(null)}
+             style={{position:'fixed',inset:0,background:'rgba(0,0,0,.92)',zIndex:200,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:16}}>
+          <div style={{position:'absolute',top:14,left:14,right:14,display:'flex',alignItems:'center',justifyContent:'space-between',color:'#fff'}}>
+            <div style={{fontSize:14,fontWeight:700}}>{verDoc.label}</div>
+            <button onClick={(e)=>{e.stopPropagation();setVerDoc(null);}}
+                    style={{background:'rgba(255,255,255,.15)',border:'none',color:'#fff',width:36,height:36,borderRadius:18,fontSize:20,fontWeight:700,cursor:'pointer'}}>×</button>
+          </div>
+          <img src={verDoc.url} alt={verDoc.label} onClick={(e)=>e.stopPropagation()}
+               style={{maxWidth:'100%',maxHeight:'82vh',objectFit:'contain',borderRadius:8,boxShadow:'0 8px 32px rgba(0,0,0,.6)'}}/>
+          <div style={{marginTop:14,display:'flex',gap:10}}>
+            <a href={verDoc.url} target="_blank" rel="noopener" download
+               onClick={(e)=>e.stopPropagation()}
+               style={{padding:'10px 18px',background:'#FF8C00',color:'#fff',borderRadius:10,fontSize:13,fontWeight:700,textDecoration:'none'}}>
+              ⬇ Descargar
+            </a>
+            <button onClick={(e)=>{e.stopPropagation();setVerDoc(null);}}
+                    style={{padding:'10px 18px',background:'rgba(255,255,255,.12)',border:'none',color:'#fff',borderRadius:10,fontSize:13,fontWeight:700,cursor:'pointer'}}>
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div style={{margin:'0 12px 16px',background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:14,overflow:'hidden'}}>
+        {/* Header tocable para expandir/colapsar */}
+        <div onClick={()=>setAbierto(a=>!a)}
+             style={{padding:'14px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,cursor:'pointer',userSelect:'none'}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <div style={{fontSize:14,fontWeight:700,color:'var(--txt)'}}>📄 Mis Documentos</div>
+              {tieneCriticos
+                ? <span style={{fontSize:9,fontWeight:700,padding:'2px 7px',borderRadius:20,background:'var(--green-dim)',color:'var(--green)',border:'1px solid var(--green)'}}>✓ Completo</span>
+                : <span style={{fontSize:9,fontWeight:700,padding:'2px 7px',borderRadius:20,background:'var(--amber-dim)',color:'var(--amber)',border:'1px solid var(--amber)'}}>Incompleto</span>
+              }
+            </div>
+            <div style={{fontSize:11,color:'var(--txt3)',marginTop:2}}>
+              {disponibles} de {items.length} disponibles · Si te detiene la policía
+            </div>
+          </div>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+               style={{color:'var(--txt3)',flexShrink:0,transition:'transform .25s ease',transform:abierto?'rotate(180deg)':'rotate(0deg)'}}>
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </div>
+
+        {/* Contenido colapsable */}
+        {abierto && (
+          <>
+            <div style={{padding:10,display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,borderTop:'1px solid var(--brd)'}}>
+              {items.map(it=>(
+                <div key={it.key} onClick={()=>{
+                       if(it.url) setVerDoc({url:it.url,label:it.label});
+                       else onConfirm && onConfirm({msg:`No tienes "${it.label}" cargado. Contacta a Despacho para subirlo.`,confirmLbl:'Entendido',color:'#888',onSi:()=>{}});
+                     }}
+                     style={{background:'var(--s2)',border:`1.5px solid ${it.url?'var(--brd)':(it.critico?'var(--amber)':'var(--brd)')}`,borderRadius:12,overflow:'hidden',cursor:'pointer',aspectRatio:'1/1',display:'flex',flexDirection:'column'}}>
+                  {it.url
+                    ? <img src={it.url} alt={it.label}
+                           style={{width:'100%',flex:1,objectFit:'cover',background:'var(--s3)'}}
+                           onError={(e)=>{e.target.style.display='none';e.target.parentNode.querySelector('.no-img').style.display='flex';}}/>
+                    : null
+                  }
+                  <div className="no-img" style={{display:it.url?'none':'flex',flex:1,alignItems:'center',justifyContent:'center',fontSize:36,opacity:.4,background:'var(--s3)'}}>{it.icon}</div>
+                  <div style={{padding:'6px 8px',background:'var(--s1)',borderTop:'1px solid var(--brd)',display:'flex',alignItems:'center',gap:6,minHeight:34}}>
+                    <span style={{fontSize:13}}>{it.icon}</span>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:10,fontWeight:600,color:'var(--txt2)',lineHeight:1.2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{it.label}</div>
+                      <div style={{fontSize:9,color:it.url?'var(--green)':(it.critico?'var(--amber)':'var(--txt3)'),fontWeight:600,marginTop:1}}>
+                        {it.url?'✓ Disponible':(it.critico?'⚠ Falta':'— Sin cargar')}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{padding:'10px 14px 12px',background:'var(--s2)',borderTop:'1px solid var(--brd)',fontSize:10,color:'var(--txt3)',textAlign:'center',lineHeight:1.4}}>
+              💡 Toca un documento para verlo en pantalla completa
+            </div>
+          </>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ─── ☀️🌙 MODO SOL TOGGLE ────────────────────────────────────
+function ModoSolToggle(){
+  const [on, setOn] = useState(()=>typeof document!=='undefined' && document.body.classList.contains('modo-sol'));
+  const [auto, setAuto] = useState(()=>{
+    try{ return !localStorage.getItem('somar_sol_override'); }catch(e){ return true; }
+  });
+  const toggle = ()=>{
+    if(window.toggleModoSol) window.toggleModoSol();
+    setOn(document.body.classList.contains('modo-sol'));
+    setAuto(false);
+  };
+  const restaurarAuto = ()=>{
+    try{
+      localStorage.removeItem('somar_sol_override');
+      const h = new Date().getHours();
+      const nuevo = (h>=6 && h<18) ? '1' : '0';
+      const debe = nuevo==='1';
+      document.body.classList.toggle('modo-sol', debe);
+      document.documentElement.dataset.sol = nuevo;
+      localStorage.setItem('somar_modo_sol', nuevo);
+      const mc=document.querySelector('meta[name="theme-color"]');
+      if(mc) mc.setAttribute('content', debe?'#FFFFFF':'#0A0A0A');
+      setOn(debe);
+      setAuto(true);
+    }catch(e){}
+  };
+  return (
+    <div style={{margin:'0 12px 12px',background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:14,padding:16}}>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
+        <div style={{flex:1}}>
+          <div style={{fontSize:14,fontWeight:700,color:'var(--txt)'}}>{on?'☀️ Modo Sol':'🌙 Modo Luna'}</div>
+          <div style={{fontSize:11,color:'var(--txt3)',marginTop:2}}>
+            {on?'Tema claro para luz directa':'Tema oscuro para visibilidad nocturna'}
+          </div>
+        </div>
+        <div onClick={toggle}
+             style={{width:52,height:30,borderRadius:15,background:on?'var(--brand)':'var(--s4)',position:'relative',cursor:'pointer',transition:'background .2s',flexShrink:0}}>
+          <div style={{width:24,height:24,borderRadius:12,background:'#fff',position:'absolute',top:3,left:on?25:3,transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,.3)'}}/>
+        </div>
+      </div>
+      {!auto && (
+        <div onClick={restaurarAuto}
+             style={{marginTop:10,padding:'8px 12px',background:'var(--s2)',border:'1px solid var(--brd)',borderRadius:10,fontSize:11,color:'var(--txt3)',textAlign:'center',cursor:'pointer'}}>
+          🔄 Restaurar automático por hora del día
+        </div>
+      )}
+      {auto && (
+        <div style={{marginTop:10,fontSize:10,color:'var(--txt3)',textAlign:'center',opacity:.7}}>
+          Automático · 6:00 AM – 6:00 PM = Sol
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -570,13 +923,13 @@ function VistaPedido({p, pedidos, onAvanzar, onBack, onConfirm, toast, ahora}){
   const enEstablecimiento = pedidoActual.est === 'ACEPTADO' || pedidoActual.est === 'EN_ESTABLECIMIENTO';
 
   return(
-    <div style={{minHeight:'100vh',background:'var(--bg)',display:'flex',flexDirection:'column'}}>
+    <div style={{minHeight:'100vh',background:'#0F0F0F',display:'flex',flexDirection:'column'}}>
       {/* Header pegajoso */}
-      <div style={{background:'var(--glass)',backdropFilter:'blur(20px)',WebkitBackdropFilter:'blur(20px)',borderBottom:'1px solid var(--glass-border)',padding:'10px 14px',display:'flex',alignItems:'center',gap:10,position:'sticky',top:0,zIndex:30,boxShadow:'0 4px 20px rgba(0,0,0,.3)'}}>
-        <button onClick={onBack} style={{background:'var(--s3)',border:'1px solid var(--brd)',borderRadius:12,width:44,height:44,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,color:'var(--txt)',flexShrink:0}}>←</button>
+      <div style={{background:'#1A1A1A',borderBottom:'1px solid #333',padding:'10px 14px',display:'flex',alignItems:'center',gap:10,position:'sticky',top:0,zIndex:30}}>
+        <button onClick={onBack} style={{background:'#2C2C2C',borderRadius:12,width:44,height:44,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,color:'#F0F0F0',flexShrink:0}}>←</button>
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:13,fontWeight:800,fontFamily:'monospace',letterSpacing:'.02em'}}>{pedidoActual.no}</div>
-          <div style={{fontSize:12,color:'var(--txt3)',marginTop:1}}>{pedidoActual.com} · {pedidoActual.tipo==='DELIVERY'?'📦':'🛒'} {pedidoActual.pago==='EFECTIVO'?'💵':'📲'}</div>
+          <div style={{fontSize:13,fontWeight:800,fontFamily:'monospace'}}>{pedidoActual.no}</div>
+          <div style={{fontSize:12,color:'#888',marginTop:1}}>{pedidoActual.com} · {pedidoActual.tipo==='DELIVERY'?'📦':'🛒'} {pedidoActual.pago==='EFECTIVO'?'💵':'📲'}</div>
         </div>
         <div style={{textAlign:'right',flexShrink:0}}>
           <Chip est={pedidoActual.est}/>
@@ -766,8 +1119,8 @@ function VistaPedido({p, pedidos, onAvanzar, onBack, onConfirm, toast, ahora}){
 
       {/* FAB ACCIÓN PRINCIPAL — fijo abajo, fácil acceso pulgar izquierdo */}
       {eb && (
-        <div style={{position:'fixed',bottom:0,left:0,right:0,padding:'12px 12px 28px',background:'linear-gradient(to top, var(--bg) 60%, transparent)',zIndex:20}}>
-          <button onClick={handleAvanzar} style={{width:'100%',padding:'18px 0',borderRadius:18,background:`linear-gradient(135deg,${eb.color} 0%,${eb.color}DD 100%)`,color:'#fff',fontSize:17,fontWeight:900,display:'flex',alignItems:'center',justifyContent:'center',gap:10,boxShadow:`0 4px 24px ${eb.color}44, 0 0 40px ${eb.color}22`,letterSpacing:'-0.01em'}}>
+        <div style={{position:'fixed',bottom:0,left:0,right:0,padding:'12px 12px 28px',background:'linear-gradient(to top, #0F0F0F 60%, transparent)',zIndex:20}}>
+          <button onClick={handleAvanzar} style={{width:'100%',padding:'18px 0',borderRadius:18,background:eb.color,color:'#fff',fontSize:17,fontWeight:900,display:'flex',alignItems:'center',justifyContent:'center',gap:10,boxShadow:`0 0 24px ${eb.color}66`}}>
             {eb.lbl}
           </button>
         </div>
@@ -980,10 +1333,10 @@ function TabGuaca({historial, saldo, movimientos, onIrDepositos, delivery}){
         <div style={{fontSize:11,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.08em',marginBottom:10}}>Ganancias</div>
 
         {/* Hoy — destacado */}
-        <div style={{background:'linear-gradient(145deg,var(--s1) 0%,var(--s2) 100%)',border:'1px solid var(--brd)',borderRadius:'var(--r-lg)',padding:'20px 22px',marginBottom:8,boxShadow:'var(--shadow-sm)'}}>
-          <div style={{fontSize:11,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:8}}>Hoy</div>
+        <div style={{background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:'var(--r-lg)',padding:'18px 20px',marginBottom:8}}>
+          <div style={{fontSize:11,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:6}}>Hoy</div>
           <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between'}}>
-            <div style={{fontSize:42,fontWeight:800,color:'var(--green)',letterSpacing:'-0.04em',lineHeight:1,textShadow:'0 0 30px rgba(52,211,153,.15)'}}>
+            <div style={{fontSize:40,fontWeight:800,color:'var(--green)',letterSpacing:'-0.04em',lineHeight:1}}>
               {fmtL(tHoy)}
             </div>
             <div style={{textAlign:'right',paddingBottom:4}}>
@@ -1498,16 +1851,16 @@ function AuthScreen({onLogin}){
 
   // ── Pantalla login ────────────────────────────────────────
   return(
-    <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:20,background:'radial-gradient(ellipse 100% 80% at 50% 20%,rgba(255,140,0,.06),transparent),radial-gradient(ellipse at bottom,#080808,#050505)'}}>
-      <div style={{textAlign:'center',marginBottom:32}}>
+    <div style={{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:20,background:'radial-gradient(ellipse at top,#1f0a00,#0F0F0F)'}}>
+      <div style={{textAlign:'center',marginBottom:28}}>
         <img src="https://res.cloudinary.com/drkaxsziu/image/upload/v1767871213/Somar_Express_2048_x_2048_px_18_x_18_in__20250623_221102_0000_o0bv7a.png"
-          style={{width:76,height:76,borderRadius:20,marginBottom:14,boxShadow:'var(--shadow-brand)'}}/>
-        <h1 style={{fontSize:24,fontWeight:800,letterSpacing:'-0.04em'}}>Somar Express</h1>
-        <p style={{color:'var(--txt3)',fontSize:14,marginTop:6,fontWeight:500}}>Portal Delivery</p>
+          style={{width:72,height:72,borderRadius:18,marginBottom:12}}/>
+        <h1 style={{fontSize:22,fontWeight:700,letterSpacing:'-0.03em'}}>Somar Express</h1>
+        <p style={{color:'var(--txt3)',fontSize:14,marginTop:4}}>Portal Delivery</p>
       </div>
-      <div style={{background:'linear-gradient(145deg,var(--s1) 0%,var(--s2) 100%)',border:'1px solid var(--brd)',borderRadius:24,padding:28,width:'100%',maxWidth:420,boxShadow:'var(--shadow-lg)'}}>
-        <h2 style={{fontSize:18,fontWeight:800,marginBottom:4,letterSpacing:'-0.03em'}}>Iniciar Sesión</h2>
-        <p style={{color:'var(--txt3)',fontSize:13,marginBottom:20}}>Ingresa con tu cuenta de delivery</p>
+      <div style={{background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:20,padding:28,width:'100%',maxWidth:420}}>
+        <h2 style={{fontSize:18,fontWeight:700,marginBottom:4,letterSpacing:'-0.02em'}}>Iniciar Sesión</h2>
+        <p style={{color:'var(--txt2)',fontSize:13,marginBottom:20}}>Ingresa con tu cuenta de delivery</p>
         <div style={{marginBottom:12}}>
           <input type="email" placeholder="correo@ejemplo.com" value={email}
             onChange={e=>setEmail(e.target.value)} style={inp}/>
@@ -1659,16 +2012,16 @@ function TabChat({delivery, chatUnread, setChatUnread}){
         <div style={{position:'fixed',inset:0,zIndex:200,background:'var(--bg)',display:'flex',flexDirection:'column'}}>
 
           {/* Header */}
-          <div style={{background:'var(--glass)',backdropFilter:'blur(20px)',WebkitBackdropFilter:'blur(20px)',borderBottom:'1px solid var(--glass-border)',
+          <div style={{background:'var(--s1)',borderBottom:'1px solid var(--brd)',
             padding:'10px 14px',display:'flex',alignItems:'center',gap:12,
-            flexShrink:0,paddingTop:'max(10px, env(safe-area-inset-top))',boxShadow:'0 4px 16px rgba(0,0,0,.3)'}}>
+            flexShrink:0,paddingTop:'max(10px, env(safe-area-inset-top))'}}>
             <button onClick={cerrar}
               style={{background:'none',border:'none',color:'var(--txt)',padding:4,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M19 12H5M12 5l-7 7 7 7"/>
               </svg>
             </button>
-            <div style={{width:38,height:38,borderRadius:12,background:'linear-gradient(135deg,var(--brand) 0%,#E67700 100%)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,boxShadow:'0 2px 8px rgba(255,140,0,.2)'}}>
+            <div style={{width:38,height:38,borderRadius:12,background:'var(--brand)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
               </svg>
@@ -1729,16 +2082,16 @@ function TabChat({delivery, chatUnread, setChatUnread}){
           </div>
 
           {/* Input */}
-          <div style={{background:'var(--glass)',backdropFilter:'blur(16px)',WebkitBackdropFilter:'blur(16px)',borderTop:'1px solid var(--glass-border)',
+          <div style={{background:'var(--s1)',borderTop:'1px solid var(--brd)',
             padding:'8px 12px',flexShrink:0,
             paddingBottom:'max(8px, env(safe-area-inset-bottom))'}}>
             {imgPreview&&(
               <div style={{position:'relative',display:'inline-block',marginBottom:8}}>
-                <img src={imgPreview} style={{height:64,borderRadius:12,objectFit:'cover',border:'1px solid var(--brd)'}}/>
+                <img src={imgPreview} style={{height:64,borderRadius:10,objectFit:'cover'}}/>
                 <button onClick={()=>{setImgFile(null);setImgPreview(null);}}
                   style={{position:'absolute',top:-6,right:-6,width:20,height:20,borderRadius:'50%',
                     background:'var(--red)',border:'none',color:'#fff',fontSize:12,cursor:'pointer',
-                    display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 2px 6px rgba(0,0,0,.3)'}}>✕</button>
+                    display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
               </div>
             )}
             <div style={{display:'flex',gap:8,alignItems:'flex-end'}}>
@@ -1920,11 +2273,33 @@ function App(){
   },[]);
 
   const iniciarApp=async(user)=>{
-    const {data:rows,error}=await sb.from('delivery').select('id,nombre,correo,celular,ciudad,activo,estatus,saldo_billetera,vehiculo').eq('perfil_id',user.id).limit(1);
+    const {data:rows,error}=await sb.from('delivery').select('id,nombre,correo,celular,ciudad,activo,estatus,saldo_billetera,vehiculo,foto_url,foto_dui_url,foto_moto_url,identidad').eq('perfil_id',user.id).limit(1);
     if(error||!rows?.length){setAuthed(true);setDelivery(null);return;}
     const del=rows[0];
     if(!del.activo){setAuthed(true);setDelivery(null);return;}
-    setDelivery({...del,email:del.correo||user.email});
+    // Documentos extra desde aplicaciones_delivery (licencia, revisión vehículo, etc.)
+    let docs={};
+    try{
+      const {data:apps}=await sb.from('aplicaciones_delivery')
+        .select('licencia_url,revision_vehiculo_url,identidad_delantera_url,identidad_trasera_url,moto_propia_url,foto_url')
+        .eq('auth_uid',user.id).order('created_at',{ascending:false}).limit(1);
+      if(apps?.length) docs=apps[0];
+    }catch(e){ console.warn('[docs]',e.message); }
+    setDelivery({
+      ...del,
+      email:del.correo||user.email,
+      // Foto de perfil con fallback: delivery.foto_url → aplicaciones.foto_url
+      foto_perfil_url: del.foto_url || docs.foto_url || null,
+      // Documentos para la sección Mis Documentos (Perfil)
+      docs:{
+        licencia:        docs.licencia_url        || null,
+        revision:        docs.revision_vehiculo_url || null,
+        identidad_frente: docs.identidad_delantera_url || null,
+        identidad_atras:  docs.identidad_trasera_url   || null,
+        vehiculo:        docs.moto_propia_url || del.foto_moto_url || null,
+        dui:             del.foto_dui_url || null,
+      }
+    });
     setSaldo(parseFloat(del.saldo_billetera)||0);
     setAuthed(true);
     // Leer turno actual desde ubicaciones_delivery
@@ -2259,9 +2634,9 @@ function App(){
 
   // ── Loading ───────────────────────────────────────────
   if(!authed) return(
-    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'radial-gradient(ellipse at center,rgba(255,140,0,.03),var(--bg))',flexDirection:'column',gap:18}}>
-      <div style={{fontSize:48,animation:'pulse 1.5s infinite',filter:'drop-shadow(0 4px 12px rgba(255,140,0,.15))'}}>🛵</div>
-      <div style={{fontSize:13,color:'var(--txt3)',fontWeight:500,letterSpacing:'.02em'}}>Cargando...</div>
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'#0F0F0F',flexDirection:'column',gap:16}}>
+      <div style={{fontSize:44,animation:'pulse 1.5s infinite'}}>🛵</div>
+      <div style={{fontSize:13,color:'#888'}}>Cargando...</div>
     </div>
   );
 
@@ -2311,16 +2686,22 @@ function App(){
       {/* Side menu */}
       {sideOpen&&(
         <div style={{position:'fixed',inset:0,zIndex:100}} onClick={()=>setSideOpen(false)}>
-          <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,.65)',backdropFilter:'blur(6px)',WebkitBackdropFilter:'blur(6px)',animation:'fadeIn .2s'}}/>
-          <div onClick={e=>e.stopPropagation()} style={{position:'absolute',left:0,top:0,bottom:0,width:280,background:'linear-gradient(180deg,#141414 0%,#0D0D0D 100%)',borderRight:'1px solid var(--glass-border)',display:'flex',flexDirection:'column',animation:'slideInL .25s cubic-bezier(.4,0,.2,1)',boxShadow:'4px 0 30px rgba(0,0,0,.5)'}}>
-            <div style={{padding:'28px 20px 20px',borderBottom:'1px solid var(--brd)',display:'flex',alignItems:'center',gap:14,background:'linear-gradient(135deg,rgba(255,140,0,.04) 0%,transparent 100%)'}}>
-              <div style={{width:52,height:52,background:'linear-gradient(135deg,#FF8C00 0%,#E67700 100%)',borderRadius:14,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,fontWeight:800,flexShrink:0,boxShadow:'var(--shadow-brand)'}}>{delivery?.nombre?.charAt(0)||'?'}</div>
-              <div><div style={{fontSize:15,fontWeight:700,letterSpacing:'-0.01em'}}>{delivery?.nombre}</div><div style={{fontSize:12,color:'var(--txt3)',marginTop:2}}>{delivery?.email}</div></div>
+          <div style={{position:'absolute',inset:0,background:'rgba(0,0,0,.6)'}}/>
+          <div onClick={e=>e.stopPropagation()} style={{position:'absolute',left:0,top:0,bottom:0,width:270,background:'var(--s1)',borderRight:'1px solid var(--brd)',display:'flex',flexDirection:'column',animation:'slideInL .22s ease'}}>
+            <div style={{padding:'24px 20px 18px',borderBottom:'1px solid var(--brd)',display:'flex',alignItems:'center',gap:14}}>
+              {delivery?.foto_perfil_url
+                ? <img src={delivery.foto_perfil_url} alt="" style={{width:52,height:52,borderRadius:14,objectFit:'cover',flexShrink:0,border:'2px solid #FF8C00'}}/>
+                : <div style={{width:52,height:52,background:'#FF8C00',borderRadius:14,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,fontWeight:800,flexShrink:0,color:'#fff'}}>{delivery?.nombre?.charAt(0)||'?'}</div>
+              }
+              <div style={{minWidth:0,flex:1}}>
+                <div style={{fontSize:15,fontWeight:700,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{delivery?.nombre}</div>
+                <div style={{fontSize:12,color:'#888',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{delivery?.email}</div>
+              </div>
             </div>
             {[['📅 Mis Turnos','turnos'],['📋 Historial','historial'],['💳 Mis Depósitos','depositos']].map(([lbl,t])=>(
               <button key={t} onClick={()=>{setTabConHistorial(t);setSideOpen(false);}} style={{display:'flex',alignItems:'center',gap:12,padding:'16px 20px',background:'none',border:'none',borderBottom:'1px solid var(--brd)',color:'var(--txt)',width:'100%',textAlign:'left',fontSize:15,fontWeight:500,letterSpacing:'-0.01em'}}>{lbl}</button>
             ))}
-            <button onClick={()=>{setSheet({msg:'¿Cerrar sesión?',confirmLbl:'Sí, cerrar sesión',color:'#F87171',onSi:cerrarSesion});setSideOpen(false);}} style={{display:'flex',alignItems:'center',gap:12,padding:'15px 16px',background:'none',border:'none',color:'#F87171',width:'100%',textAlign:'left',fontSize:14,fontWeight:600,marginTop:'auto',borderTop:'1px solid var(--brd)'}}>🚪 Cerrar Sesión</button>
+            <button onClick={()=>{setSheet({msg:'¿Cerrar sesión?',confirmLbl:'Sí, cerrar sesión',color:'#EF4444',onSi:cerrarSesion});setSideOpen(false);}} style={{display:'flex',alignItems:'center',gap:12,padding:'15px 16px',background:'none',border:'none',color:'#EF4444',width:'100%',textAlign:'left',fontSize:14,fontWeight:600,marginTop:'auto',borderTop:'1px solid #333'}}>🚪 Cerrar Sesión</button>
           </div>
         </div>
       )}
@@ -2329,16 +2710,18 @@ function App(){
       {pe&&<PedidoEntrante pedido={pe} onAceptar={aceptarPE} onRechazar={rechazarPE}/>}
 
       {/* Header */}
-      <div style={{background:'var(--glass)',backdropFilter:'blur(20px)',WebkitBackdropFilter:'blur(20px)',borderBottom:'1px solid var(--glass-border)',position:'sticky',top:0,zIndex:40,boxShadow:'0 4px 20px rgba(0,0,0,.3)'}}>
+      <div style={{background:'var(--s1)',borderBottom:'1px solid var(--brd)',position:'sticky',top:0,zIndex:40}}>
 
         {/* Fila 1: ☰ logo · nombre · iconos */}
         <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 14px'}}>
           {/* Izquierda: hamburguesa + logo + nombre */}
-          <button onClick={()=>setSideOpen(true)} style={{background:'none',border:'none',color:'var(--txt)',fontSize:22,padding:'0 2px',lineHeight:1,flexShrink:0}}>☰</button>
-          <img style={{width:32,height:32,borderRadius:8,flexShrink:0,boxShadow:'0 2px 8px rgba(255,140,0,.15)'}} src="https://res.cloudinary.com/drkaxsziu/image/upload/v1767871213/Somar_Express_2048_x_2048_px_18_x_18_in__20250623_221102_0000_o0bv7a.png"/>
+          <button onClick={()=>setSideOpen(true)} aria-label="Menú" style={{background:'none',border:'none',color:'var(--txt)',padding:'4px 6px',lineHeight:0,flexShrink:0,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <img style={{width:32,height:32,borderRadius:8,flexShrink:0}} src="https://res.cloudinary.com/drkaxsziu/image/upload/v1767871213/Somar_Express_2048_x_2048_px_18_x_18_in__20250623_221102_0000_o0bv7a.png"/>
           <div style={{flex:1,minWidth:0}}>
-            <div style={{fontSize:15,fontWeight:800,lineHeight:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',letterSpacing:'-0.02em'}}>{delivery?.nombre}</div>
-            <div style={{fontSize:11,color:'var(--txt3)',marginTop:3}}>{activos.length} pedido{activos.length!==1?'s':''} activo{activos.length!==1?'s':''}</div>
+            <div style={{fontSize:15,fontWeight:800,lineHeight:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{delivery?.nombre}</div>
+            <div style={{fontSize:11,color:'#666',marginTop:2}}>{activos.length} pedido{activos.length!==1?'s':''} activo{activos.length!==1?'s':''}</div>
           </div>
           {/* Derecha: refresh + notificaciones */}
           <button onClick={refreshDelivery} id="refresh-del-btn" title="Actualizar"
@@ -2363,25 +2746,21 @@ function App(){
             if(!turno&&saldo<MIN_SALDO){toast('⛔ Saldo insuficiente. Recarga para trabajar.');return;}
             setSheet({msg:turno?'¿Pausar tu turno? Dejarás de recibir pedidos.':'¿Activar tu turno? Empezarás a recibir pedidos.',confirmLbl:turno?'Sí, pausar':'Sí, activar',color:turno?'#888':'#22C55E',onSi:()=>toggleTurno(!turno)});
           }} style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:'9px 14px',borderRadius:24,
-            border:'1.5px solid '+(turno&&!pausado?'var(--green)':pausado?'var(--amber)':'rgba(255,255,255,.08)'),
-            background:turno&&!pausado?'var(--green-dim)':pausado?'var(--amber-dim)':'rgba(255,255,255,.03)',
-            color:turno&&!pausado?'var(--green)':pausado?'var(--amber)':'var(--txt3)',
-            fontSize:13,fontWeight:700,cursor:'pointer',
-            animation:turno&&!pausado?'glowPulse 3s infinite':'none',
-            boxShadow:turno&&!pausado?'0 0 12px rgba(52,211,153,.1)':'none',
-            transition:'all var(--transition-smooth)'}}>
+            border:'1.5px solid '+(turno&&!pausado?'var(--green)':pausado?'var(--amber)':'#3a3a3a'),
+            background:turno&&!pausado?'var(--green-dim)':pausado?'var(--amber-dim)':'#1e1e1e',
+            color:turno&&!pausado?'var(--green)':pausado?'var(--amber)':'#666',
+            fontSize:13,fontWeight:700,cursor:'pointer'}}>
             <div style={{width:8,height:8,borderRadius:'50%',background:'currentColor',flexShrink:0,
               animation:turno&&!pausado?'pulse 1.5s infinite':'none'}}/>
             {turno ? (pausado ? '⏸  Pausado' : '●  Disponible') : saldo<MIN_SALDO ? '⛔  Sin saldo' : '○  Fuera de turno'}
           </button>
           {turno&&(
             <button onClick={pausarTurno} style={{flexShrink:0,
-              background:pausado?'rgba(52,211,153,.1)':'rgba(251,191,36,.08)',
-              border:`1.5px solid ${pausado?'#34D399':'#FBBF24'}`,
+              background:pausado?'rgba(34,197,94,.12)':'rgba(245,158,11,.1)',
+              border:`1.5px solid ${pausado?'#22C55E':'#F59E0B'}`,
               borderRadius:24,padding:'9px 16px',
-              color:pausado?'#34D399':'#FBBF24',
-              fontSize:13,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap',
-              transition:'all var(--transition-smooth)'}}>
+              color:pausado?'#22C55E':'#F59E0B',
+              fontSize:13,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>
               {pausado?'▶ Reanudar':'⏸ Pausar'}
             </button>
           )}
@@ -2391,8 +2770,8 @@ function App(){
       {/* Panel notificaciones */}
       {showNotifs&&(
         <div style={{position:'fixed',inset:0,zIndex:150}} onClick={()=>setShowNotifs(false)}>
-          <div onClick={e=>e.stopPropagation()} style={{position:'absolute',top:56,right:8,width:320,maxHeight:'70vh',background:'linear-gradient(180deg,#181818 0%,#111 100%)',border:'1px solid var(--glass-border)',borderRadius:18,overflow:'hidden',boxShadow:'var(--shadow-lg)',display:'flex',flexDirection:'column',backdropFilter:'blur(20px)',WebkitBackdropFilter:'blur(20px)',animation:'scaleIn .2s cubic-bezier(.175,.885,.32,1.275)'}}>
-            <div style={{padding:'12px 14px',borderBottom:'1px solid var(--brd)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+          <div onClick={e=>e.stopPropagation()} style={{position:'absolute',top:56,right:8,width:320,maxHeight:'70vh',background:'#1A1A1A',border:'1px solid #333',borderRadius:16,overflow:'hidden',boxShadow:'0 8px 32px rgba(0,0,0,.6)',display:'flex',flexDirection:'column'}}>
+            <div style={{padding:'12px 14px',borderBottom:'1px solid #333',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
               <div style={{fontSize:13,fontWeight:700}}>🔔 Notificaciones</div>
               <button onClick={async()=>{
                 await sb.from('notificaciones_delivery').update({leida:true}).eq('delivery_id',delivery.id).eq('leida',false);
@@ -2421,7 +2800,7 @@ function App(){
       <div style={{paddingBottom:90}}>
         {tab==='asignados'&&(
           activos.length===0
-            ?<div style={{textAlign:'center',padding:'80px 32px',color:'var(--txt3)'}}><div style={{width:68,height:68,borderRadius:22,background:'linear-gradient(135deg,var(--s2) 0%,var(--s3) 100%)',border:'1px solid var(--brd)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 20px',boxShadow:'var(--shadow-sm)'}}><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/><path d="M15 6h2l2 5H8l2-4h5z"/><path d="M8 11l-2.5 6.5"/><path d="M15 6l1-3h3"/></svg></div><div style={{fontSize:18,fontWeight:700,color:'var(--txt)',marginBottom:8,letterSpacing:'-0.03em'}}>Sin pedidos por ahora</div><div style={{fontSize:14,color:'var(--txt3)',lineHeight:1.7,maxWidth:260,margin:'0 auto'}}>Mantente activo y cerca de la zona con más pedidos para recibirlos primero</div></div>
+            ?<div style={{textAlign:'center',padding:'80px 32px',color:'var(--txt3)'}}><div style={{width:64,height:64,borderRadius:20,background:'var(--s2)',border:'1px solid var(--brd)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 20px'}}><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="18.5" cy="17.5" r="2.5"/><path d="M15 6h2l2 5H8l2-4h5z"/><path d="M8 11l-2.5 6.5"/><path d="M15 6l1-3h3"/></svg></div><div style={{fontSize:18,fontWeight:700,color:'var(--txt)',marginBottom:8,letterSpacing:'-0.03em'}}>Sin pedidos por ahora</div><div style={{fontSize:14,color:'var(--txt2)',lineHeight:1.7,maxWidth:260,margin:'0 auto'}}>Mantente activo y cerca de la zona con más pedidos para recibirlos primero</div></div>
             :<div>{activos.map(p=><CardResumen key={p.id} p={p} onTap={(p)=>{ history.pushState({tab:'asignados',pedidoId:p.id},'','#pedido'); setDetalle(p); }}/>)}</div>
         )}
         {tab==='turnos'&&<TabTurnos delivery={delivery} toast={toast}/>}
@@ -2435,100 +2814,73 @@ function App(){
         {tab==='perfil'&&(
           <div>
             <div style={{fontSize:11,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.08em',padding:'16px 16px 8px'}}>Mi Perfil</div>
-            <div style={{margin:'0 12px 12px',background:'linear-gradient(145deg,var(--s1) 0%,var(--s2) 100%)',border:'1px solid var(--brd)',borderRadius:18,padding:16,boxShadow:'var(--shadow-sm)'}}>
+
+            {/* ── 1. DATOS PERSONALES ────────────────────── */}
+            <div style={{margin:'0 12px 12px',background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:16,padding:16}}>
               <div style={{display:'flex',alignItems:'center',gap:14,marginBottom:14}}>
-                <div style={{width:56,height:56,background:'linear-gradient(135deg,#FF8C00 0%,#E67700 100%)',borderRadius:14,display:'flex',alignItems:'center',justifyContent:'center',fontSize:26,fontWeight:900,flexShrink:0,boxShadow:'var(--shadow-brand)'}}>{delivery?.nombre?.charAt(0)||'?'}</div>
-                <div><div style={{fontSize:17,fontWeight:700}}>{delivery?.nombre}</div><div style={{fontSize:13,color:'#888'}}>{delivery?.email}</div></div>
+                {delivery?.foto_perfil_url
+                  ? <img src={delivery.foto_perfil_url} alt="" style={{width:64,height:64,borderRadius:16,objectFit:'cover',flexShrink:0,border:'2px solid var(--brand)'}}/>
+                  : <div style={{width:64,height:64,background:'var(--brand)',borderRadius:16,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,fontWeight:900,flexShrink:0,color:'#fff'}}>{delivery?.nombre?.charAt(0)||'?'}</div>
+                }
+                <div style={{minWidth:0,flex:1}}>
+                  <div style={{fontSize:17,fontWeight:700,color:'var(--txt)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{delivery?.nombre}</div>
+                  <div style={{fontSize:13,color:'var(--txt3)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{delivery?.email}</div>
+                </div>
               </div>
-              <div style={{background:'#232323',borderRadius:12,overflow:'hidden'}}>
-                {[['Celular',delivery?.celular],['Ciudad',delivery?.ciudad],['Saldo',fmtL(saldo)]].map(([l,v])=>(
-                  <div key={l} style={{padding:'12px 14px',borderBottom:'1px solid #2C2C2C',display:'flex',justifyContent:'space-between'}}><span style={{fontSize:12,color:'#888'}}>{l}</span><span style={{fontSize:13,fontWeight:600,color:l==='Saldo'?(saldo<MIN_SALDO?'#EF4444':saldo<MIN_SALDO*2?'#F59E0B':'#22C55E'):'inherit'}}>{v||'—'}</span></div>
+              <div style={{background:'var(--s2)',borderRadius:12,overflow:'hidden'}}>
+                {[
+                  ['ID Rider', delivery?.id ? `#${String(delivery.id).padStart(4,'0')}` : '—'],
+                  ['Identidad', delivery?.identidad],
+                  ['Celular', delivery?.celular],
+                  ['Ciudad', delivery?.ciudad],
+                  ['Vehículo', delivery?.vehiculo],
+                  ['Saldo', fmtL(saldo)],
+                ].map(([l,v])=>(
+                  <div key={l} style={{padding:'12px 14px',borderBottom:'1px solid var(--brd)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                    <span style={{fontSize:12,color:'var(--txt3)'}}>{l}</span>
+                    <span style={{fontSize:13,fontWeight:600,color:l==='Saldo'?(saldo<MIN_SALDO?'var(--red)':saldo<MIN_SALDO*2?'var(--amber)':'var(--green)'):l==='ID Rider'?'var(--brand)':'var(--txt)',fontFamily:l==='ID Rider'?'Space Mono,monospace':'inherit'}}>{v||'—'}</span>
+                  </div>
                 ))}
-                <div style={{padding:'12px 14px',display:'flex',justifyContent:'space-between'}}><span style={{fontSize:12,color:'#888'}}>Estado</span><span style={{fontSize:13,fontWeight:600,color:'#22C55E'}}>Activo ✅</span></div>
-              </div>
-            </div>
-            <div style={{margin:'0 12px'}}><a href="https://wa.me/50499999999" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:14,background:'rgba(37,211,102,.1)',border:'1px solid rgba(37,211,102,.25)',borderRadius:14,color:'#25d366',fontWeight:700,fontSize:14}}>💬 WhatsApp Despacho</a></div>
-            <div style={{margin:'12px',background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:14,padding:16,display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
-              <div style={{flex:1}}>
-                <div style={{fontSize:14,fontWeight:700,color:'var(--txt)'}}>☀️ Modo Sol</div>
-                <div style={{fontSize:11,color:'var(--txt3)',marginTop:2}}>Máximo contraste para luz directa</div>
-              </div>
-              <div onClick={()=>{ const on=!document.body.classList.contains('modo-sol'); document.body.classList.toggle('modo-sol',on); try{localStorage.setItem('somar_modo_sol',on?'1':'0');}catch(e){} }}
-                   style={{width:52,height:30,borderRadius:15,background:typeof document!=='undefined'&&document.body.classList.contains('modo-sol')?'#FF8C00':'#3a3a3a',position:'relative',cursor:'pointer',transition:'background .2s',flexShrink:0}}>
-                <div style={{width:24,height:24,borderRadius:12,background:'#fff',position:'absolute',top:3,left:typeof document!=='undefined'&&document.body.classList.contains('modo-sol')?25:3,transition:'left .2s'}}/>
+                <div style={{padding:'12px 14px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <span style={{fontSize:12,color:'var(--txt3)'}}>Estado</span>
+                  <span style={{fontSize:13,fontWeight:600,color:'var(--green)'}}>Activo ✅</span>
+                </div>
               </div>
             </div>
 
-            {/* ── SOMAR PRO ─────────────────────────────── */}
-            {(()=>{
-              const fin = historial.filter(p=>p.estatus==='FINALIZADO'||p.est==='FINALIZADO');
-              const ini = new Date(new Date().getFullYear(),new Date().getMonth(),1).getTime();
-              const pM  = fin.filter(p=>new Date(p.hora_finalizado||p.ts||0).getTime()>=ini).length;
-              let nivel='Bronce',pct=0,meta=75,siguienteNivel='Plata';
-              if(pM>=150){nivel='Oro';pct=100;meta=150;siguienteNivel=null;}
-              else if(pM>=75){nivel='Plata';pct=Math.round((pM-75)/75*100);meta=150;siguienteNivel='Oro';}
-              else{pct=Math.round(pM/75*100);meta=75;siguienteNivel='Plata';}
-              const nivelColor = nivel==='Oro'?'#F59E0B':nivel==='Plata'?'#9CA3AF':'#CD7F32';
-              const nivelDim   = nivel==='Oro'?'rgba(245,158,11,.1)':nivel==='Plata'?'rgba(156,163,175,.1)':'rgba(205,127,50,.1)';
-              return(
-                <div style={{margin:'12px 12px 0',background:'var(--s1)',border:`1px solid ${nivelColor}33`,borderRadius:'var(--r-lg)',overflow:'hidden'}}>
-                  <div style={{padding:'14px 16px',background:nivelDim,borderBottom:'1px solid var(--brd)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                    <div>
-                      <div style={{fontSize:10,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:4}}>Somar Pro</div>
-                      <div style={{fontSize:18,fontWeight:800,color:nivelColor,letterSpacing:'-0.02em'}}>Nivel {nivel}</div>
-                    </div>
-                    <div style={{width:44,height:44,borderRadius:12,background:nivelDim,border:`1px solid ${nivelColor}44`,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={nivelColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                    </div>
-                  </div>
-                  <div style={{padding:'14px 16px'}}>
-                    <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
-                      <span style={{fontSize:12,color:'var(--txt2)'}}>Pedidos este mes</span>
-                      <span style={{fontSize:13,fontWeight:700,color:'var(--txt)'}}>{pM} / {meta}</span>
-                    </div>
-                    <div style={{background:'var(--s3)',borderRadius:4,height:6,marginBottom:8,overflow:'hidden'}}>
-                      <div style={{height:'100%',background:nivelColor,borderRadius:4,width:`${pct}%`,transition:'width .6s ease'}}/>
-                    </div>
-                    {siguienteNivel
-                      ? <div style={{fontSize:11,color:'var(--txt3)'}}>Faltan {meta-pM} pedidos para nivel <span style={{color:nivelColor,fontWeight:700}}>{siguienteNivel}</span></div>
-                      : <div style={{fontSize:11,color:'var(--amber)',fontWeight:600}}>Nivel máximo alcanzado</div>
-                    }
-                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,marginTop:12}}>
-                      {[['Bronce','0+','#CD7F32'],['Plata','75+','#9CA3AF'],['Oro','150+','#F59E0B']].map(([n,req,col])=>(
-                        <div key={n} style={{background:nivel===n?`${col}18`:'var(--s2)',border:`1px solid ${nivel===n?col+'44':'var(--brd)'}`,borderRadius:'var(--r-sm)',padding:'8px 6px',textAlign:'center'}}>
-                          <div style={{fontSize:10,fontWeight:700,color:nivel===n?col:'var(--txt3)',letterSpacing:'.02em'}}>{n}</div>
-                          <div style={{fontSize:9,color:'var(--txt3)',marginTop:2}}>{req} pedidos</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
+            <div style={{margin:'0 12px 12px'}}>
+              <a href="https://wa.me/50499999999" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,padding:14,background:'var(--green-dim)',border:'1px solid var(--green)',borderRadius:14,color:'var(--green)',fontWeight:700,fontSize:14}}>💬 WhatsApp Despacho</a>
+            </div>
+
+            {/* ── 2. SOMAR PRO ─────────────────────────── */}
+            <SomarProCard historial={historial}/>
+
+            {/* ── 3. MODO SOL / LUNA ───────────────────── */}
+            <ModoSolToggle/>
+
+            {/* ── 4. MIS DOCUMENTOS (colapsable) ───────── */}
+            <MisDocumentos delivery={delivery} onConfirm={setSheet}/>
           </div>
         )}
       </div>
 
       {/* Bottom tabs */}
-      <div style={{position:'fixed',bottom:0,left:0,right:0,background:'var(--glass)',backdropFilter:'blur(24px)',WebkitBackdropFilter:'blur(24px)',borderTop:'1px solid var(--glass-border)',display:'flex',paddingBottom:'env(safe-area-inset-bottom, 16px)',zIndex:30,boxShadow:'0 -4px 20px rgba(0,0,0,.3)'}}>
+      <div style={{position:'fixed',bottom:0,left:0,right:0,background:'var(--s1)',borderTop:'1px solid var(--brd)',display:'flex',paddingBottom:'env(safe-area-inset-bottom, 16px)',zIndex:30}}>
         {TABS.map(t=>{
           const active = tab===t.id;
           return(
             <button key={t.id} onClick={()=>{setTabConHistorial(t.id);if(t.id==='chat')setChatUnread(0);}}
               style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:4,background:'none',border:'none',
-                color:active?'var(--brand)':'var(--txt3)',padding:'10px 0 6px',position:'relative',transition:'color var(--transition-smooth)'}}>
-              <div style={{transition:'transform var(--transition-spring)',transform:active?'scale(1.12)':'scale(1)'}}>
-                {TAB_ICONS[t.id]}
-              </div>
-              <span style={{fontSize:10,fontWeight:active?700:500,letterSpacing:'.01em',lineHeight:1,transition:'font-weight var(--transition-fast)'}}>{t.lbl}</span>
+                color:active?'var(--brand)':'var(--txt3)',padding:'10px 0 6px',position:'relative',transition:'color .15s'}}>
+              {TAB_ICONS[t.id]}
+              <span style={{fontSize:10,fontWeight:active?700:500,letterSpacing:'.01em',lineHeight:1}}>{t.lbl}</span>
               {t.badge>0&&(
-                <div style={{position:'absolute',top:4,right:'calc(50% - 18px)',background:'var(--red)',color:'#fff',
-                  borderRadius:10,fontSize:9,fontWeight:800,padding:'1px 5px',minWidth:16,textAlign:'center',lineHeight:'14px',
-                  boxShadow:'0 2px 8px rgba(248,113,113,.3)'}}>
+                <div style={{position:'absolute',top:6,right:'calc(50% - 18px)',background:'var(--red)',color:'#fff',
+                  borderRadius:10,fontSize:9,fontWeight:800,padding:'1px 5px',minWidth:16,textAlign:'center',lineHeight:'14px'}}>
                   {t.badge}
                 </div>
               )}
-              {active&&<div style={{position:'absolute',bottom:0,left:'50%',transform:'translateX(-50%)',width:24,height:2.5,background:'var(--brand)',borderRadius:2,boxShadow:'0 0 8px rgba(255,140,0,.4)'}}/>}
+              {active&&<div style={{position:'absolute',bottom:0,left:'50%',transform:'translateX(-50%)',width:20,height:2,background:'var(--brand)',borderRadius:2}}/>}
             </button>
           );
         })}
@@ -2595,38 +2947,38 @@ function TabTurnos({delivery, toast}){
   return(
     <div style={{paddingBottom:80}}>
       {/* Encabezado */}
-      <div style={{margin:'12px 12px 0',background:'linear-gradient(135deg,rgba(255,140,0,.06) 0%,rgba(255,140,0,.02) 100%)',border:'1px solid rgba(255,140,0,.12)',borderRadius:16,padding:'14px 16px',boxShadow:'0 2px 12px rgba(255,140,0,.05)'}}>
-        <div style={{fontSize:13,fontWeight:700,marginBottom:4,letterSpacing:'-0.01em'}}>📅 Reserva tu turno</div>
+      <div style={{margin:'12px 12px 0',background:'rgba(255,140,0,.08)',border:'1px solid rgba(255,140,0,.2)',borderRadius:14,padding:'12px 14px'}}>
+        <div style={{fontSize:13,fontWeight:700,marginBottom:4}}>📅 Reserva tu turno</div>
         <div style={{fontSize:11,color:'#888'}}>Reserva el día anterior antes de las 11pm</div>
       </div>
 
       {/* Selector fecha */}
       <div style={{margin:'10px 12px'}}>
-        <label style={{fontSize:11,color:'#888',fontWeight:600,display:'block',marginBottom:6}}>Fecha a reservar</label>
+        <label style={{fontSize:11,color:'var(--txt3)',fontWeight:600,display:'block',marginBottom:6}}>Fecha a reservar</label>
         <input type="date" value={fecha} min={manana}
           onChange={e=>setFecha(e.target.value)}
-          style={{width:'100%',background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:12,padding:'10px 14px',color:'var(--txt)',fontSize:14,transition:'border-color var(--transition-fast),box-shadow var(--transition-fast)'}}/>
+          style={{width:'100%',background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:10,padding:'10px 14px',color:'var(--txt)',fontSize:14}}/>
       </div>
 
       {/* Turnos disponibles */}
-      <div style={{margin:'0 12px',fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:8}}>Turnos disponibles</div>
-      {cargando?<div style={{textAlign:'center',padding:20,color:'#888'}}>Cargando...</div>:
+      <div style={{margin:'0 12px',fontSize:11,fontWeight:700,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:8}}>Turnos disponibles</div>
+      {cargando?<div style={{textAlign:'center',padding:20,color:'var(--txt3)'}}>Cargando...</div>:
         turnos.map(t=>{
           const yaReservo = reservas.find(r=>r.turno_id===t.id&&r.fecha===fecha&&r.estatus!=='CANCELADO');
           return(
-            <div key={t.id} style={{margin:'0 12px 8px',background:'linear-gradient(145deg,var(--s1) 0%,var(--s2) 100%)',border:`1px solid ${yaReservo?'rgba(52,211,153,.3)':'var(--brd)'}`,borderRadius:16,padding:'12px 14px',boxShadow:'var(--shadow-sm)',transition:'border-color var(--transition-smooth)'}}>
+            <div key={t.id} style={{margin:'0 12px 8px',background:'var(--s1)',border:`1px solid ${yaReservo?'var(--green)':'var(--brd)'}`,borderRadius:14,padding:'12px 14px'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                 <div>
-                  <div style={{fontSize:14,fontWeight:800,letterSpacing:'-0.01em'}}>{t.nombre}</div>
+                  <div style={{fontSize:14,fontWeight:800,color:'var(--txt)'}}>{t.nombre}</div>
                   <div style={{fontSize:12,color:'var(--txt3)',marginTop:2}}>{t.hora_inicio?.slice(0,5)} – {t.hora_fin?.slice(0,5)}</div>
-                  <div style={{fontSize:11,color:'var(--txt3)',marginTop:1,opacity:.6}}>Máx {t.max_riders} riders</div>
+                  <div style={{fontSize:11,color:'var(--txt3)',marginTop:1,opacity:.7}}>Máx {t.max_riders} riders</div>
                 </div>
                 {yaReservo
                   ? <div style={{textAlign:'right'}}>
-                      <div style={{fontSize:11,fontWeight:700,color:colores[yaReservo.estatus]||'#888',marginBottom:6}}>{yaReservo.estatus}</div>
-                      {yaReservo.estatus==='RESERVADO'&&<button onClick={()=>cancelar(yaReservo.id)} style={{background:'none',border:'1px solid #EF4444',borderRadius:8,padding:'5px 10px',color:'#EF4444',fontSize:11,cursor:'pointer'}}>Cancelar</button>}
+                      <div style={{fontSize:11,fontWeight:700,color:colores[yaReservo.estatus]||'var(--txt3)',marginBottom:6}}>{yaReservo.estatus}</div>
+                      {yaReservo.estatus==='RESERVADO'&&<button onClick={()=>cancelar(yaReservo.id)} style={{background:'none',border:'1px solid var(--red)',borderRadius:8,padding:'5px 10px',color:'var(--red)',fontSize:11,cursor:'pointer'}}>Cancelar</button>}
                     </div>
-                  : <button onClick={()=>reservar(t.id)} style={{background:'linear-gradient(135deg,#FF8C00 0%,#E67700 100%)',border:'none',borderRadius:12,padding:'10px 16px',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',boxShadow:'0 2px 10px rgba(255,140,0,.2)'}}>Reservar</button>
+                  : <button onClick={()=>reservar(t.id)} style={{background:'var(--brand)',border:'none',borderRadius:10,padding:'10px 16px',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer'}}>Reservar</button>
                 }
               </div>
             </div>
@@ -2637,14 +2989,14 @@ function TabTurnos({delivery, toast}){
       {/* Mis reservaciones futuras */}
       {reservas.filter(r=>r.estatus!=='CANCELADO').length>0&&(
         <div style={{margin:'16px 12px 0'}}>
-          <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:8}}>Mis próximos turnos</div>
+          <div style={{fontSize:11,fontWeight:700,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.06em',marginBottom:8}}>Mis próximos turnos</div>
           {reservas.filter(r=>r.estatus!=='CANCELADO').map(r=>(
-            <div key={r.id} style={{background:'linear-gradient(145deg,var(--s1) 0%,var(--s2) 100%)',border:'1px solid var(--brd)',borderRadius:14,padding:'10px 14px',marginBottom:6,display:'flex',justifyContent:'space-between',alignItems:'center',boxShadow:'var(--shadow-sm)'}}>
+            <div key={r.id} style={{background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:12,padding:'10px 14px',marginBottom:6,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
               <div>
-                <div style={{fontSize:12,fontWeight:700,letterSpacing:'-0.01em'}}>{r.turno?.nombre||'—'}</div>
+                <div style={{fontSize:12,fontWeight:700,color:'var(--txt)'}}>{r.turno?.nombre||'—'}</div>
                 <div style={{fontSize:11,color:'var(--txt3)'}}>{r.fecha} · {r.turno?.hora_inicio?.slice(0,5)}–{r.turno?.hora_fin?.slice(0,5)}</div>
               </div>
-              <span style={{fontSize:11,fontWeight:700,color:colores[r.estatus]||'#888'}}>{r.estatus}</span>
+              <span style={{fontSize:11,fontWeight:700,color:colores[r.estatus]||'var(--txt3)'}}>{r.estatus}</span>
             </div>
           ))}
         </div>
@@ -2952,41 +3304,41 @@ function TabDepositos({delivery, depositos, setDepositos, onConfirm, toast}){
   return(
     <div>
       <div style={{fontSize:11,fontWeight:600,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.08em',padding:'16px 16px 8px'}}>Recargar Billetera</div>
-      <div style={{margin:'0 12px 12px',background:'linear-gradient(145deg,var(--s1) 0%,var(--s2) 100%)',border:'1px solid var(--brd)',borderRadius:18,padding:16,boxShadow:'var(--shadow-sm)'}}>
-        <div style={{fontSize:15,fontWeight:800,marginBottom:4,letterSpacing:'-0.01em'}}>💳 Registrar Depósito</div>
+      <div style={{margin:'0 12px 12px',background:'var(--s1)',border:'1px solid var(--brd)',borderRadius:16,padding:16}}>
+        <div style={{fontSize:15,fontWeight:800,marginBottom:4,color:'var(--txt)'}}>💳 Registrar Depósito</div>
         <div style={{fontSize:12,color:'var(--txt3)',marginBottom:14}}>Sube el comprobante — Despacho aprobará tu recarga</div>
         <label style={{fontSize:11,fontWeight:700,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.05em',display:'block',marginBottom:6}}>Monto depositado (L.)</label>
         <input type="number" inputMode="decimal" placeholder="0.00" value={monto} onChange={e=>setMonto(e.target.value)}
-          style={{width:'100%',background:'var(--s3)',border:'1.5px solid var(--brd2)',borderRadius:14,padding:'15px 14px',color:'var(--txt)',fontSize:20,fontWeight:800,outline:'none',marginBottom:14,transition:'border-color var(--transition-fast),box-shadow var(--transition-fast)'}}/>
+          style={{width:'100%',background:'var(--s2)',border:'1.5px solid var(--brd)',borderRadius:12,padding:'15px 14px',color:'var(--txt)',fontSize:20,fontWeight:800,outline:'none',marginBottom:14}}/>
         <label style={{fontSize:11,fontWeight:700,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.05em',display:'block',marginBottom:6}}>Foto del comprobante</label>
         <div onClick={()=>document.getElementById('depInp').click()}
-          style={{background:'var(--s3)',border:'2px '+(prev?'solid var(--green)':'dashed var(--brd2)'),borderRadius:16,padding:prev?0:20,textAlign:'center',overflow:'hidden',marginBottom:14,cursor:'pointer',transition:'border-color var(--transition-fast)'}}>
+          style={{background:'var(--s2)',border:'2px '+(prev?'solid var(--green)':'dashed var(--brd)'),borderRadius:14,padding:prev?0:20,textAlign:'center',overflow:'hidden',marginBottom:14,cursor:'pointer'}}>
           {prev
             ?<img src={prev} style={{width:'100%',maxHeight:140,objectFit:'cover',display:'block'}}/>
-            :<><div style={{fontSize:32,marginBottom:6}}>📷</div><div style={{fontSize:14,fontWeight:700}}>Tomar foto del comprobante</div><div style={{fontSize:12,color:'var(--txt3)',marginTop:4}}>Toca aquí</div></>
+            :<><div style={{fontSize:32,marginBottom:6}}>📷</div><div style={{fontSize:14,fontWeight:700,color:'var(--txt)'}}>Tomar foto del comprobante</div><div style={{fontSize:12,color:'var(--txt3)',marginTop:4}}>Toca aquí</div></>
           }
         </div>
         <input type="file" id="depInp" accept="image/*" capture="environment" style={{display:'none'}} onChange={hFile}/>
         {err&&<div style={{color:'var(--red)',fontSize:12,marginBottom:10}}>{err}</div>}
         <button onClick={enviar} disabled={enviando}
-          style={{width:'100%',padding:16,borderRadius:16,background:enviando?'var(--s3)':'linear-gradient(135deg,#FF8C00 0%,#E67700 100%)',color:enviando?'var(--txt3)':'#fff',fontSize:16,fontWeight:800,boxShadow:enviando?'none':'var(--shadow-brand)'}}>
+          style={{width:'100%',padding:16,borderRadius:14,background:enviando?'var(--s4)':'var(--brand)',color:enviando?'var(--txt3)':'#fff',fontSize:16,fontWeight:800,border:'none'}}>
           {enviando?'Enviando...':'Enviar Depósito'}
         </button>
       </div>
-      <div style={{fontSize:11,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.07em',padding:'8px 14px'}}>Historial</div>
-      {depositos.length===0&&<div style={{textAlign:'center',padding:'30px',color:'#888'}}>Sin depósitos aún</div>}
+      <div style={{fontSize:11,fontWeight:700,color:'var(--txt3)',textTransform:'uppercase',letterSpacing:'.07em',padding:'8px 14px'}}>Historial</div>
+      {depositos.length===0&&<div style={{textAlign:'center',padding:'30px',color:'var(--txt3)'}}>Sin depósitos aún</div>}
       {depositos.map(d=>{
-        const [c,bg]=cc[d.estatus||d.est]||['#888','rgba(136,136,136,.15)'];
+        const [c,bg]=cc[d.estatus||d.est]||['var(--txt3)','rgba(136,136,136,.15)'];
         const fecha=new Date(d.creado_at||d.ts||Date.now()).toLocaleDateString('es-HN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'America/Tegucigalpa'});
         return(
-          <div key={d.id} style={{background:'linear-gradient(145deg,var(--s1) 0%,var(--s2) 100%)',borderRadius:14,padding:'13px 14px',margin:'0 12px 8px',borderLeft:'4px solid '+c,boxShadow:'var(--shadow-sm)'}}>
+          <div key={d.id} style={{background:'var(--s1)',borderRadius:13,padding:'13px 14px',margin:'0 12px 8px',borderLeft:'4px solid '+c,border:'1px solid var(--brd)',borderLeftWidth:4}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-              <div style={{fontSize:20,fontWeight:900,letterSpacing:'-0.02em'}}>L. {parseFloat(d.monto).toFixed(2)}</div>
+              <div style={{fontSize:20,fontWeight:900,color:'var(--txt)'}}>L. {parseFloat(d.monto).toFixed(2)}</div>
               <span style={{fontSize:10,fontWeight:700,textTransform:'uppercase',padding:'3px 9px',borderRadius:20,background:bg,color:c}}>{d.estatus||d.est}</span>
             </div>
-            <div style={{fontSize:11,color:'#888',marginTop:4}}>{fecha}</div>
-            {(d.notas_despacho||d.nota)&&<div style={{fontSize:12,color:'#888',marginTop:6,fontStyle:'italic'}}>{d.notas_despacho||d.nota}</div>}
-            {(d.estatus||d.est)==='PENDIENTE'&&<div style={{fontSize:11,color:'#F59E0B',marginTop:6,fontWeight:600}}>⏳ En revisión — saldo se acredita al aprobar</div>}
+            <div style={{fontSize:11,color:'var(--txt3)',marginTop:4}}>{fecha}</div>
+            {(d.notas_despacho||d.nota)&&<div style={{fontSize:12,color:'var(--txt2)',marginTop:6,fontStyle:'italic'}}>{d.notas_despacho||d.nota}</div>}
+            {(d.estatus||d.est)==='PENDIENTE'&&<div style={{fontSize:11,color:'var(--amber)',marginTop:6,fontWeight:600}}>⏳ En revisión — saldo se acredita al aprobar</div>}
           </div>
         );
       })}
