@@ -442,7 +442,7 @@ function PedidoEntrante({pedido, onAceptar, onRechazar}){
   const fired = useRef(false);
   const CIRC = 150.8;
 
-  const [distReal, setDistReal] = useState(km);
+  const [distReal, setDistReal] = useState(parseFloat(pedido?.km || pedido?.distancia_km || 0));
 
   useEffect(()=>{
     // Calcular distancia real rider→recolecta en tiempo real
@@ -507,37 +507,38 @@ function PedidoEntrante({pedido, onAceptar, onRechazar}){
   };
 
   return(
-    <div style={{position:'fixed',inset:0,zIndex:180,display:'flex',flexDirection:'column'}}>
-      {/* Info arriba */}
-      <div style={{background:'linear-gradient(180deg,rgba(0,0,0,.97),rgba(0,0,0,.85))',flex:1,display:'flex',flexDirection:'column',justifyContent:'center',padding:'24px 20px',gap:16}}>
+    <div style={{position:'fixed',inset:0,zIndex:180,display:'flex',flexDirection:'column',background:'#080808'}}>
+      {/* Info arriba — siempre dark, independiente del modo sol/luna */}
+      <div style={{background:'linear-gradient(180deg,#111111 0%,#0A0A0A 100%)',flex:1,display:'flex',flexDirection:'column',justifyContent:'center',padding:'24px 20px',gap:16,overflowY:'auto'}}>
+        {/* Encabezado + countdown */}
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
           <div style={{flex:1,paddingRight:12}}>
-            <div style={{fontSize:11,color:'rgba(255,255,255,.6)',fontWeight:700,textTransform:'uppercase',letterSpacing:'.08em',marginBottom:6}}>🔔 Nuevo Pedido</div>
-            <div style={{fontSize:24,fontWeight:900,lineHeight:1.2}}>{com}</div>
-            <div style={{fontSize:14,color:'rgba(255,255,255,.7)',marginTop:4}}>{tipo==='DELIVERY'?'📦 Delivery':'🛒 Compra'}</div>
+            <div style={{fontSize:11,color:'#FF8C00',fontWeight:800,textTransform:'uppercase',letterSpacing:'.1em',marginBottom:8}}>🔔 Nuevo Pedido</div>
+            <div style={{fontSize:26,fontWeight:900,lineHeight:1.15,color:'#FFFFFF'}}>{com}</div>
+            <div style={{fontSize:14,color:'rgba(255,255,255,.6)',marginTop:5}}>{tipo==='DELIVERY'?'📦 Delivery':'🛒 Compra'}</div>
           </div>
           {/* Countdown */}
-          <div style={{position:'relative',width:64,height:64,flexShrink:0}}>
-            <svg width="64" height="64" viewBox="0 0 64 64" style={{transform:'rotate(-90deg)'}}>
-              <circle fill="none" stroke="#333" strokeWidth="5" cx="32" cy="32" r="27"/>
-              <circle fill="none" stroke={pct>0.3?'#FF8C00':'#EF4444'} strokeWidth="5" strokeLinecap="round"
+          <div style={{position:'relative',width:68,height:68,flexShrink:0}}>
+            <svg width="68" height="68" viewBox="0 0 68 68" style={{transform:'rotate(-90deg)'}}>
+              <circle fill="none" stroke="#2A2A2A" strokeWidth="6" cx="34" cy="34" r="27"/>
+              <circle fill="none" stroke={pct>0.3?'#FF8C00':'#EF4444'} strokeWidth="6" strokeLinecap="round"
                 strokeDasharray={CIRC} strokeDashoffset={offset}
-                cx="32" cy="32" r="27" style={{transition:'stroke-dashoffset .95s linear, stroke .3s'}}/>
+                cx="34" cy="34" r="27" style={{transition:'stroke-dashoffset .95s linear, stroke .3s'}}/>
             </svg>
-            <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,fontWeight:900,color:pct>0.3?'#FF8C00':'#EF4444'}}>{seg}</div>
+            <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,fontWeight:900,color:pct>0.3?'#FF8C00':'#EF4444'}}>{seg}</div>
           </div>
         </div>
-        {/* Info rápida */}
+        {/* Info rápida — cards con colores explícitos */}
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
           {[
             ['📍 Destino',    ciudad],
-            ['📏 Distancia',  distReal > 0 ? `${distReal.toFixed(1)} km` : 'N/D'],
-            ['💳 Pago',       pago==='EFECTIVO'?'Efectivo':'Transferencia'],
-            ['💰 Tu ganancia',fmtL(gan)],
+            ['📏 Distancia',  distReal > 0 ? `${distReal.toFixed(1)} km` : 'calculando…'],
+            ['💳 Pago',       pago==='EFECTIVO'?'💵 Efectivo':'📲 Transferencia'],
+            ['💰 Ganancia',   fmtL(gan)],
           ].map(([l,v])=>(
-            <div key={l} style={{background:'rgba(255,255,255,.08)',borderRadius:12,padding:'10px 12px'}}>
-              <div style={{fontSize:10,color:'rgba(255,255,255,.5)',fontWeight:600,marginBottom:3}}>{l}</div>
-              <div style={{fontSize:14,fontWeight:700}}>{v}</div>
+            <div key={l} style={{background:'#1E1E1E',borderRadius:12,padding:'10px 12px',border:'1px solid #2A2A2A'}}>
+              <div style={{fontSize:10,color:'#888888',fontWeight:700,textTransform:'uppercase',letterSpacing:'.05em',marginBottom:4}}>{l}</div>
+              <div style={{fontSize:14,fontWeight:800,color:'#F0F0F0'}}>{v}</div>
             </div>
           ))}
         </div>
