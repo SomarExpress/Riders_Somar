@@ -1023,6 +1023,30 @@ function VistaPedido({p, pedidos, onAvanzar, onBack, onConfirm, toast, ahora}){
           </div>
         )}
 
+        {/* Sección PRODUCTOS DEL PEDIDO */}
+        {pedidoActual.detalle_json && pedidoActual.detalle_json.items && pedidoActual.detalle_json.items.length > 0 && (
+          <div style={{padding:'14px',borderBottom:'1px solid #222'}}>
+            <div style={{fontSize:10,fontWeight:700,color:'#F59E0B',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:8}}>🛒 Productos del Pedido</div>
+            <div style={{background:'#1A1A1A',borderRadius:12,overflow:'hidden'}}>
+              {pedidoActual.detalle_json.items.map((it,i)=>(
+                <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 14px',borderBottom:'1px solid #222',fontSize:13}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:700}}>{it.qty}× {it.nombre}</div>
+                    <div style={{fontSize:11,color:'#888'}}>L. {parseFloat(it.precio).toFixed(2)} c/u</div>
+                  </div>
+                  <div style={{fontWeight:800,color:'#FF8C00',flexShrink:0}}>L. {parseFloat(it.subtotal).toFixed(2)}</div>
+                </div>
+              ))}
+              {pedidoActual.detalle_json.subtotal && (
+                <div style={{display:'flex',justifyContent:'space-between',padding:'10px 14px',background:'rgba(255,140,0,.06)'}}>
+                  <span style={{fontSize:13,color:'#888',fontWeight:600}}>Subtotal productos</span>
+                  <span style={{fontSize:14,fontWeight:900,color:'#FF8C00'}}>L. {parseFloat(pedidoActual.detalle_json.subtotal).toFixed(2)}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Sección LIQUIDAR FACTURA */}
         {pedidoActual.est === 'EN_ESTABLECIMIENTO' && (
           <div style={{padding:'14px',borderBottom:'1px solid #222'}}>
@@ -2165,6 +2189,10 @@ function normalizarPedido(p, asigId=null) {
     // Descripción y observaciones
     desc:  p.descripcion_paquete || p.descripcion || p.desc || '',
     obs:   p.observaciones || p.obs || '',
+    // Detalle de productos (normalizar a siempre tener .items)
+    detalle_json: p.detalle_json
+      ? (Array.isArray(p.detalle_json) ? { items: p.detalle_json } : p.detalle_json)
+      : null,
   };
 }
 
