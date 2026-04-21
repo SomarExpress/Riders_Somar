@@ -1048,21 +1048,21 @@ function VistaPedido({p, pedidos, onAvanzar, onBack, onConfirm, toast, ahora}){
           </div>
         )}
 
-        {/* Sección LIQUIDAR FACTURA */}
-        {pedidoActual.est === 'EN_ESTABLECIMIENTO' && (
+        {/* Sección FACTURA — Liquidar (solo si no hay foto enviada aún) */}
+        {pedidoActual.est === 'EN_ESTABLECIMIENTO' && !pedidoActual.foto_factura_url && (
           <div style={{padding:'14px',borderBottom:'1px solid #222'}}>
-            <div style={{fontSize:10,fontWeight:700,color:'#F59E0B',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:10}}>🧾 Liquidar Factura</div>
+            <div style={{fontSize:10,fontWeight:700,color:'#F59E0B',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:10}}>🧾 Factura del Establecimiento</div>
             {facPrev
               ? <div style={{display:'flex',alignItems:'center',gap:10,background:'rgba(34,197,94,.08)',border:'1px solid rgba(34,197,94,.2)',borderRadius:12,padding:'10px 14px'}}>
-                  <img src={facPrev} style={{width:48,height:48,borderRadius:8,objectFit:'cover'}}/>
+                  <img src={facPrev} style={{width:52,height:52,borderRadius:8,objectFit:'cover'}}/>
                   <div style={{flex:1}}>
-                    <div style={{fontSize:12,fontWeight:700,color:'#22C55E'}}>✅ Factura lista</div>
-                    {facMonto&&<div style={{fontSize:13,color:'#888'}}>L. {facMonto}</div>}
+                    <div style={{fontSize:12,fontWeight:700,color:'#22C55E'}}>✅ Lista para enviar</div>
+                    {facMonto&&<div style={{fontSize:14,fontWeight:800,color:'#FF8C00'}}>L. {facMonto}</div>}
                   </div>
-                  <button onClick={()=>setShowFacSheet(true)} style={{background:'none',border:'1px solid #444',borderRadius:8,padding:'6px 10px',color:'#888',fontSize:12,cursor:'pointer'}}>Editar</button>
+                  <button onClick={()=>setShowFacSheet(true)} style={{background:'none',border:'1px solid #444',borderRadius:8,padding:'6px 10px',color:'#888',fontSize:12,cursor:'pointer'}}>Cambiar</button>
                 </div>
-              : <button onClick={()=>setShowFacSheet(true)} style={{width:'100%',padding:'14px',background:'rgba(245,158,11,.1)',border:'1.5px dashed #F59E0B',borderRadius:14,color:'#F59E0B',fontSize:14,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-                  📷 Subir factura del establecimiento
+              : <button onClick={()=>setShowFacSheet(true)} style={{width:'100%',padding:'16px',background:'rgba(245,158,11,.1)',border:'1.5px dashed #F59E0B',borderRadius:14,color:'#F59E0B',fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+                  📷 Subir foto de factura
                 </button>
             }
             {/* Sheet de factura */}
@@ -1070,20 +1070,22 @@ function VistaPedido({p, pedidos, onAvanzar, onBack, onConfirm, toast, ahora}){
               <div style={{position:'fixed',inset:0,zIndex:200,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={()=>setShowFacSheet(false)}>
                 <div onClick={e=>e.stopPropagation()} style={{background:'#1A1A1A',borderRadius:'20px 20px 0 0',padding:'20px 16px',paddingBottom:40}}>
                   <div style={{width:40,height:4,background:'#333',borderRadius:2,margin:'0 auto 16px'}}/>
-                  <div style={{fontSize:14,fontWeight:800,marginBottom:14}}>🧾 Factura del Establecimiento</div>
+                  <div style={{fontSize:15,fontWeight:800,marginBottom:4}}>🧾 Factura del Establecimiento</div>
+                  <div style={{fontSize:12,color:'#888',marginBottom:14}}>La foto será enviada a Despacho para revisión</div>
                   <div style={{marginBottom:12}}>
-                    <label style={{fontSize:12,color:'#888',fontWeight:600,display:'block',marginBottom:6}}>Monto pagado (L.)</label>
+                    <label style={{fontSize:12,color:'#888',fontWeight:600,display:'block',marginBottom:6}}>Monto pagado en el establecimiento (L.)</label>
                     <input type="number" inputMode="decimal" placeholder="0.00" value={facMonto} onChange={e=>setFacMonto(e.target.value)}
-                      style={{width:'100%',background:'#232323',border:'1.5px solid #444',borderRadius:12,padding:'14px',color:'#F0F0F0',fontSize:18,fontWeight:700,outline:'none'}}/>
+                      style={{width:'100%',background:'#232323',border:'1.5px solid #444',borderRadius:12,padding:'14px',color:'#F0F0F0',fontSize:20,fontWeight:800,outline:'none'}}/>
                   </div>
                   <div onClick={()=>document.getElementById('facInput').click()}
-                    style={{background:'#232323',border:`2px ${facPrev?'solid':'dashed'} ${facPrev?'#22C55E':'#444'}`,borderRadius:14,padding:facPrev?0:20,textAlign:'center',overflow:'hidden',marginBottom:14,cursor:'pointer'}}>
-                    {facPrev ? <img src={facPrev} style={{width:'100%',maxHeight:160,objectFit:'cover',display:'block'}}/>
-                      : <><div style={{fontSize:36,marginBottom:6}}>📷</div><div style={{fontSize:14,fontWeight:700}}>Tomar foto</div><div style={{fontSize:12,color:'#888',marginTop:4}}>Toca para abrir la cámara</div></>}
+                    style={{background:'#232323',border:`2px ${facPrev?'solid':'dashed'} ${facPrev?'#22C55E':'#555'}`,borderRadius:14,padding:facPrev?0:24,textAlign:'center',overflow:'hidden',marginBottom:14,cursor:'pointer'}}>
+                    {facPrev ? <img src={facPrev} style={{width:'100%',maxHeight:180,objectFit:'cover',display:'block'}}/>
+                      : <><div style={{fontSize:42,marginBottom:8}}>📷</div><div style={{fontSize:15,fontWeight:700,color:'#F0F0F0'}}>Tomar foto de la factura</div><div style={{fontSize:12,color:'#888',marginTop:4}}>Toca para abrir la cámara</div></>}
                   </div>
                   <input type="file" id="facInput" accept="image/*" capture="environment" style={{display:'none'}} onChange={handleFileSelect}/>
-                  <button onClick={()=>setShowFacSheet(false)} style={{width:'100%',padding:14,background:'#FF8C00',border:'none',borderRadius:14,color:'#fff',fontSize:15,fontWeight:800,cursor:'pointer'}}>
-                    ✅ Confirmar factura
+                  <div style={{fontSize:11,color:'#555',textAlign:'center',marginBottom:12}}>📤 Despacho recibirá la foto y la aprobará antes de continuar</div>
+                  <button onClick={()=>setShowFacSheet(false)} style={{width:'100%',padding:16,background:facPrev&&facMonto?'#FF8C00':'#333',border:'none',borderRadius:14,color:facPrev&&facMonto?'#fff':'#666',fontSize:15,fontWeight:800,cursor:facPrev&&facMonto?'pointer':'default'}}>
+                    {facPrev&&facMonto ? '📤 Enviar a Despacho' : '← Volver'}
                   </button>
                 </div>
               </div>
@@ -1091,17 +1093,24 @@ function VistaPedido({p, pedidos, onAvanzar, onBack, onConfirm, toast, ahora}){
           </div>
         )}
 
-        {/* Estado de factura ya enviada */}
+        {/* Factura ya enviada — estado de aprobación (visible en cualquier estado) */}
         {pedidoActual.foto_factura_url && (
           <div style={{padding:'14px',borderBottom:'1px solid #222'}}>
-            <div style={{fontSize:10,fontWeight:700,color:'#888',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:10}}>🧾 Factura Enviada</div>
-            <div style={{background:pedidoActual.factura_aprobada?'rgba(34,197,94,.08)':'rgba(245,158,11,.08)',border:`1px solid ${pedidoActual.factura_aprobada?'rgba(34,197,94,.25)':'rgba(245,158,11,.25)'}`,borderRadius:12,padding:'12px 14px',display:'flex',alignItems:'center',gap:12}}>
-              <img src={pedidoActual.foto_factura_url} style={{width:52,height:52,borderRadius:8,objectFit:'cover',flexShrink:0,cursor:'pointer'}} onClick={()=>window.open(pedidoActual.foto_factura_url,'_blank')}/>
+            <div style={{fontSize:10,fontWeight:700,color:pedidoActual.factura_aprobada?'#22C55E':'#F59E0B',textTransform:'uppercase',letterSpacing:'.07em',marginBottom:10}}>
+              🧾 {pedidoActual.factura_aprobada ? 'Factura Aprobada' : 'Factura en Revisión'}
+            </div>
+            <div style={{background:pedidoActual.factura_aprobada?'rgba(34,197,94,.08)':'rgba(245,158,11,.06)',border:`1px solid ${pedidoActual.factura_aprobada?'rgba(34,197,94,.3)':'rgba(245,158,11,.3)'}`,borderRadius:12,padding:'12px 14px',display:'flex',alignItems:'center',gap:12}}>
+              <img src={pedidoActual.foto_factura_url} style={{width:56,height:56,borderRadius:8,objectFit:'cover',flexShrink:0,cursor:'pointer'}} onClick={()=>window.open(pedidoActual.foto_factura_url,'_blank')}/>
               <div style={{flex:1}}>
-                <div style={{fontSize:13,fontWeight:700,color:pedidoActual.factura_aprobada?'#22C55E':'#F59E0B'}}>
-                  {pedidoActual.factura_aprobada ? '✅ Factura aprobada' : '⏳ En revisión por Despacho'}
+                <div style={{fontSize:14,fontWeight:800,color:pedidoActual.factura_aprobada?'#22C55E':'#F59E0B'}}>
+                  {pedidoActual.factura_aprobada ? '✅ Aprobada por Despacho' : '⏳ Pendiente de aprobación'}
                 </div>
-                <div style={{fontSize:12,color:'#888',marginTop:2}}>L. {parseFloat(pedidoActual.monto_pagado_en_comercio||pedidoActual.me||0).toFixed(2)} pagado</div>
+                <div style={{fontSize:13,fontWeight:700,color:'#FF8C00',marginTop:2}}>
+                  L. {parseFloat(pedidoActual.monto_pagado_en_comercio||pedidoActual.me||0).toFixed(2)} pagado
+                </div>
+                {!pedidoActual.factura_aprobada && (
+                  <div style={{fontSize:11,color:'#888',marginTop:4}}>Despacho revisará y aprobará la factura</div>
+                )}
               </div>
             </div>
           </div>
@@ -2466,8 +2475,25 @@ function App(){
         if(ped){const peNorm=normalizarPedido(ped,p.new.id);setPe(peNorm);notifLocal('🔔 Nuevo Pedido',(ped.nombre_comercio||'—')+' · '+(ped.ciudad_destino||''));iniciarAlarma();}
       })
       .on('postgres_changes',{event:'UPDATE',schema:'public',table:'pedidos',filter:'delivery_id=eq.'+delId},p=>{
-        console.log('[RT] pedido UPDATE:', p.new?.estatus, p.new?.id);
-        cargarDatos(delId);
+        const nu = p.new;
+        if(!nu?.id) return;
+        console.log('[RT] pedido UPDATE:', nu.estatus, nu.id);
+        // Actualizar el pedido en estado local sin recargar todo
+        setPedidos(prev=>{
+          const idx=prev.findIndex(x=>x.id===nu.id);
+          if(idx<0) return prev;
+          const merged={...prev[idx],...normalizarPedido(nu)};
+          const next=[...prev];next[idx]=merged;return next;
+        });
+        // Si cambia a FINALIZADO o CANCELADO: recargar todo (afecta historial y saldo)
+        if(nu.estatus==='FINALIZADO'||nu.estatus==='CANCELADO'){
+          cargarDatos(delId);
+        }
+        // Si despacho aprobó la factura: toast al rider
+        if(nu.factura_aprobada===true && p.old?.factura_aprobada===false){
+          toast('✅ Despacho aprobó tu factura');
+          sonarDepositoAprobado();
+        }
       })
       .on('postgres_changes',{event:'UPDATE',schema:'public',table:'delivery',filter:'id=eq.'+delId},p=>{ if(p.new.saldo_billetera!==undefined){ setSaldo(parseFloat(p.new.saldo_billetera)||0); sonarDepositoAprobado(); } })
       .on('postgres_changes',{event:'UPDATE',schema:'public',table:'depositos_delivery',filter:'delivery_id=eq.'+delId},p=>{ cargarDatos(delId); if(p.new?.estatus==='APROBADO') sonarDepositoAprobado(); })
@@ -2505,24 +2531,53 @@ function App(){
     if(eb.sig==='PEDIDO_EN_CAMINO')   campos.hora_en_camino=ahora;
     if(eb.sig==='ENTREGANDO')         campos.hora_llegada=ahora;
     if(eb.sig==='FINALIZADO')         campos.hora_finalizado=ahora;
-    if(facData?.facMonto)             campos.monto_pagado_en_comercio=facData.facMonto;
+
+    // ── Subir foto de factura si viene ──────────────────────────
+    if(facData?.facMonto) campos.monto_pagado_en_comercio=parseFloat(facData.facMonto);
     if(facData?.facFile){
+      toast('📷 Subiendo factura...');
       const {data:{session}}=await sb.auth.getSession();
       const uid=session?.user?.id;
       const ext=facData.facFile.name.split('.').pop()?.toLowerCase()||'jpg';
-      const {data:up}=await sb.storage.from('delivery-docs').upload(`${uid}/fac_${pid}_${Date.now()}.${ext}`,facData.facFile,{cacheControl:'3600',upsert:true,contentType:facData.facFile.type});
-      if(up){const {data:u}=await sb.storage.from('delivery-docs').createSignedUrl(up.path,60*60*24*365*10);if(u?.signedUrl)campos.foto_factura_url=u.signedUrl;}
+      const {data:up,error:upErr}=await sb.storage.from('delivery-docs').upload(
+        `${uid}/fac_${pid}_${Date.now()}.${ext}`,facData.facFile,
+        {cacheControl:'3600',upsert:true,contentType:facData.facFile.type}
+      );
+      if(upErr){toast('❌ Error subiendo foto: '+upErr.message);return;}
+      if(up){
+        const {data:u}=await sb.storage.from('delivery-docs').createSignedUrl(up.path,60*60*24*365*10);
+        if(u?.signedUrl) campos.foto_factura_url=u.signedUrl;
+      }
+      // factura_aprobada queda en false — despacho debe aprobar
+      campos.factura_aprobada=false;
     }
-    const {error}=await sb.from('pedidos').update(campos).eq('id',pid).eq('delivery_id',delivery.id);
+
+    // ── Actualizar optimistamente en UI antes de esperar BD ──────
+    setPedidos(prev=>prev.map(p=>p.id===pid?{...p,...campos,est:eb.sig,estatus:eb.sig}:p));
+
+    // ── Persistir en BD ──────────────────────────────────────────
+    const {error}=await sb.from('pedidos').update(campos).eq('id',pid);
     if(error){
       console.error('[avanzar] error:', error.message);
-      // Fallback: intentar sin filtro delivery_id
-      const {error:e2}=await sb.from('pedidos').update(campos).eq('id',pid);
-      if(e2){toast('❌ '+e2.message);return;}
+      toast('❌ '+error.message);
+      // Revertir optimismo
+      cargarDatos(delivery.id);
+      return;
     }
-    if(eb.sig==='FINALIZADO'){setDetalle(null);toast('✅ ¡Pedido finalizado!');sonarFinalizado();}
-    else{toast('✅ Estado actualizado');sonarEstadoAvanzado();}
-    cargarDatos(delivery.id);
+
+    if(eb.sig==='FINALIZADO'){
+      setDetalle(null);
+      toast('✅ ¡Pedido finalizado!');
+      sonarFinalizado();
+      // Solo recargar al finalizar (actualiza saldo, guaca, historial)
+      cargarDatos(delivery.id);
+    } else if(campos.foto_factura_url){
+      toast('✅ Factura enviada — esperando aprobación de Despacho');
+      sonarEstadoAvanzado();
+    } else {
+      toast('✅ Estado actualizado');
+      sonarEstadoAvanzado();
+    }
   };
 
   const toggleTurno=async(val)=>{
