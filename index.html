@@ -364,6 +364,8 @@ async function cargarConfigSistema() {
 }
 
 // ── PWA: SW + notificaciones ──────────────────────────────
+const VAPID_PUBLIC_KEY = 'BBJN98QhJjTZtuKww3A7V398rWg9KLLfKJPK6sdsCF3Bovk1TfwcYtNwMt_5U5nbSzRDo6Mph-MLloXz428zEBw';
+
 if('serviceWorker' in navigator) {
   window.addEventListener('load', () =>
     navigator.serviceWorker.register('./delivery-sw.js').catch(e=>console.warn('[SW]',e))
@@ -371,6 +373,46 @@ if('serviceWorker' in navigator) {
 }
 if('Notification' in window && Notification.permission==='default') {
   Notification.requestPermission();
+}
+
+// ── Web Push: suscripción ──────────────────────────────────
+async function suscribirPush(deliveryId) {
+  try {
+    if(!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      console.log('[Push] Web Push no soportado en este dispositivo');
+      return;
+    }
+    const perm = await Notification.requestPermission();
+    if(perm !== 'granted') {
+      console.log('[Push] Permiso denegado');
+      return;
+    }
+    const reg = await navigator.serviceWorker.ready;
+    // Verificar si ya hay suscripción activa
+    let sub = await reg.pushManager.getSubscription();
+    if(!sub) {
+      // Crear nueva suscripción
+      const vapidKey = Uint8Array.from(atob(VAPID_PUBLIC_KEY.replace(/-/g,'+').replace(/_/g,'/')), c=>c.charCodeAt(0));
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: vapidKey,
+      });
+    }
+    const subJson = sub.toJSON();
+    // Guardar en Supabase (upsert por endpoint)
+    const { error } = await sb.from('push_subscriptions').upsert({
+      delivery_id: deliveryId,
+      endpoint:    subJson.endpoint,
+      p256dh:      subJson.keys.p256dh,
+      auth:        subJson.keys.auth,
+      user_agent:  navigator.userAgent.slice(0,200),
+      updated_at:  new Date().toISOString(),
+    }, { onConflict: 'delivery_id,endpoint' });
+    if(error) console.warn('[Push] Error guardando suscripción:', error.message);
+    else console.log('[Push] Suscripción registrada ✅');
+  } catch(e) {
+    console.warn('[Push] Error al suscribir:', e);
+  }
 }
 const notifLocal = (titulo, cuerpo) => {
   if(Notification.permission!=='granted') return;
@@ -2350,10 +2392,8 @@ function App(){
     suscribirRealtime(del.id);
     cargarConfigSistema();
     cargarNotificacionesGlobal(del.id, setNotifs);
-    // Pedir permiso de notificaciones (necesario para notif de turno)
-    if('Notification' in window && Notification.permission==='default'){
-      Notification.requestPermission().then(p=>console.log('[Notif] Permiso:',p));
-    }
+    // Pedir permiso y suscribir Web Push (notif de pedidos en background)
+    suscribirPush(del.id);
   };
 
   const buildTiempos=p=>{
