@@ -1,5 +1,5 @@
 // SERVICE WORKER — Somar Rider PWA
-const CACHE = 'somar-rider-v3.0.4';
+const CACHE = 'somar-rider-v3.0.5';
 const STATIC = ['./index.html', './manifest-delivery.json'];
 
 self.addEventListener('install', e => {
@@ -58,15 +58,20 @@ self.addEventListener('fetch', e => {
 
 // ─── Push notifications ──────────────────
 self.addEventListener('push', e => {
-  const data = e.data ? e.data.json() : {};
+  let data = {};
+  try { data = e.data ? e.data.json() : {}; } catch(_) { data = { body: e.data ? e.data.text() : '' }; }
   if(data.tag === 'turno-activo') return;
+
+  const isNuevoPedido = data.tag === 'nuevo-pedido';
   e.waitUntil(self.registration.showNotification(data.title || 'Somar Express', {
     body:    data.body || 'Tienes un nuevo pedido',
-    icon:    'https://res.cloudinary.com/drkaxsziu/image/upload/v1767871213/Somar_Express_2048_x_2048_px_18_x_18_in__20250623_221102_0000_o0bv7a.png',
-    badge:   'https://res.cloudinary.com/drkaxsziu/image/upload/v1767871213/Somar_Express_2048_x_2048_px_18_x_18_in__20250623_221102_0000_o0bv7a.png',
-    vibrate: [200, 100, 200, 100, 200],
+    icon:    data.icon || 'https://res.cloudinary.com/drkaxsziu/image/upload/v1767871213/Somar_Express_2048_x_2048_px_18_x_18_in__20250623_221102_0000_o0bv7a.png',
+    badge:   data.badge || 'https://res.cloudinary.com/drkaxsziu/image/upload/v1767871213/Somar_Express_2048_x_2048_px_18_x_18_in__20250623_221102_0000_o0bv7a.png',
+    vibrate: isNuevoPedido ? [400, 150, 400, 150, 400, 150, 400] : [200, 100, 200],
     tag:     data.tag || 'somar-rider',
-    requireInteraction: data.requireInteraction || false,
+    renotify: true,
+    requireInteraction: isNuevoPedido ? true : (data.requireInteraction || false),
+    data:    data.data || {},
   }));
 });
 
