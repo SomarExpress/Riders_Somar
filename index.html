@@ -351,6 +351,33 @@ const sb = supabase.createClient(SUPA_URL, SUPA_ANON);
 const MIN_SALDO = 50; // valor por defecto, se sobreescribe desde BD
 let _configSistema = { zona_radio_km: 2.5, saldo_minimo: 100 };
 
+// ─── 🔐 FIRMAR URL DE riders-docs ────────────────────────
+// Acepta tanto URL pública vieja como path nuevo. Devuelve URL firmada (1h).
+// Cache simple para no firmar la misma URL múltiples veces en una sesión.
+const _signedUrlCache = new Map();
+async function firmarDocRider(urlOPath, expSec=3600) {
+  if (!urlOPath) return null;
+  // Si ya tenemos en cache y no ha expirado, devolver
+  const cached = _signedUrlCache.get(urlOPath);
+  if (cached && cached.exp > Date.now()) return cached.url;
+  // Extraer path: si es URL pública, tomar lo que va después de /riders-docs/
+  let path = urlOPath;
+  const marker = '/riders-docs/';
+  const idx = urlOPath.indexOf(marker);
+  if (idx !== -1) path = urlOPath.substring(idx + marker.length);
+  // Si tiene query string (token, etc), limpiar
+  path = path.split('?')[0];
+  try {
+    const { data, error } = await sb.storage.from('riders-docs').createSignedUrl(path, expSec);
+    if (error || !data?.signedUrl) return null;
+    _signedUrlCache.set(urlOPath, { url: data.signedUrl, exp: Date.now() + (expSec - 60)*1000 });
+    return data.signedUrl;
+  } catch (e) {
+    console.warn('[firmarDocRider]', e.message);
+    return null;
+  }
+}
+
 async function cargarConfigSistema() {
   try {
     const { data } = await sb.from('configuracion').select('clave,valor');
@@ -364,8 +391,6 @@ async function cargarConfigSistema() {
 }
 
 // ── PWA: SW + notificaciones ──────────────────────────────
-const VAPID_PUBLIC_KEY = 'BBJN98QhJjTZtuKww3A7V398rWg9KLLfKJPK6sdsCF3Bovk1TfwcYtNwMt_5U5nbSzRDo6Mph-MLloXz428zEBw';
-
 if('serviceWorker' in navigator) {
   window.addEventListener('load', () =>
     navigator.serviceWorker.register('./delivery-sw.js').catch(e=>console.warn('[SW]',e))
@@ -373,46 +398,6 @@ if('serviceWorker' in navigator) {
 }
 if('Notification' in window && Notification.permission==='default') {
   Notification.requestPermission();
-}
-
-// ── Web Push: suscripción ──────────────────────────────────
-async function suscribirPush(deliveryId) {
-  try {
-    if(!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      console.log('[Push] Web Push no soportado en este dispositivo');
-      return;
-    }
-    const perm = await Notification.requestPermission();
-    if(perm !== 'granted') {
-      console.log('[Push] Permiso denegado');
-      return;
-    }
-    const reg = await navigator.serviceWorker.ready;
-    // Verificar si ya hay suscripción activa
-    let sub = await reg.pushManager.getSubscription();
-    if(!sub) {
-      // Crear nueva suscripción
-      const vapidKey = Uint8Array.from(atob(VAPID_PUBLIC_KEY.replace(/-/g,'+').replace(/_/g,'/')), c=>c.charCodeAt(0));
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: vapidKey,
-      });
-    }
-    const subJson = sub.toJSON();
-    // Guardar en Supabase (upsert por endpoint)
-    const { error } = await sb.from('push_subscriptions').upsert({
-      delivery_id: deliveryId,
-      endpoint:    subJson.endpoint,
-      p256dh:      subJson.keys.p256dh,
-      auth:        subJson.keys.auth,
-      user_agent:  navigator.userAgent.slice(0,200),
-      updated_at:  new Date().toISOString(),
-    }, { onConflict: 'delivery_id,endpoint' });
-    if(error) console.warn('[Push] Error guardando suscripción:', error.message);
-    else console.log('[Push] Suscripción registrada ✅');
-  } catch(e) {
-    console.warn('[Push] Error al suscribir:', e);
-  }
 }
 const notifLocal = (titulo, cuerpo) => {
   if(Notification.permission!=='granted') return;
@@ -2365,19 +2350,31 @@ function App(){
         .eq('auth_uid',user.id).order('created_at',{ascending:false}).limit(1);
       if(apps?.length) docs=apps[0];
     }catch(e){ console.warn('[docs]',e.message); }
+    // Firmar TODAS las URLs/paths del bucket riders-docs (bucket privado desde nov 2026)
+    const [
+      foto_perfil_url, licencia_signed, revision_signed,
+      identidad_frente_signed, identidad_atras_signed, vehiculo_signed, dui_signed
+    ] = await Promise.all([
+      firmarDocRider(del.foto_url || docs.foto_url),
+      firmarDocRider(docs.licencia_url),
+      firmarDocRider(docs.revision_vehiculo_url),
+      firmarDocRider(docs.identidad_delantera_url),
+      firmarDocRider(docs.identidad_trasera_url),
+      firmarDocRider(docs.moto_propia_url || del.foto_moto_url),
+      firmarDocRider(del.foto_dui_url),
+    ]);
     setDelivery({
       ...del,
       email:del.correo||user.email,
-      // Foto de perfil con fallback: delivery.foto_url → aplicaciones.foto_url
-      foto_perfil_url: del.foto_url || docs.foto_url || null,
+      foto_perfil_url,
       // Documentos para la sección Mis Documentos (Perfil)
       docs:{
-        licencia:        docs.licencia_url        || null,
-        revision:        docs.revision_vehiculo_url || null,
-        identidad_frente: docs.identidad_delantera_url || null,
-        identidad_atras:  docs.identidad_trasera_url   || null,
-        vehiculo:        docs.moto_propia_url || del.foto_moto_url || null,
-        dui:             del.foto_dui_url || null,
+        licencia:        licencia_signed,
+        revision:        revision_signed,
+        identidad_frente: identidad_frente_signed,
+        identidad_atras:  identidad_atras_signed,
+        vehiculo:        vehiculo_signed,
+        dui:             dui_signed,
       }
     });
     setSaldo(parseFloat(del.saldo_billetera)||0);
@@ -2392,8 +2389,10 @@ function App(){
     suscribirRealtime(del.id);
     cargarConfigSistema();
     cargarNotificacionesGlobal(del.id, setNotifs);
-    // Pedir permiso y suscribir Web Push (notif de pedidos en background)
-    suscribirPush(del.id);
+    // Pedir permiso de notificaciones (necesario para notif de turno)
+    if('Notification' in window && Notification.permission==='default'){
+      Notification.requestPermission().then(p=>console.log('[Notif] Permiso:',p));
+    }
   };
 
   const buildTiempos=p=>{
